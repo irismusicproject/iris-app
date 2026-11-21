@@ -1,6 +1,6 @@
 # Iris App — Domain Model (Language 1: the code)
 
-_Draft v0.5, November 22, 2026 (v0.5: `Partner`, `Site`, `Location` built, structure provisional; see section 1. v0.4: decisions D2, D4, D6, D7 and D8 settled; v0.3: decisions D1, D3 and D5 settled, including how a month's schedule is reviewed, published and sent; v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
+_Draft v0.5, November 22, 2026 (v0.5: `Partner`, `Site`, `Location` built; see section 1. v0.4: decisions D2, D4, D6, D7 and D8 settled; v0.3: decisions D1, D3 and D5 settled, including how a month's schedule is reviewed, published and sent; v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
 app's objects. GLOSSARY.md translates the team's language (Language 2) and
 our partner-facing language (Language 3) into these objects._
 
@@ -100,9 +100,10 @@ Manors, Mather Tysons, Winter Growth Olney). Belongs to exactly one `Partner`.
 
 **Multi-building partners (decided by Ryan, Nov 2026).** There is no object between `Partner` and `Site`. A partner with several buildings, such as CESLC, is one `Partner` with one `Site` per building that has its own care level or calendar (independent living, assisted living, memory care…). How near the buildings are to each other (walking distance, a short drive, farther) is not stored; each `Site` has an address and time zone, and distance can be derived later if pay or scheduling needs it. A `Residency` may span several `Site`s.
 
-**Built (Nov 2026):** `Partner`, `Site` and `Location` are retired (`active = false`), never deleted. `Site.timezone` must be a real time zone. Names are unique within their parent. `Partner.billing_address` and `billing_email` are optional; invoices go one per contract, per site, per month (D4).
+**Built (Nov 2026):** `Partner`, `Site` and `Location` are retired (`active = false`), never deleted. `Site.timezone` must be a real time zone. Names are unique within their parent. A `Site` can't move to another `Partner`, and a `Location` can't move to another `Site`. `Partner.billing_address` and `billing_email` are optional; invoices go one per contract, per site, per month (D4).
 
-**Provisional (Ryan, Nov 22, 2026):** the three-level structure is a starting point, and Lauren has the final say. Partners differ: some have one building with a single care level; others share one building between two care levels (one `Site` with both `care_levels`). Until sessions exist, admins can move a `Site` to another `Partner` and a `Location` to another `Site`, so the structure can be rearranged without re-entering data. That lock returns when sessions start referring to them.
+Partners vary: one building with a single care level is one `Site`; a building shared by two care levels is one `Site` with both `care_levels`.
+
 
 ### `Location`
 A specific room, unit or floor within a `Site` (an auditorium, a named
