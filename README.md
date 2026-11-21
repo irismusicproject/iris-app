@@ -24,15 +24,15 @@ The app is built with Next.js on Vercel. Sign-in runs through Supabase. For now 
 - **Email templates.** Under Authentication, then Email Templates, change the link in the **Magic Link** and **Invite user** templates to:
   `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/dashboard`
   (In the Invite template, use `type=invite`.)
-- **URLs.** Under Authentication, then URL Configuration, set the Site URL to `https://app.irismusicproject.com`. Add `http://localhost:3000/**` to the redirect allow list.
+- **URLs.** Under Authentication, then URL Configuration, set the Site URL to `https://app.irismusicproject.org`. Add `http://localhost:3000/**` to the redirect allow list.
 - **Email sending.** Supabase's built-in email has a strict hourly limit. Before staff use the app for real, connect an SMTP provider such as Resend or Postmark.
 
-## Deploying to app.irismusicproject.com
+## Deploying to app.irismusicproject.org
 
 1. Import this repository into Vercel.
-2. Add the three variables from `.env.example` to the Vercel project. Set `NEXT_PUBLIC_SITE_URL` to `https://app.irismusicproject.com`.
-3. In the Vercel project, open Settings, then Domains, and add `app.irismusicproject.com`.
-4. At the registrar for irismusicproject.com, add the CNAME record Vercel shows. It is usually `app` pointing to `cname.vercel-dns.com`. The main website at irismusicproject.com stays as it is.
+2. Add the three variables from `.env.example` to the Vercel project. Set `NEXT_PUBLIC_SITE_URL` to `https://app.irismusicproject.org`.
+3. In the Vercel project, open Settings, then Domains, and add `app.irismusicproject.org`.
+4. At the registrar for irismusicproject.org, add the CNAME record Vercel shows. It is usually `app` pointing to `cname.vercel-dns.com`. The main website at irismusicproject.org stays as it is.
 
 ## Security
 
