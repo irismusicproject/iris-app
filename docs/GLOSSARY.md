@@ -1,0 +1,209 @@
+# Iris App — Glossary (Languages 2 and 3)
+
+_Draft v0.2, November 2026. Translates the words people use into the objects
+defined in DOMAIN-MODEL.md (Language 1), which is authoritative._
+
+- **Part A: Team language.** How Iris staff and musicians talk, and which object each word means.
+- **Part B: Outward language.** What appears on calendars, invoices and reports for partners, and where each printed field comes from.
+- **Part C: The Ensemble-in-Residence model.** The JAAH papers' concepts and how the app measures them.
+
+Our team and outward languages are set; we don't try to change them. The app
+**displays** these words, but it resolves each one to a single object from
+context. When a word is ambiguous in a new context, we add a row here
+before we write code.
+
+Sources: **[JAAH 2021]** Latessa & Oh, *Journal of Applied Arts & Health*
+12:3, https://doi.org/10.1386/jaah_00083_1 · **[JAAH 2025]** Latessa, *Journal
+of Applied Arts & Health*, Notes from the Field,
+https://doi.org/10.1386/jaah_00185_7 · **[CH]** Independent Contractor
+Handbook (Sept. 2025) · **[SH]** 2027 DRAFT Staff Handbook · **[WB]** current
+workbooks and timesheets.
+
+---
+
+## Part A — Team language → objects
+
+### "Program" (overloaded on purpose; resolved by context)
+
+| When someone says… | They mean | Object |
+|---|---|---|
+| "the program at Mather", "our Asbury program", "Iris Ensemble Program" [WB] | Iris's whole engagement with a partner | `Residency` |
+| "the Music Café program", "Eating together", "a weekly program" | A titled, recurring offering | `Series` |
+| "I have a program at 2 today", "the program was canceled" | One occurrence | `Session` |
+| "special events", "concerts" (in a schedule) | A one-time occurrence | `Session` with `series_id = null` (`is_special_event` as appropriate) |
+| "Programs" on a timesheet: "workshops, presentations, music committee meetings, open rehearsals and performances" [CH] | A pay category | `TimeCategory` "Programs" |
+| "programming hours" [WB] | All paid hours for the week | Sum of `TimeEntry.hours` |
+| "programming" [JAAH] | Everything an ensemble offers | Not an object (see Part C) |
+| "extra programs" [CH] | Work beyond contracted hours, separately paid | `Session.is_extra` + `PayAdjustment(kind = extra_program)` |
+| "individually led programs" / "programs with multiple musicians" [CH] | Sessions with one vs. several musicians | Derived from count of `SessionAssignment`s |
+| "resident led programs" [CH] | Sessions co-designed and co-led with residents | `SessionReport.resident_involvement = co_led` |
+
+**App display rule:** the screen for a `Residency` is labeled "Program"
+(e.g. "Mather Tysons program"). Within it, `Series` appear as "Weekly
+programs" and `Session`s as dated entries. The word is never shown without
+enough context to tell which object it is.
+
+### Places and partners
+
+| Team word | Object | Notes |
+|---|---|---|
+| "community" (an organization) | `Partner` | e.g. CESLC, Mather, Winter Growth |
+| "community" (a building/campus), "site", "house" | `Site` | e.g. Ring House, Weinberg Manors |
+| "location", "unit", "floor", "Community (Other)" [WB] | `Location` | |
+| "community" (the people), "community members" | Not an object | Prose only |
+| "community partner", "partner staff" | `PartnerContact` | |
+| "residency" (legacy) [CH] | `Residency` | Still used in the handbook; little used in speech |
+
+### People and roles
+
+| Team word | Object | Notes |
+|---|---|---|
+| "musician", "Musicians-in-Residence" [CH] | `Person` on a `RosterMember` | The handbook's plural means all on-site musicians |
+| "Musician in Residence 1 / 2" (org chart) | `Person.job_title` | A title only; permissions come from `StaffAssignment` |
+| "MIR" (e.g. on a repertoire sheet) [WB] | A specific `Person` | Shorthand |
+| "the Trio", "the ensemble" | The core `RosterMember`s (`is_core`) of a `Season` | |
+| "program leader", "program lead" [CH][WB] | `SessionAssignment.role = leader` | Per session; rotates [CH] |
+| "administrative project lead", "Project Admin Lead" [CH][WB] | `RosterMember.is_admin_lead` | One per season; stipend via `Contract` |
+| "point person", "designated Iris staff member" [CH] | `StaffAssignment.role = point_person` | |
+| "admin", "core team" | `Person.system_roles ∋ admin` | |
+| "sub", "substitute", "Musician Absent" [WB] | `SessionAssignment.status` = `substitute` / `absent` | |
+| "resident" | `Resident` | |
+
+### Documentation
+
+| Team word | Object | Notes |
+|---|---|---|
+| "documentation" (of a program) | `SessionReport` | Written by the session leader |
+| "relationship building", "relationship-building activities" | `RelationshipActivity` (the logged instance); `TimeCategory` "Relationship Building" (the hours) | |
+| "one-to-ones" (former term) [CH] | `RelationshipActivity(kind = one_to_one)` | |
+| "mini-group session" (2–8 residents) [WB] | `RelationshipActivity(kind = mini_group)` | |
+| "resident co-facilitation" [WB] | `resident_involvement = co_facilitated` | |
+| "Collab? = Yes" [WB] | `resident_involvement` ∈ {`co_facilitated`, `co_led`} | **Assumption (D6)** |
+| "collaborative event" | A `Session` whose `resident_involvement` ≠ `none` | **Assumption (D6)**; confirm |
+| "interaction type" [WB] | `InteractionType` | e.g. Open Rehearsal, Performance, Lecture/Discussion |
+| "type of engagement" | `EngagementType` | For relationship-building activities |
+| "attendance" | `SessionReport.resident_attendance` | Residents only (+ optional `other_attendance`) |
+| "highlights and successes", "challenges and suggestions" [WB] | `MonthlyReflection` | |
+| "rep" | Repertoire (version 2; not yet modeled) | |
+| "blackout dates" [WB] | `Closure(scope = person)` | |
+| "holidays", "closures" | `Closure` | |
+
+### Time, pay and paperwork
+
+| Team word | Object | Notes |
+|---|---|---|
+| "timesheet", "pay sheet" [CH] | `TimeEntry` records for a week | |
+| "hours" | `TimeEntry.hours` | |
+| "contract" | `Contract` | Contractors only |
+| "stipend" (project support, admin lead, training) [CH] | `Contract.stipends[]` | |
+| "special pay" [WB] | `PayAdjustment(kind = special_pay)` | |
+| "special project" [CH] | `SpecialProject` | |
+| "musician invoice" | `MusicianInvoice` | |
+| "community invoice" | `PartnerInvoice` | |
+| "pay period" | `PayPeriod` | Two weeks, Monday–Sunday |
+| "semester", "season" | `Season` | **Assumption (D8)** |
+| "the workbook" | Not an object | Today's spreadsheet; its contents map to `Session`, `SessionReport`, `RelationshipActivity`, `MonthlyReflection` |
+
+---
+
+## Part B — Outward language → objects
+
+Outward documents use the partner's names and Iris's public voice. They
+**never** show resident names, internal notes, rates paid to musicians, or
+internal codes.
+
+### Monthly partner calendar (e.g. for Ring House)
+
+| Printed | Source |
+|---|---|
+| Header: "Iris Music Project at [site]", "[Month Year] Programming" | `Residency.display_name`, `Site.display_name`, `CalendarExport.month` |
+| "Special events" section | `Session`s with `is_special_event` |
+| "Regular programming" section | `Session`s from `Series` |
+| Date, time | `Session.starts_at` (site timezone) |
+| Program title | `Session.title` |
+| Location | `Location.display_name` |
+| Musicians | `SessionAssignment`s that aren't `absent` (display names; leader first) |
+| Note | `Session.public_note` (never `internal_note`) |
+
+**Rules:** only `published` sessions print. Canceled sessions print only if
+the partner was told and a note is useful.
+
+### Community invoice (to a partner)
+
+| Printed | Source |
+|---|---|
+| Bill to | `Partner.legal_name`, `billing_address` |
+| Period | `PartnerInvoice.period_start`–`period_end` |
+| Lines (e.g. "Programming, Ring House, [month]") | `InvoiceLine`s built from `Session`s and the `PartnerAgreement` |
+| Total | `PartnerInvoice.total` |
+
+### Musician invoice (contractor to Iris)
+
+| Printed | Source |
+|---|---|
+| "Bill To: Iris Music Project" + address | Fixed |
+| "For services from [start]–[end] (2-week period, Monday–Sunday)" | `PayPeriod` |
+| Lines by residency and category, stipends, adjustments | `InvoiceLine`s |
+| "TOTAL DUE" | `MusicianInvoice.total` |
+
+### Reports for funders and evaluation
+
+| Outward phrase | Source |
+|---|---|
+| "residents reached / served" | Distinct `Resident`s in `RelationshipActivity`, plus session attendance (reported separately; not de-duplicated) |
+| "programs / sessions delivered" | Count of completed `Session`s |
+| "hours of programming" | Sum of `TimeEntry.hours` (or of `SessionReport` durations; **always say which**) |
+| "resident-led programs" | `Session`s with `resident_involvement = co_led` |
+
+Evaluation exports are **de-identified**: `Resident` becomes a random code.
+
+---
+
+## Part C — The Ensemble-in-Residence model (and how the app measures it)
+
+The team's mission language comes from the two JAAH papers. These are not
+objects; they are **concepts the app measures** from objects.
+
+**Ensemble-in-Residence model.** A small team of professional musicians
+(two to three, [JAAH 2025]) commits to one community and engages deeply with
+its residents, staff and caregivers over an extended time, offering frequent
+and varied programming that is reshaped by what the community values
+[JAAH 2021]. Depth of engagement takes priority over attendance numbers
+[JAAH 2025]. → In the app: a `Residency`.
+
+**Three types of programming** [JAAH 2021]. Performances and open rehearsals;
+small group programs; one-to-ones. → `InteractionType.model_type`.
+
+**Synergies** [JAAH 2021; JAAH 2025]. The types feed into one another, e.g. a
+resident works with a musician over several one-to-ones on a lecture, and the
+ensemble then performs a related piece. → `RelationshipActivity.prepares_session_id`;
+`resident_involvement`.
+
+**Community bonds** [JAAH 2025]. Relationships among residents, staff,
+caregivers and musicians; loneliness as their absence. → Not directly
+measured.
+
+**Trust and continuity** [JAAH 2025]. Builds when the same musicians stay.
+→ `RosterMember` tenure; substitution rate.
+
+**Emergent musical experiences; co-creators** [JAAH 2025]. Projects that grow
+from relationships, with residents as co-creators. → `SpecialProject`;
+`resident_involvement = co_led`.
+
+**Resident roles** [JAAH 2021; JAAH 2025]. Audience, presenter, performer,
+coach, curator, collaborator, student, expert. → Not modeled in version 1.
+
+**Music committee** [JAAH 2025]. Residents who advise the ensemble. → A
+`Series` (its meetings are "Programs" time [CH]).
+
+**Ecosystem health** (app term). Computed per `Residency` and `Season`, never
+stored:
+
+| Signal | Computed from |
+|---|---|
+| Balance | Share of completed `Session`s by `InteractionType.model_type`, plus relationship-building minutes |
+| Continuity | `RosterMember` tenure; share of `SessionAssignment`s with `status = substitute` |
+| Depth | Repeat residents in `RelationshipActivity`; relationship minutes per week |
+| Co-creation | Sessions with `resident_involvement` ≠ `none`; progress to the co-led target |
+| Emergence | `SpecialProject`s; activities linked to sessions via `prepares_session_id` |
+| Targets | `Target` progress, e.g. average attendance vs. 7 [CH] |
