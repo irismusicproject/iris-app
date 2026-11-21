@@ -1,6 +1,6 @@
 # Iris App — Domain Model (Language 1: the code)
 
-_Draft v0.2, November 21, 2026 (v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
+_Draft v0.3, November 22, 2026 (v0.3: `Partner`, `Site`, `Location` decisions confirmed and built; see section 1. v0.2: `Person` rules). This is the **authoritative** definition of the
 app's objects. GLOSSARY.md translates the team's language (Language 2) and
 our partner-facing language (Language 3) into these objects._
 
@@ -95,6 +95,10 @@ Manors, Mather Tysons, Winter Growth Olney). Belongs to exactly one `Partner`.
 | `care_levels` | set of enum | `independent`, `assisted`, `memory_care`, `skilled_nursing`, `adult_day`, `affordable_housing`, `other` |
 | `address`, `city`, `state`, `timezone` | text | Timezone matters: sites span ET, CT and MST (Tucson) |
 | `active` | bool | |
+
+**Multi-building partners (decided by Ryan, Nov 2026).** There is no object between `Partner` and `Site`. A partner with several buildings, such as CESLC, is one `Partner` with one `Site` per building that has its own care level or calendar (independent living, assisted living, memory care…). How near the buildings are to each other (walking distance, a short drive, farther) is not stored; each `Site` has an address and time zone, and distance can be derived later if pay or scheduling needs it. A `Residency` may span several `Site`s.
+
+**Built (Nov 2026):** `Partner`, `Site` and `Location` are retired (`active = false`), never deleted. A `Site` can't move to another `Partner`, and a `Location` can't move to another `Site`. `Site.timezone` must be a real time zone. Names are unique within their parent. `Partner.billing_address` and `billing_email` are optional while **D4** is open.
 
 ### `Location`
 A specific room, unit or floor within a `Site` (an auditorium, a named
@@ -534,6 +538,7 @@ Permissions come from **relationships**, not job titles.
 | Approve a residency's schedules, reports, activities, time | Current `StaffAssignment.role = point_person` |
 | Edit draft schedule, generate and send partner calendar | `RosterMember.is_admin_lead` (current season) |
 | See a residency's sessions and community info | Any current `RosterMember` |
+| See and edit `Partner`, `Site`, `Location` | `Person.system_roles ∋ admin`. **For now admins only;** roster members get read access to their residency's sites once `RosterMember` exists |
 | See and log residents | Current `RosterMember` at that residency's sites; admins |
 | Document a session | That session's leader; admins |
 | See own time, invoices, contract | The person |

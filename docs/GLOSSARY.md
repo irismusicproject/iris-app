@@ -49,6 +49,7 @@ enough context to tell which object it is.
 |---|---|---|
 | "community" (an organization) | `Partner` | e.g. CESLC, Mather, Winter Growth |
 | "community" (a building/campus), "site", "house" | `Site` | e.g. Ring House, Weinberg Manors |
+| "complex", "campus" (a partner with several buildings, e.g. CESLC) | `Partner` with several `Site`s | One `Site` per building with its own care level. Not a separate object |
 | "location", "unit", "floor", "Community (Other)" [WB] | `Location` | |
 | "community" (the people), "community members" | Not an object | Prose only |
 | "community partner", "partner staff" | `PartnerContact` | |
