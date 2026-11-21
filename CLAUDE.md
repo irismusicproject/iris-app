@@ -86,11 +86,11 @@ D1: the review suggested "Ensemble Program"; the model uses `Residency`).
 
 | ID | Topic | Status |
 |---|---|---|
-| D1 | Meanings of "program" → `Residency` / `Series` / `Session` / `TimeCategory` | Model adopted; confirm the name `Residency` |
+| D1 | Meanings of "program" → `Residency` / `Series` / `Session` / `TimeCategory` | **Decided:** code name `Residency` |
 | D2 | Time categories vs. interaction types vs. model types; which interaction-type list is current | Open |
-| D3 | Pay comes from weekly `TimeEntry`, not from session documentation; the session leader documents | Assumed |
+| D3 | Pay comes from weekly `TimeEntry`, not from session documentation; the session leader documents | **Decided** (option A; leader documents) |
 | D4 | `Partner` / `Site` / `Location`; who receives community invoices | Open (billing entity) |
-| D5 | Roles: program leader per session; admin lead; point person | Assumed |
+| D5 | Roles: program leader per session; admin lead; point person | **Decided:** admin lead per residency season; core team = admins; review → publish → send flow (DOMAIN-MODEL, `CalendarExport`) |
 | D6 | Resident involvement levels; meaning of "collaborative event" | Assumed; confirm |
 | D7 | Conflicting handbook deadlines | Open |
 | D8 | Semester vs. season | Assumed (`Season.kind`) |
@@ -103,7 +103,7 @@ D1: the review suggested "Ensemble Program"; the model uses `Residency`).
 | D15 | Attendance counting; individually led vs. multi-musician | Assumed |
 | D16 | Ensemble vs. roster (`RosterMember.is_core`) | Assumed |
 
-Treat **Open** and **Assumed** items as ask-first.
+Treat **Open** and **Assumed** items as ask-first. **Decided** items are recorded in `DOMAIN-MODEL.md`.
 
 ## Privacy and what never goes in this repo
 
