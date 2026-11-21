@@ -18,6 +18,8 @@ settled while building, but before the related feature.
 
 ### D1. "Program" has four meanings
 
+> **Decided (Nov 21, 2026):** the code name is `Residency`.
+
 > **Update:** DOMAIN-MODEL.md adopts this split but names meaning 1
 > `Residency` in code (not "Ensemble Program"), so that no code name contains
 > "program". Team and partner-facing language keep saying "program".
@@ -78,6 +80,10 @@ The glossary entry has been corrected.
 
 ### D3. Documentation and pay are separate today, and the requirements assume they aren't
 
+> **Decided (Nov 21, 2026):** option A. Pay comes from weekly time entries;
+> the session leader documents the session; each musician logs their own
+> relationship building, time and monthly reflection.
+
 Today:
 - **Documentation** is **monthly, per musician**: group sessions with
   attendance, collaboration and interaction type; individual and small-group
@@ -136,6 +142,12 @@ An Ensemble Program belongs to one Partner and serves one or more Sites. Use
 Ensemble Program?
 
 ### D5. Roles: "Musician in Residence" means three things, and leads are unnamed
+
+> **Decided (Nov 21, 2026):** one Admin Lead per residency season (all its
+> sites). The Iris core salaried team are admins. A month's schedule is
+> drafted by the Admin Lead, reviewed with the point person, published, and
+> emailed to the partner by the Admin Lead (point person cc'd); partner
+> feedback produces updated versions. See `CalendarExport` in DOMAIN-MODEL.md.
 
 - The handbook calls **all** on-site contract musicians "Musicians-in-Residence".
 - The 2028–29 org charts use **Musician in Residence 1 and 2** as specific
