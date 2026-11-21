@@ -1,6 +1,6 @@
 # Iris App — Domain Model (Language 1: the code)
 
-_Draft v0.4, November 21, 2026 (v0.4: decisions D2, D4, D6, D7 and D8 settled; v0.3: decisions D1, D3 and D5 settled, including how a month's schedule is reviewed, published and sent; v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
+_Draft v0.5, November 21, 2026 (v0.5: decisions D9 and D13 settled: partner billing and version 1 scope; v0.4: decisions D2, D4, D6, D7 and D8 settled; v0.3: decisions D1, D3 and D5 settled, including how a month's schedule is reviewed, published and sent; v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
 app's objects. GLOSSARY.md translates the team's language (Language 2) and
 our partner-facing language (Language 3) into these objects._
 
@@ -221,7 +221,8 @@ An Iris staff member responsible for a `Residency` (the handbook's
 
 ### `Contract`
 The agreement under which Iris pays a contractor for one `Season` of one
-`Residency`.
+`Residency`. **Decided (D9, Nov 21, 2026):** the hourly rate lives on each
+contract, so a musician working in two regions can have two rates.
 
 | Attribute | Type | Notes |
 |---|---|---|
@@ -302,6 +303,7 @@ an extra program).
 | `partner_agreement_id` | → PartnerAgreement | The contract the session falls under. Defaults to the residency's only agreement for the season; required when there are several (D4) |
 | `schedule_state` | enum | `draft`, `published`, `canceled` |
 | `cancellation_reason` | enum | `partner`, `weather`, `musician`, `other`. Required if canceled |
+| `canceled_at` | datetime | When the cancellation was recorded. Compared with `Setting.cancellation_notice_time` to tell a late partner cancellation (D9) |
 | `public_note` | text | May print on partner calendars |
 | `internal_note` | text | Never prints |
 
@@ -312,8 +314,8 @@ an extra program).
 - Once `published`, only admins, the point person and the Admin Lead can
   edit it. Every edit is logged in `AuditLog`, and the session's musicians
   are notified. Others submit a `ChangeRequest`. (D5)
-- A canceled session stays in the record. Pay and billing treatment follow
-  `cancellation_reason` (handbook: canceled sessions are not paid).
+- A canceled session stays in the record. Musicians aren't paid for it
+  (handbook). Partner billing follows `PartnerAgreement.bill_canceled`.
 
 ### `SessionAssignment`
 A `Person` assigned to play in a `Session`.
@@ -341,7 +343,8 @@ A request to change a published `Session`.
 
 ### `Closure`
 Dates when sessions don't run (Iris holidays, partner closures, blackout
-dates).
+dates). Musicians' blackout dates (`scope = person`) are **in version 1
+(D13)** and show when scheduling.
 
 | Attribute | Type | Notes |
 |---|---|---|
@@ -423,12 +426,13 @@ One logged instance of relationship building with one or more residents
 |---|---|---|
 | `person_id` | → Person | The musician |
 | `residency_id` | → Residency | |
+| `site_id` | → Site | Required. One of the residency's sites; needed because relationship-building time is billed per site (D9) |
 | `occurred_on` | date | |
-| `location_id` | → Location | Optional |
+| `location_id` | → Location | Optional; must be at `site_id` |
 | `kind` | enum | `one_to_one`, `mini_group` (2–8 residents), `co_facilitation_prep`, `other` |
 | `engagement_type_id` | → EngagementType | Admin-managed list (e.g. conversation, lesson, rehearsal, music for comfort, planning) |
 | `minutes` | int | |
-| `resident_ids` | → Resident (many, ≥1) | All at the residency's sites |
+| `resident_ids` | → Resident (many, ≥1) | All at `site_id` |
 | `prepares_session_id` | → Session | Optional: planning a co-led session (handbook: ≥5 meetings) |
 | `note` | text | One sentence. **No health information** |
 | `state` | enum | `submitted`, `approved` |
@@ -438,7 +442,7 @@ Admin-managed, versioned list used by `RelationshipActivity.engagement_type_id`.
 Attributes: `name`, `description`, `active`.
 
 ### `MonthlyReflection`
-A musician's monthly narrative for one `Residency`.
+A musician's monthly narrative for one `Residency`. **In version 1 (D13).**
 
 | Attribute | Type | Notes |
 |---|---|---|
@@ -516,9 +520,25 @@ services).
 | `partner_id`, `residency_id`, `season_id` | → | |
 | `site_ids` | → Site (many, ≥1) | Sites this contract covers; all in the residency |
 | `name` | text | Internal, e.g. which service it covers |
-| `billing_basis` | enum | `per_session`, `per_hour`, `flat_monthly`, `flat_season`. **Open (D9)** |
-| `rates` | structured | By interaction type or flat |
-| `bill_canceled` | rule | Per cancellation reason |
+| `billing_basis` | enum | `per_hour` (most partners), `installments` (e.g. one partner pays quarterly) |
+| `hourly_rate` | money | For `per_hour`. Admin-editable |
+| `contracted_hours` | number | Hours the contract commits to for the season. Shown on every invoice as progress |
+| `installments` | list of `{due_on, amount}` | For `installments`, e.g. four quarterly payments |
+| `bill_stipends` | bool | Also bill the musicians' stipend installments due that month (from their `Contract`s for this residency season) |
+| `overhead_percent` | decimal | Optional, e.g. 15. **Assumption (D9):** applied to billable hours plus billed stipends |
+| `overhead_billing` | enum | `same_invoice` or `separate_invoice` (e.g. billed to a corporate office) |
+| `overhead_bill_to_id` | → PartnerContact | Required when `overhead_billing = separate_invoice`: the corporate office's billing contact |
+| `site_bill_to_id` | → PartnerContact | Who receives the site invoices; defaults to the partner's billing contact |
+| `bill_canceled` | rule | Default: bill a session's scheduled hours only when `cancellation_reason = partner` and it was canceled after `Setting.cancellation_notice_time` that day. Weather, musician and on-time partner cancellations aren't billed. Admins can override per contract |
+
+**Decided (D9, Nov 21, 2026): billable hours.** Every site tracks the same
+billable hours: **documented session hours** (`SessionReport` actual length)
+plus **relationship-building minutes** logged at that site
+(`RelationshipActivity.site_id`). What each partner pays for those hours
+varies, so it's set per contract above. Admins can change the rate, turn
+on overhead (e.g. 15%), and send overhead to a separate corporate invoice
+from the admin view. Changes apply to invoices generated afterwards; past
+invoice lines keep their amounts. Every change is logged.
 
 ### `PartnerInvoice`
 What Iris bills a `Partner` under one `PartnerAgreement`, for one `Site`,
@@ -527,20 +547,39 @@ for one month (Language 3 document, the "community invoice").
 **Decided (D4, Nov 21, 2026):** one invoice **per contract, per site, per
 month**. Most sites have one contract, so that's one invoice per site per
 month. A site with several contracts (Hebrew Home) gets one per contract.
+**Added (D9):** when a contract sends overhead to a separate invoice, it
+also gets one `overhead` invoice per month, to `overhead_bill_to_id`.
 
 | Attribute | Type | Notes |
 |---|---|---|
-| `partner_id`, `partner_agreement_id`, `site_id` | → | |
-| `month` | year-month | Unique with `partner_agreement_id` and `site_id` |
+| `kind` | enum | `site` (the usual invoice), `overhead` (separate corporate invoice) |
+| `partner_id`, `partner_agreement_id` | → | |
+| `site_id` | → Site | Required for `kind = site`; empty for `overhead` |
+| `bill_to_id` | → PartnerContact | Copied from the contract when generated |
+| `month` | year-month | Unique with `partner_agreement_id`, `kind` and `site_id` |
 | `lines` | → InvoiceLine (many) | |
 | `total` | money | |
 | `state` | enum | `draft`, `sent`, `paid` |
 
+**What a `site` invoice contains (D9)**
+- **`per_hour`:** billable hours for the month × `hourly_rate`; billed
+  stipends (if `bill_stipends`); overhead (if `overhead_billing =
+  same_invoice`); late partner cancellations per `bill_canceled`.
+- **`installments`:** hours delivered this month and season to date against
+  `contracted_hours`, and the installment due that month ("$0 due this
+  month" when none is due). Partners on installments still get a monthly
+  invoice so they can see the residency is on track.
+- **Every invoice** shows hours this month and to date against
+  `contracted_hours`.
+- **Assumption (D9):** when a contract covers several sites, billed
+  stipends and overhead go on one separate invoice to `site_bill_to_id`
+  rather than being split across site invoices.
+
 ### `InvoiceLine`
 One line on either kind of invoice: `description`, `quantity`, `unit`,
 `unit_amount`, `amount`, plus a `source` reference (`TimeEntry`, stipend
-installment, `PayAdjustment`, or `Session`) so every amount traces back to
-its record.
+installment, `PayAdjustment`, `Session`, `RelationshipActivity`, partner
+installment, or overhead) so every amount traces back to its record.
 
 ---
 
@@ -619,5 +658,8 @@ Permissions come from **relationships**, not job titles.
 - **"Workbook" and "timesheet."** These are today's spreadsheets. Their
   contents map to `Session`, `SessionReport`, `RelationshipActivity`,
   `MonthlyReflection` and `TimeEntry`.
+- **Repertoire planning** (pieces, composers, timings, rehearsal dates).
+  Not in version 1 (D13); to be modeled later.
+- **Weekly meeting notes.** Not in version 1 (D13); kept outside the app.
 - **Ecosystem health.** Not stored. Computed from the objects above (see
   GLOSSARY Part C).
