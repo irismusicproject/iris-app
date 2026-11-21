@@ -1,6 +1,6 @@
 # Iris App — Domain Model (Language 1: the code)
 
-_Draft v0.5, November 21, 2026 (v0.5: decisions D9 and D13 settled: partner billing and version 1 scope; v0.4: decisions D2, D4, D6, D7 and D8 settled; v0.3: decisions D1, D3 and D5 settled, including how a month's schedule is reviewed, published and sent; v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
+_Draft v0.6, November 21, 2026 (v0.6: both D9 billing details confirmed; v0.5: decisions D9 and D13 settled: partner billing and version 1 scope; v0.4: decisions D2, D4, D6, D7 and D8 settled; v0.3: decisions D1, D3 and D5 settled, including how a month's schedule is reviewed, published and sent; v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
 app's objects. GLOSSARY.md translates the team's language (Language 2) and
 our partner-facing language (Language 3) into these objects._
 
@@ -525,7 +525,7 @@ services).
 | `contracted_hours` | number | Hours the contract commits to for the season. Shown on every invoice as progress |
 | `installments` | list of `{due_on, amount}` | For `installments`, e.g. four quarterly payments |
 | `bill_stipends` | bool | Also bill the musicians' stipend installments due that month (from their `Contract`s for this residency season) |
-| `overhead_percent` | decimal | Optional, e.g. 15. **Assumption (D9):** applied to billable hours plus billed stipends |
+| `overhead_percent` | decimal | Optional, e.g. 15. **Decided (D9):** applied to billable hours plus billed stipends |
 | `overhead_billing` | enum | `same_invoice` or `separate_invoice` (e.g. billed to a corporate office) |
 | `overhead_bill_to_id` | → PartnerContact | Required when `overhead_billing = separate_invoice`: the corporate office's billing contact |
 | `site_bill_to_id` | → PartnerContact | Who receives the site invoices; defaults to the partner's billing contact |
@@ -571,7 +571,7 @@ also gets one `overhead` invoice per month, to `overhead_bill_to_id`.
   invoice so they can see the residency is on track.
 - **Every invoice** shows hours this month and to date against
   `contracted_hours`.
-- **Assumption (D9):** when a contract covers several sites, billed
+- **Decided (D9):** when a contract covers several sites, billed
   stipends and overhead go on one separate invoice to `site_bill_to_id`
   rather than being split across site invoices.
 
