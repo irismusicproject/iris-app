@@ -36,8 +36,14 @@ export async function createPerson(opts: {
   return { id: data.user.id, email, password, name: opts.name };
 }
 
+/** Goes to a page and waits until its JavaScript has loaded, so forms submit normally. */
+export async function open(page: Page, path: string) {
+  await page.goto(path);
+  await page.waitForLoadState("networkidle");
+}
+
 export async function logIn(page: Page, email: string, password: string) {
-  await page.goto("/login");
+  await open(page, "/login");
   await page.locator('input[name="email"]').fill(email);
   await page.locator('input[name="password"]').fill(password);
   await page.getByRole("button", { name: "Log in", exact: true }).click();

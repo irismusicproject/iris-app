@@ -10,7 +10,9 @@ export default defineConfig({
   timeout: 60_000,
   reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : "list",
   use: {
-    baseURL: "http://127.0.0.1:3000",
+    // localhost, not 127.0.0.1: Next builds redirect addresses from its own
+    // hostname, and a cookie set on one name is invisible on the other.
+    baseURL: "http://localhost:3000",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },
@@ -19,8 +21,8 @@ export default defineConfig({
     { name: "phone", use: { ...devices["Pixel 7"] }, grep: /@phone/ },
   ],
   webServer: {
-    command: "npm run start -- -H 127.0.0.1 -p 3000",
-    url: "http://127.0.0.1:3000",
+    command: "npm run start -- -p 3000",
+    url: "http://localhost:3000",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },
