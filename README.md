@@ -114,6 +114,15 @@ Vercel deploys every merge to `main` automatically. It needs these four environm
 
 After changing a variable, redeploy from the **Deployments** tab so it takes effect.
 
+## Brand
+
+From Iris's brand guide (June 2026). Partner calendars and other outward documents use the same assets.
+
+- **Logos** are in `public/brand/`, in purple (for light backgrounds) and white (for dark), in three versions: `horizontal` (app header), `primary` (stacked) and `mark` ("IRiS" only, for small sizes). Use the `Logo` component in `src/components/logo.tsx`; it switches to white in dark mode.
+- **App icons:** `src/app/icon.png` and `src/app/apple-icon.png`; `public/icons/` holds the home-screen icons used by `src/app/manifest.ts`.
+- **Colors:** purple `#411F50` (main), orange `#E84B1B`, blue `#629BD3`, pink `#F29FC5`. They're defined once in `src/app/globals.css`. Screens use the semantic names (`iris`, `muted`, `surface`…); the `brand-*` names are for accents. Orange and blue are too light for body text on white.
+- **Fonts:** Montserrat (the guide's Google version): Bold for titles, Medium for subheadings and captions, Regular for body text. The website's Quincy and Gotham fonts are licensed through Squarespace only, so the app doesn't use them.
+
 ## Planning documents
 
 The app's design documents are in `docs/`, and they are public like the rest of this repo:
