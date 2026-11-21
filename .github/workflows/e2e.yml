@@ -1,0 +1,53 @@
+name: End-to-end tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+
+      # A throwaway Supabase (Postgres, sign-in, API, mail catcher) with our
+      # migrations, seed and sign-in settings from supabase/config.toml.
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.122.1
+      - name: Start local Supabase
+        run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,realtime,storage-api,postgres-meta,supavisor
+      - name: Pass local Supabase settings to the app and tests
+        run: |
+          eval "$(supabase status -o env)"
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY"
+            echo "SUPABASE_SECRET_KEY=$SERVICE_ROLE_KEY"
+            echo "MAIL_URL=${MAILPIT_URL:-$INBUCKET_URL}"
+            echo "NEXT_PUBLIC_SITE_URL=http://localhost:3000"
+          } >> "$GITHUB_ENV"
+
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - run: npx playwright test
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
