@@ -12,6 +12,11 @@
 --     person, admins) create and edit series and sessions, draft or published,
 --     and publish months.
 --   * The current point person (or an admin) marks a month reviewed.
+--   * Every musician on the residency's current roster can edit draft
+--     sessions: title and room, and for special events also date and time;
+--     and can add or remove participants (not leaders) on drafts
+--     (DOMAIN-MODEL v0.12). Leaders are set by schedulers: the point person
+--     first, the Admin Lead may swap them afterwards, admins always.
 --   * Anyone on a current roster of the residency, and its Iris staff, can
 --     read the residency, its sites, sessions and calendar versions.
 --   * A musician assigned to a published session can mark themselves absent
@@ -406,6 +411,28 @@ begin
     if new.residency_id is distinct from old.residency_id then
       raise exception 'a session cannot move to another residency' using errcode = '42501';
     end if;
+    -- Roster musicians (not schedulers) may change only the title and room
+    -- of a draft, plus date and time for special events (v0.12).
+    if (select auth.uid()) is not null and not public.can_schedule(old.residency_id) then
+      if old.schedule_state <> 'draft'
+         or new.schedule_state is distinct from old.schedule_state
+         or new.series_id is distinct from old.series_id
+         or new.kind is distinct from old.kind
+         or new.has_set_time is distinct from old.has_set_time
+         or new.is_special_event is distinct from old.is_special_event
+         or new.is_extra is distinct from old.is_extra
+         or new.billable is distinct from old.billable
+         or new.cancellation_reason is distinct from old.cancellation_reason
+         or new.public_note is distinct from old.public_note
+         or new.internal_note is distinct from old.internal_note
+         or (not old.is_special_event and (
+               new.starts_at is distinct from old.starts_at
+               or new.scheduled_minutes is distinct from old.scheduled_minutes
+               or new.call_time is distinct from old.call_time)) then
+        raise exception 'musicians can change a draft''s title and room (and a special event''s date and time)'
+          using errcode = '42501';
+      end if;
+    end if;
     -- Publishing happens through publish_month(), which checks review and leaders.
     if old.schedule_state = 'draft' and new.schedule_state = 'published'
        and coalesce(current_setting('iris.publishing', true), '') <> 'on' then
@@ -515,6 +542,8 @@ revoke all on public.residency, public.residency_site, public.season, public.ros
 grant select, insert, update on public.residency, public.residency_site, public.season,
   public.roster_member, public.staff_assignment, public.series, public.session,
   public.session_assignment to authenticated;
+-- Removing a musician from a draft session (policies limit this to drafts).
+grant delete on public.session_assignment to authenticated;
 -- Default personnel is a plain list, so schedulers may remove entries.
 grant select, insert, delete on public.series_default_person to authenticated;
 -- Calendar versions are written only by the functions below.
@@ -581,11 +610,26 @@ create policy "session: schedulers add" on public.session for insert to authenti
   with check ((select public.can_schedule(residency_id)));
 create policy "session: schedulers update" on public.session for update to authenticated
   using ((select public.can_schedule(residency_id))) with check ((select public.can_schedule(residency_id)));
+create policy "session: roster musicians edit drafts" on public.session for update to authenticated
+  using (schedule_state = 'draft' and (select public.is_on_current_roster(residency_id)))
+  with check (schedule_state = 'draft' and (select public.is_on_current_roster(residency_id)));
 
 create policy "session_assignment: its people read" on public.session_assignment for select to authenticated
   using ((select public.can_view_residency((select ss.residency_id from public.session ss where ss.id = session_assignment.session_id))));
 create policy "session_assignment: schedulers add" on public.session_assignment for insert to authenticated
   with check ((select public.can_schedule((select ss.residency_id from public.session ss where ss.id = session_assignment.session_id))));
+create policy "session_assignment: roster musicians add participants to drafts" on public.session_assignment
+  for insert to authenticated
+  with check (role = 'participant' and status = 'assigned' and exists (
+    select 1 from public.session ss
+    where ss.id = session_assignment.session_id and ss.schedule_state = 'draft'
+      and (select public.is_on_current_roster(ss.residency_id))));
+create policy "session_assignment: remove from drafts" on public.session_assignment for delete to authenticated
+  using (exists (
+    select 1 from public.session ss
+    where ss.id = session_assignment.session_id and ss.schedule_state = 'draft'
+      and ((select public.can_schedule(ss.residency_id))
+           or (session_assignment.role = 'participant' and (select public.is_on_current_roster(ss.residency_id))))));
 create policy "session_assignment: schedulers update" on public.session_assignment for update to authenticated
   using ((select public.can_schedule((select ss.residency_id from public.session ss where ss.id = session_assignment.session_id))))
   with check ((select public.can_schedule((select ss.residency_id from public.session ss where ss.id = session_assignment.session_id))));
@@ -648,7 +692,27 @@ begin
 end;
 $$;
 
--- Step 2 of publishing (D5): the point person (or an admin) marks a site's
+-- Fill in a month for every weekly program of a residency at once (v0.12:
+-- "auto-populate month to month"). Returns how many sessions were created.
+create function public.generate_residency_month(p_residency uuid, p_month date)
+returns integer language plpgsql security definer set search_path = ''
+as $$
+declare total integer := 0; sid uuid; m date := date_trunc('month', p_month)::date;
+begin
+  if not public.can_schedule(p_residency) then
+    raise exception 'not allowed' using errcode = '42501';
+  end if;
+  for sid in select id from public.series
+             where residency_id = p_residency
+               and active_from <= (m + interval '1 month - 1 day')::date
+               and (active_until is null or active_until >= m) loop
+    total := total + public.generate_series_month(sid, m);
+  end loop;
+  return total;
+end;
+$$;
+
+-- Step 3 of publishing (D5): the point person (or an admin) marks a site's
 -- draft month reviewed. Creates calendar version 1.
 create function public.mark_month_reviewed(p_residency uuid, p_site uuid, p_month date)
 returns uuid language plpgsql security definer set search_path = ''
@@ -682,7 +746,7 @@ as $$
     and date_trunc('month', se.starts_at at time zone st.timezone)::date = date_trunc('month', p_month)::date;
 $$;
 
--- Step 3 (D5): "Publish and download". Publishes the site's draft sessions
+-- Step 4 (D5): "Publish and download". Publishes the site's draft sessions
 -- for the month and turns version 1 into "sent". Every session that isn't
 -- canceled needs exactly one playing leader.
 create function public.publish_month(p_residency uuid, p_site uuid, p_month date)
@@ -798,7 +862,7 @@ do $$
 declare f text;
 begin
   foreach f in array array[
-    'generate_series_month(uuid, date)', 'mark_month_reviewed(uuid, uuid, date)',
+    'generate_series_month(uuid, date)', 'generate_residency_month(uuid, date)', 'mark_month_reviewed(uuid, uuid, date)',
     'month_sessions(uuid, uuid, date)', 'publish_month(uuid, uuid, date)',
     'new_calendar_version(uuid, uuid, date, text)', 'mark_absent_with_substitute(uuid, uuid)',
     'location_in_residency(uuid, uuid)'
