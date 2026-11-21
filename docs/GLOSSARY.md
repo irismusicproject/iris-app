@@ -1,6 +1,6 @@
 # Iris App — Glossary (Languages 2 and 3)
 
-_Draft v0.2, November 2026. Translates the words people use into the objects
+_Draft v0.3, November 21, 2026 (v0.3: D1, D3, D5 settled; schedule review and sending words added). Translates the words people use into the objects
 defined in DOMAIN-MODEL.md (Language 1), which is authoritative._
 
 - **Part A: Team language.** How Iris staff and musicians talk, and which object each word means.
@@ -63,9 +63,9 @@ enough context to tell which object it is.
 | "MIR" (e.g. on a repertoire sheet) [WB] | A specific `Person` | Shorthand |
 | "the Trio", "the ensemble" | The core `RosterMember`s (`is_core`) of a `Season` | |
 | "program leader", "program lead" [CH][WB] | `SessionAssignment.role = leader` | Per session; rotates [CH] |
-| "administrative project lead", "Project Admin Lead" [CH][WB] | `RosterMember.is_admin_lead` | One per season; stipend via `Contract` |
+| "administrative project lead", "Project Admin Lead", "admin lead" [CH][WB] | `RosterMember.is_admin_lead` | One per residency season, covering all its sites (D5); stipend via `Contract` |
 | "point person", "designated Iris staff member" [CH] | `StaffAssignment.role = point_person` | |
-| "admin", "core team" | `Person.system_roles ∋ admin` | |
+| "admin", "core team", "core salaried team" | `Person.system_roles ∋ admin` | Sees and does everything across every residency, with its own admin view (D5). In scheduling talk, "the admin" usually means the **admin lead**; check context |
 | "sub", "substitute", "Musician Absent" [WB] | `SessionAssignment.status` = `substitute` / `absent` | |
 | "resident" | `Resident` | |
 
@@ -73,7 +73,7 @@ enough context to tell which object it is.
 
 | Team word | Object | Notes |
 |---|---|---|
-| "documentation" (of a program) | `SessionReport` | Written by the session leader |
+| "documentation" (of a program) | `SessionReport` | Written by the session leader only (D3) |
 | "relationship building", "relationship-building activities" | `RelationshipActivity` (the logged instance); `TimeCategory` "Relationship Building" (the hours) | |
 | "one-to-ones" (former term) [CH] | `RelationshipActivity(kind = one_to_one)` | |
 | "mini-group session" (2–8 residents) [WB] | `RelationshipActivity(kind = mini_group)` | |
@@ -88,11 +88,22 @@ enough context to tell which object it is.
 | "blackout dates" [WB] | `Closure(scope = person)` | |
 | "holidays", "closures" | `Closure` | |
 
+### Scheduling and the monthly calendar
+
+| Team word | Object | Notes |
+|---|---|---|
+| "draft the schedule", "the draft" | `Session`s with `schedule_state = draft` | Drafted by the admin lead |
+| "review the schedule" (with the point person) | `CalendarExport` version 1, `state = reviewed` | Point person marks it after the review call (D5) |
+| "publish", "send the calendar to the community" | **Publish and download**: sessions become `published`; `CalendarExport` version 1, `state = sent` | The admin lead emails the PDF from their own email, point person cc'd |
+| "partner feedback", "changes from the community" | `CalendarExport.partner_feedback`, then edits to published `Session`s | Internal; never prints |
+| "updated calendar", "revised calendar" | The next `CalendarExport.version` | |
+| "change request" (from a musician) | `ChangeRequest` | For published sessions |
+
 ### Time, pay and paperwork
 
 | Team word | Object | Notes |
 |---|---|---|
-| "timesheet", "pay sheet" [CH] | `TimeEntry` records for a week | |
+| "timesheet", "pay sheet" [CH] | `TimeEntry` records for a week | What pay is calculated from (D3) |
 | "hours" | `TimeEntry.hours` | |
 | "contract" | `Contract` | Contractors only |
 | "stipend" (project support, admin lead, training) [CH] | `Contract.stipends[]` | |
