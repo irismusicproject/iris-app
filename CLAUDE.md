@@ -154,6 +154,11 @@ the same backend:
 - **Pull `main`** before starting any task, and again before merging.
 - **Merge only when** the build, lint and type checks pass and the Vercel
   preview deploys.
+- **Migrations deploy themselves** (README, "Automated database changes"):
+  staging on every pull request, production after an owner approves, and
+  *before* merge. So every migration must keep the current live code working
+  (add, don't break), and an applied migration is never edited. Never tell
+  anyone to paste a migration into the SQL Editor.
 - Claude may pull, commit, push, open pull requests and merge them without
   asking first (permission from Lauren, Nov 2026). This does **not** replace
   the stop-and-ask rules above.
