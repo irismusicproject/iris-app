@@ -1,6 +1,6 @@
 # Iris App — Glossary (Languages 2 and 3)
 
-_Draft v0.5, November 21, 2026 (v0.5: D9, D13 settled: partner billing words added; v0.4: D2, D4, D6, D7, D8 settled; v0.3: D1, D3, D5 settled; schedule review and sending words added). Translates the words people use into the objects
+_Draft v0.6, November 21, 2026 (v0.6: D10, D11, D16 settled; "No Program" and roster words added; v0.5: D9, D13 settled: partner billing words added; v0.4: D2, D4, D6, D7, D8 settled; v0.3: D1, D3, D5 settled; schedule review and sending words added). Translates the words people use into the objects
 defined in DOMAIN-MODEL.md (Language 1), which is authoritative._
 
 - **Part A: Team language.** How Iris staff and musicians talk, and which object each word means.
@@ -30,11 +30,11 @@ workbooks and timesheets.
 | "the program at Mather", "our Asbury program", "Iris Ensemble Program" [WB] | Iris's whole engagement with a partner | `Residency` |
 | "the Music Café program", "Eating together", "a weekly program" | A titled, recurring offering | `Series` |
 | "I have a program at 2 today", "the program was canceled" | One occurrence | `Session` |
-| "special events", "concerts" (in a schedule) | A one-time occurrence | `Session` with `series_id = null` (`is_special_event` as appropriate) |
+| "special events", "concerts" (in a schedule) | A one-time occurrence | `Session` with `series_id = null` and `is_special_event` (concerts always are) (D10) |
 | "Programs" on a timesheet: "workshops, presentations, music committee meetings, open rehearsals and performances" [CH] | A pay category | `TimeCategory` "Programs" |
 | "programming hours" [WB] | All paid hours for the week | Sum of `TimeEntry.hours` |
 | "programming" [JAAH] | Everything an ensemble offers | Not an object (see Part C) |
-| "extra programs" [CH] | Work beyond contracted hours, separately paid | `Session.is_extra` + `PayAdjustment(kind = extra_program)` |
+| "extra programs" [CH] | Work beyond contracted hours, separately paid; musicians may decline | `Session.is_extra` + `PayAdjustment(kind = extra_program)`. Billed to the partner like any session unless `billable = false` (D10) |
 | "individually led programs" / "programs with multiple musicians" [CH] | Sessions with one vs. several musicians | Derived from count of `SessionAssignment`s |
 | "resident led programs" [CH] | Sessions co-designed and co-led with residents | `SessionReport.resident_involvement = co_led` |
 
@@ -61,12 +61,15 @@ enough context to tell which object it is.
 | "musician", "Musicians-in-Residence" [CH] | `Person` on a `RosterMember` | The handbook's plural means all on-site musicians |
 | "Musician in Residence 1 / 2" (org chart) | `Person.job_title` | A title only; permissions come from `StaffAssignment` |
 | "MIR" (e.g. on a repertoire sheet) [WB] | A specific `Person` | Shorthand |
-| "the Trio", "the ensemble" | The core `RosterMember`s (`is_core`) of a `Season` | |
+| "the Trio", "the ensemble" | The core `RosterMember`s (`is_core`) of a `Season` | (D16) |
+| "roster" | All `RosterMember`s of a `Season`: core players, occasional players and subs | Subs join as non-core (D16) |
 | "program leader", "program lead" [CH][WB] | `SessionAssignment.role = leader` | Per session; rotates [CH] |
 | "administrative project lead", "Project Admin Lead", "admin lead" [CH][WB] | `RosterMember.is_admin_lead` | One per residency season, covering all its sites (D5); stipend via `Contract` |
 | "point person", "designated Iris staff member" [CH] | `StaffAssignment.role = point_person` | |
 | "admin", "core team", "core salaried team" | `Person.system_roles ∋ admin` | Sees and does everything across every residency, with its own admin view (D5). In scheduling talk, "the admin" usually means the **admin lead**; check context |
-| "sub", "substitute", "Musician Absent" [WB] | `SessionAssignment.status` = `substitute` / `absent` | |
+| "sub", "substitute", "Musician Absent" [WB] | `SessionAssignment.status` = `substitute` / `absent` | Recorded by the absent musician; any active person; joins the roster (D11, D16) |
+| "No Program" (a planned absence) | A `Session` canceled in the draft with `cancellation_reason = musician` | Prints as "No Program" on the partner calendar (D11) |
+| "missed sessions" | A musician's `absent` assignments and musician-reason cancellations in a season | Warning past `Setting.max_musician_absences_per_season` (D11) |
 | "resident" | `Resident` | |
 
 ### Documentation
@@ -146,8 +149,11 @@ internal codes.
 | Musicians | `SessionAssignment`s that aren't `absent` (display names; leader first) |
 | Note | `Session.public_note` (never `internal_note`) |
 
-**Rules:** only `published` sessions print. Canceled sessions print only if
-the partner was told and a note is useful. Relationship-building activities
+| "No Program" | A session canceled with `cancellation_reason = musician` (planned absence, D11): printed at its usual date and time |
+
+**Rules:** only `published` sessions print. Sessions canceled for a planned
+musician absence print as "No Program". Other canceled sessions print only
+if the partner was told and a note is useful. Relationship-building activities
 (one-to-ones, mini-groups) **never** appear on partner calendars (D2).
 
 ### Community invoice (to a partner)
