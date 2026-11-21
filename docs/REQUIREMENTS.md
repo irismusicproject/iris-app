@@ -1,4 +1,4 @@
-# Iris App — Requirements (Draft v0.2)
+# Iris App — Requirements (Draft v0.3)
 
 _Status: draft for discussion. Owner: Lauren Latessa. Last updated: November 2026._
 
@@ -157,8 +157,32 @@ after the program. The form is pre-filled from the schedule.
 
 ## 5. Platform and other requirements
 
-- **Phone and computer:** one web app that works well in a phone browser and on
-  a computer (no app-store install needed).
+### 5.1 Platform strategy
+
+We're building a **web prototype** at app.irismusicproject.org first, and
+**Android and iPhone apps** later. Until then, we build so the native apps
+can reuse the same backend:
+
+- **Business rules and permissions live in Supabase** (Row Level Security
+  policies and database functions), not in page code, so every client
+  behaves the same.
+- **Shared TypeScript types and validation** for each domain object, which
+  native apps can reuse.
+- **Phone-first musician screens.**
+- **An installable web app** (home-screen manifest) until the native apps
+  exist.
+- **A single notification layer** that starts with email and can add push
+  notifications later.
+- **Offline-friendly drafts** for documentation, submitted when the device
+  is back online.
+- **Sign-in moves toward emailed one-time codes**, which work on web and
+  native, possibly alongside passwords. Today's emailed sign-in links work
+  on the web only.
+
+### 5.2 Other requirements
+
+- **Phone and computer:** the web app works well in a phone browser and on a
+  computer, with no app-store install needed during the prototype.
 - **Current stack (already live at app.irismusicproject.org):** Next.js on
   Vercel; Supabase for sign-in and data; Resend for email. Sign-in is
   invite-only by emailed link, so contractors don't need Iris Google accounts.
@@ -185,8 +209,9 @@ we should design as if it does, and as our community partners would expect:
 - **R9.4** Data is encrypted in transit and at rest, backed up, and hosted with
   a provider that will sign a Business Associate Agreement (BAA) if we need one.
 - **R9.5** When a musician leaves, their access ends immediately.
-- **R9.6** The code repository is public. No passwords, keys, real people's
-  data or planning documents are ever committed to it.
+- **R9.6** The code repository is public. No passwords, keys or real
+  people's data are ever committed to it, and no handbooks, contracts,
+  workbooks or timesheets (the docs in `docs/` may summarize them).
 - **R9.7** Row Level Security is on for every Supabase table from the day it is
   created, so each person can reach only what their role allows. Resident
   tables get the strictest rules.
