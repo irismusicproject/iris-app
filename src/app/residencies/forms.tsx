@@ -88,7 +88,13 @@ export function ResidencyForm({ residency, partners }: { residency?: Residency; 
 
 export function AddSiteForm({ residencyId, sites }: { residencyId: string; sites: Option[] }) {
   const [state, action, pending] = useActionState(addResidencySite.bind(null, residencyId), initial);
-  if (!sites.length) return <p className="text-sm text-muted">All of this partner&apos;s sites are already part of the program.</p>;
+  if (!sites.length)
+    return (
+      <div className="flex flex-col gap-1">
+        <Status state={state} saving={pending} saved="Site added." />
+        <p className="text-sm text-muted">All of this partner&apos;s sites are part of the program.</p>
+      </div>
+    );
   return (
     <form action={action} className="flex flex-wrap items-end gap-3">
       <Field label="Add a site" error={state.errors?.site_id}>
@@ -138,7 +144,13 @@ export function AddSeasonForm({ residencyId }: { residencyId: string }) {
 
 export function AddRosterMemberForm({ residencyId, seasonId, people }: { residencyId: string; seasonId: string; people: Option[] }) {
   const [state, action, pending] = useActionState(addRosterMember.bind(null, residencyId, seasonId), initial);
-  if (!people.length) return <p className="text-sm text-muted">Everyone active is already on this roster.</p>;
+  if (!people.length)
+    return (
+      <div className="flex flex-col gap-1">
+        <Status state={state} saving={pending} saved="Added to the roster." />
+        <p className="text-sm text-muted">Everyone active is on this roster.</p>
+      </div>
+    );
   return (
     <form action={action} className="flex flex-col gap-3">
       <div className="flex flex-wrap items-end gap-3">
