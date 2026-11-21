@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Logo } from "@/components/logo";
 
 export function AuthCard({
   title,
@@ -14,8 +15,8 @@ export function AuthCard({
   return (
     <main className="flex min-h-screen items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm">
-        <Link href="/" className="text-sm text-muted hover:text-foreground">
-          ← Iris Music Project
+        <Link href="/" aria-label="Iris Music Project home" className="inline-block">
+          <Logo className="h-16 w-auto" priority />
         </Link>
         <div className="mt-6 rounded-2xl border border-border bg-surface p-6 shadow-sm sm:p-8">
           <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>

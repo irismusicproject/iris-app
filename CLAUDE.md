@@ -87,21 +87,21 @@ D1: the review suggested "Ensemble Program"; the model uses `Residency`).
 | ID | Topic | Status |
 |---|---|---|
 | D1 | Meanings of "program" → `Residency` / `Series` / `Session` / `TimeCategory` | **Decided:** code name `Residency` |
-| D2 | Time categories vs. interaction types vs. model types; which interaction-type list is current | **Decided:** 2026 documentation list, chosen only when documenting; one-to-ones logged after the fact, never on calendars |
+| D2 | Time categories vs. interaction types vs. model types; which interaction-type list is current | **Decided:** 2026 documentation list, chosen only when documenting; one-to-ones logged after the fact, never on calendars; scheduled relationship building (e.g. Lessons) prints without a time |
 | D3 | Pay comes from weekly `TimeEntry`, not from session documentation; the session leader documents | **Decided** (option A; leader documents) |
 | D4 | `Partner` / `Site` / `Location`; who receives community invoices | **Decided:** one invoice per contract (`PartnerAgreement`), per site, per month |
 | D5 | Roles: program leader per session; admin lead; point person | **Decided:** admin lead per residency season; core team = admins; review → publish → send flow (DOMAIN-MODEL, `CalendarExport`) |
 | D6 | Resident involvement levels; meaning of "collaborative event" | **Decided:** co-facilitated or co-led, recorded when documenting |
 | D7 | Conflicting handbook deadlines | **Decided:** schedule 10th/15th; documentation + hours Tuesday 5 pm; cancellations 9 am (monthly reflection due date assumed) |
 | D8 | Semester vs. season | **Decided:** seasons per residency (`Season.kind`) |
-| D9 | Contract and pay components; partner billing basis | Open (partner billing) |
-| D10 | Events, extras, special projects | Assumed |
-| D11 | Absences, substitutes, cancellation reasons | Assumed |
+| D9 | Contract and pay components; partner billing basis | **Decided:** musician rate per contract; partners per hour or installments; billable hours = session + relationship building per site; admin-set rate, stipends, overhead, corporate invoice; overhead on hours + stipends |
+| D10 | Events, extras, special projects | **Decided:** as modeled; concerts are special events; extras billed unless marked not billable |
+| D11 | Absences, substitutes, cancellation reasons | **Decided:** planned absences become "No Program"; musicians record their own sub; missed-session limit warns (value not set yet) |
 | D12 | Titles separate from personnel and location | Adopted |
-| D13 | Workbook functions in or out of version 1 | Open |
-| D14 | Residents as records; how they're identified | Assumed; confirm |
-| D15 | Attendance counting; individually led vs. multi-musician | Assumed |
-| D16 | Ensemble vs. roster (`RosterMember.is_core`) | Assumed |
+| D13 | Workbook functions in or out of version 1 | **Decided:** monthly reflections and blackout dates in; repertoire and meeting notes out |
+| D14 | Residents as records; how they're identified | **Decided:** first name + last initial, added by musicians as they work; roster + point person + admins see them; partners confirmed comfortable |
+| D15 | Attendance counting; individually led vs. multi-musician | **Decided:** one total of everyone present; led-by derived from musician count |
+| D16 | Ensemble vs. roster (`RosterMember.is_core`) | **Decided:** roster = everyone who plays that season; core = ensemble; subs join as non-core |
 
 Treat **Open** and **Assumed** items as ask-first. **Decided** items are recorded in `DOMAIN-MODEL.md`.
 
