@@ -1,4 +1,4 @@
-# Iris App — Requirements (Draft v0.5)
+# Iris App — Requirements (Draft v0.6)
 
 _Status: draft for discussion. Owner: Lauren Latessa. Last updated: November 2026._
 
@@ -75,6 +75,12 @@ Priority: **P1** = needed for the first version; **P2** = soon after; **P3** = l
 - **R2.3 (P1)** Edit a single occurrence (change the title, swap personnel,
   cancel) without changing the whole series.
 - **R2.4 (P1)** Locations are set up once per community and picked from a list.
+- **R2.7 (P1) Absences and subs (D11).** An absence known before the 10th
+  with no sub makes that session "No Program" on the partner calendar. When a
+  sub is needed, the musician records it on their session, picking any
+  active musician (admins add people from outside the Iris network); the
+  admin lead and point person are notified. The app counts each musician's
+  missed sessions per season and warns past an admin-set limit.
 - **R2.6 (P1)** Musicians enter their blackout dates, which show when
   scheduling (D13).
 - **R2.5 (P2)** Holidays and community closures can be entered once and

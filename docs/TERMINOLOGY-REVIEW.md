@@ -280,6 +280,11 @@ payment dates.
 
 ### D10. "Event", "concert", "extra", "special project", "project"
 
+> **Decided (Nov 21, 2026):** as recommended. One-time sessions have no
+> series; concerts are special events; emergent projects like *Voices of
+> Ring House* are Special Projects. Extras are billed to the partner like
+> any session unless an admin marks one not billable.
+
 - Workbooks have a **Special events** section and a **Concerts** tab (with
   call times).
 - The timesheet has a **Concerts** time category.
@@ -301,6 +306,13 @@ payment dates.
 Projects, or need a separate object.
 
 ### D11. Absences, substitutes and cancellations
+
+> **Decided (Nov 21, 2026):** an absence known before the 10th usually means
+> no sub: the session is canceled (reason: musician) and prints as "No
+> Program". When a sub is needed (rare), the musician records it in the app;
+> the sub can be any active musician (an admin adds people from outside the
+> Iris network). The app counts missed sessions per season and warns past an
+> admin-set limit.
 
 Workbooks track "Musician Absent", "Participating Musicians" and "Subs and
 Notes". The handbook says musicians must arrange their own substitute and
@@ -367,6 +379,10 @@ leader) differently from **individually led** ones.
   too.
 
 ### D16. Ensemble vs. roster
+
+> **Decided (Nov 21, 2026):** the roster is everyone who plays that season;
+> the core ensemble is flagged on the roster; a sub not on the roster joins
+> it as a non-core member.
 
 The JAAH papers describe an ensemble of two to three musicians, but the Fall
 2026 Manors timesheet pays eight contractors, with two to four at a session.

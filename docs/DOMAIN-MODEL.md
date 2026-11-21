@@ -1,6 +1,6 @@
 # Iris App — Domain Model (Language 1: the code)
 
-_Draft v0.6, November 21, 2026 (v0.6: both D9 billing details confirmed; v0.5: decisions D9 and D13 settled: partner billing and version 1 scope; v0.4: decisions D2, D4, D6, D7 and D8 settled; v0.3: decisions D1, D3 and D5 settled, including how a month's schedule is reviewed, published and sent; v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
+_Draft v0.7, November 21, 2026 (v0.7: decisions D10, D11 and D16 settled: events, extras, absences, substitutes and the roster; v0.6: both D9 billing details confirmed; v0.5: decisions D9 and D13 settled: partner billing and version 1 scope; v0.4: decisions D2, D4, D6, D7 and D8 settled; v0.3: decisions D1, D3 and D5 settled, including how a month's schedule is reviewed, published and sent; v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
 app's objects. GLOSSARY.md translates the team's language (Language 2) and
 our partner-facing language (Language 3) into these objects._
 
@@ -195,13 +195,18 @@ Anyone who signs in: musicians, staff, volunteers. One record per human.
 - An admin can't remove their own `admin` role or deactivate themselves, so Iris can't be locked out by accident.
 
 ### `RosterMember`
-A `Person`'s membership on a `Residency` for one `Season`.
+A `Person`'s membership on a `Residency` for one `Season`. **Decided (D16,
+Nov 21, 2026):** the roster is everyone who plays at the residency that
+season: the core ensemble (`is_core`) and everyone else, including
+substitutes. A substitute who isn't on the roster **joins it as a non-core
+member** when they're named as a sub, so they see the residency's sessions
+and residents like other roster members.
 
 | Attribute | Type | Notes |
 |---|---|---|
 | `season_id` | → Season | |
 | `person_id` | → Person | |
-| `is_core` | bool | Part of the core ensemble vs. occasional/substitute pool (D16) |
+| `is_core` | bool | Part of the core ensemble ("the ensemble", "the Trio") vs. occasional players and substitutes (D16) |
 | `is_admin_lead` | bool | The handbook's "administrative project lead". **At most one per Season**, covering all of the residency's sites (D5) |
 | `joined_on`, `left_on` | date | |
 
@@ -297,8 +302,9 @@ an extra program).
 | `starts_at` | datetime (site timezone) | |
 | `scheduled_minutes` | int | |
 | `call_time` | time | Optional (concerts) |
-| `is_special_event` | bool | Shown in the "Special events" section of partner calendars |
-| `is_extra` | bool | Outside contracted hours; separately negotiated pay (D10) |
+| `is_special_event` | bool | Shown in the "Special events" section of partner calendars. Concerts are special events (D10) |
+| `is_extra` | bool | An "extra program": outside contracted hours, separately negotiated pay, and musicians may decline. **Billed to the partner like any session (D10)** |
+| `billable` | bool | Default true. An admin can set it false for a session Iris doesn't bill (e.g. a gift to the community) (D10) |
 | `special_project_id` | → SpecialProject | Optional |
 | `partner_agreement_id` | → PartnerAgreement | The contract the session falls under. Defaults to the residency's only agreement for the season; required when there are several (D4) |
 | `schedule_state` | enum | `draft`, `published`, `canceled` |
@@ -313,9 +319,14 @@ an extra program).
   `role = leader`.
 - Once `published`, only admins, the point person and the Admin Lead can
   edit it. Every edit is logged in `AuditLog`, and the session's musicians
-  are notified. Others submit a `ChangeRequest`. (D5)
+  are notified. Others submit a `ChangeRequest`. (D5) Exception: a musician
+  assigned to the session can mark themselves absent and name their sub (D11).
 - A canceled session stays in the record. Musicians aren't paid for it
   (handbook). Partner billing follows `PartnerAgreement.bill_canceled`.
+- **Planned absences (D11).** When a musician's absence is known before the
+  10th (`Setting.schedule_internal_due_day`) and no sub is arranged, the
+  Admin Lead cancels that session in the draft with `cancellation_reason =
+  musician`. The partner calendar prints that slot as **"No Program"**.
 
 ### `SessionAssignment`
 A `Person` assigned to play in a `Session`.
@@ -329,6 +340,21 @@ A `Person` assigned to play in a `Session`.
 
 The program leader is **per session** and is expected to rotate among
 participating musicians (handbook). The app can report rotation balance.
+
+**Absences and substitutes (decided, D11 and D16, Nov 21, 2026)**
+- Subs are rare. The musician arranges their own sub (handbook), then
+  **records it in the app themselves** on their published session: their
+  assignment becomes `absent`, and a new assignment with `status =
+  substitute` and `substitute_for_id` = the absent musician is added.
+- The sub can be **any active `Person`**. If the sub isn't on the
+  season's roster, they're added as a non-core `RosterMember`. Someone
+  outside the Iris network must first be added as a `Person` by an admin.
+- The change is logged, and the Admin Lead and point person are notified.
+- Each musician's missed sessions this season are counted; when the count
+  passes `Setting.max_musician_absences_per_season`, the Admin Lead and
+  point person get a warning.
+- If the absent musician was the session's leader, the sub or another
+  participant must become leader (a session keeps exactly one leader).
 
 ### `ChangeRequest`
 A request to change a published `Session`.
@@ -599,7 +625,10 @@ A goal set by an admin.
 A one-time, mission-aligned initiative proposed and funded outside regular
 contracted hours (handbook: "Special Projects"). Can link sessions,
 activities and pay adjustments. Emergent projects such as a festival are
-modeled here. **Assumption (D10)**
+modeled here, including emergent projects like *Voices of Ring House*.
+**Decided (D10, Nov 21, 2026).** One-time sessions (concerts, holiday
+programs) are `Session`s with no `Series`; a special project groups related
+sessions, activities and pay adjustments.
 
 | Attribute | Type | Notes |
 |---|---|---|
@@ -618,6 +647,7 @@ Admin-editable rules from the handbook, so compliance is data.
 | `schedule_partner_due_day` | 15th of the prior month (version 1 sent to the partner) |
 | `documentation_and_time_due` | **One deadline** for `SessionReport`s, `RelationshipActivity` logs and `TimeEntry` hours: **Tuesday 17:00 of the following week** |
 | `cancellation_notice_time` | 09:00 the same day, for illness or emergency |
+| `max_musician_absences_per_season` | Set by admins; **no default yet**. Passing it warns the Admin Lead and point person (D11) |
 
 **Assumption (D7):** a `MonthlyReflection` is due by the same Tuesday
 17:00 deadline in the week after the month ends.
@@ -643,6 +673,8 @@ Permissions come from **relationships**, not job titles.
 | See and log residents | Current `RosterMember` at that residency's sites; admins |
 | Document a session | That session's leader; admins |
 | See own time, invoices, contract | The person |
+| Mark self absent on a published session and name a substitute (any active person; joins the roster if needed) | A musician assigned to that session (D11) |
+| Add a new person (e.g. a sub from outside the Iris network) | Admins |
 | See and edit any `Person`; add, deactivate and reactivate people | `Person.system_roles ∋ admin` |
 | See own `Person` record; change own `phone` and `instruments` | The person (while `active`) |
 
