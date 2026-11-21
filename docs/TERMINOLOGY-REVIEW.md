@@ -18,6 +18,8 @@ settled while building, but before the related feature.
 
 ### D1. "Program" has four meanings
 
+> **Decided (Nov 21, 2026):** the code name is `Residency`.
+
 > **Update:** DOMAIN-MODEL.md adopts this split but names meaning 1
 > `Residency` in code (not "Ensemble Program"), so that no code name contains
 > "program". Team and partner-facing language keep saying "program".
@@ -44,6 +46,12 @@ and 2, every screen, report and database table becomes ambiguous.
   glossary, since the handbook still uses it).
 
 ### D2. There are three different "type" lists, and they don't line up
+
+> **Decided (Nov 21, 2026):** keep the 2026 documentation list, used only
+> when documenting a session (with its collaboration level), for stats and
+> evaluation. The schedule carries neither. One-to-ones and other
+> relationship building are logged after they happen and never appear on
+> partner calendars. Musicians see goal progress after documenting.
 
 | List | Values | Used for |
 |---|---|---|
@@ -78,6 +86,10 @@ The glossary entry has been corrected.
 
 ### D3. Documentation and pay are separate today, and the requirements assume they aren't
 
+> **Decided (Nov 21, 2026):** option A. Pay comes from weekly time entries;
+> the session leader documents the session; each musician logs their own
+> relationship building, time and monthly reflection.
+
 Today:
 - **Documentation** is **monthly, per musician**: group sessions with
   attendance, collaboration and interaction type; individual and small-group
@@ -110,6 +122,10 @@ The monthly reflection is missing from the requirements today.
 
 ### D4. "Community" mixes partner, site and room
 
+> **Decided (Nov 21, 2026):** one community invoice per contract, per site,
+> per month. Hebrew Home (one site, two buildings) has three contracts, so
+> it gets three invoices a month.
+
 The workbook "Community" list combines organization and building (e.g.
 "Charles E. Smith Life Communities: Ring House (independent living)",
 "Comprehensive Housing Assistance: Weinberg Manors"). It lists a single
@@ -136,6 +152,12 @@ An Ensemble Program belongs to one Partner and serves one or more Sites. Use
 Ensemble Program?
 
 ### D5. Roles: "Musician in Residence" means three things, and leads are unnamed
+
+> **Decided (Nov 21, 2026):** one Admin Lead per residency season (all its
+> sites). The Iris core salaried team are admins. A month's schedule is
+> drafted by the Admin Lead, reviewed with the point person, published, and
+> emailed to the partner by the Admin Lead (point person cc'd); partner
+> feedback produces updated versions. See `CalendarExport` in DOMAIN-MODEL.md.
 
 - The handbook calls **all** on-site contract musicians "Musicians-in-Residence".
 - The 2028–29 org charts use **Musician in Residence 1 and 2** as specific
@@ -165,6 +187,9 @@ Leadership roles in the handbook:
 
 ### D6. Four near-synonyms for resident involvement
 
+> **Decided (Nov 21, 2026):** a collaborative event is a session documented
+> as co-facilitated or co-led.
+
 - **"Collab?"** (documentation): yes if a resident took part in creating and
   carrying out the program.
 - **Resident co-facilitation** (an interaction type): any planned active
@@ -185,6 +210,11 @@ session with resident involvement of co-facilitated or above.
 
 ### D7. Deadlines conflict
 
+> **Decided (Nov 21, 2026):** schedule internal by the 10th and to the
+> partner by the 15th; documentation and hours share one deadline, 5 pm
+> Tuesday of the following week; cancellations by 9 am the same day (illness
+> or emergency).
+
 | Deadline | Handbook | Workbook |
 |---|---|---|
 | Monthly schedule | Final and sent to partner by the **15th** of the prior month | Scheduling tabs updated by the **10th** |
@@ -199,6 +229,8 @@ both. Use "last day of the month" for documentation, since February has no
 30th.
 
 ### D8. Time periods need definitions
+
+> **Decided (Nov 21, 2026):** seasons and semesters are set per residency.
 
 The documents use: **week** (Monday–Sunday), **biweekly pay period**,
 **month** (schedules, documentation), **semester** (stipends paid twice per

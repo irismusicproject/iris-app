@@ -1,6 +1,6 @@
 # Iris App — Glossary (Languages 2 and 3)
 
-_Draft v0.2, November 2026. Translates the words people use into the objects
+_Draft v0.4, November 21, 2026 (v0.4: D2, D4, D6, D7, D8 settled; v0.3: D1, D3, D5 settled; schedule review and sending words added). Translates the words people use into the objects
 defined in DOMAIN-MODEL.md (Language 1), which is authoritative._
 
 - **Part A: Team language.** How Iris staff and musicians talk, and which object each word means.
@@ -64,9 +64,9 @@ enough context to tell which object it is.
 | "MIR" (e.g. on a repertoire sheet) [WB] | A specific `Person` | Shorthand |
 | "the Trio", "the ensemble" | The core `RosterMember`s (`is_core`) of a `Season` | |
 | "program leader", "program lead" [CH][WB] | `SessionAssignment.role = leader` | Per session; rotates [CH] |
-| "administrative project lead", "Project Admin Lead" [CH][WB] | `RosterMember.is_admin_lead` | One per season; stipend via `Contract` |
+| "administrative project lead", "Project Admin Lead", "admin lead" [CH][WB] | `RosterMember.is_admin_lead` | One per residency season, covering all its sites (D5); stipend via `Contract` |
 | "point person", "designated Iris staff member" [CH] | `StaffAssignment.role = point_person` | |
-| "admin", "core team" | `Person.system_roles ∋ admin` | |
+| "admin", "core team", "core salaried team" | `Person.system_roles ∋ admin` | Sees and does everything across every residency, with its own admin view (D5). In scheduling talk, "the admin" usually means the **admin lead**; check context |
 | "sub", "substitute", "Musician Absent" [WB] | `SessionAssignment.status` = `substitute` / `absent` | |
 | "resident" | `Resident` | |
 
@@ -74,35 +74,49 @@ enough context to tell which object it is.
 
 | Team word | Object | Notes |
 |---|---|---|
-| "documentation" (of a program) | `SessionReport` | Written by the session leader |
+| "documentation" (of a program) | `SessionReport` | Written by the session leader only (D3) |
 | "relationship building", "relationship-building activities" | `RelationshipActivity` (the logged instance); `TimeCategory` "Relationship Building" (the hours) | |
-| "one-to-ones" (former term) [CH] | `RelationshipActivity(kind = one_to_one)` | |
+| "one-to-ones" (former term) [CH] | `RelationshipActivity(kind = one_to_one)` | Logged after it happens; never on partner calendars (D2) |
 | "mini-group session" (2–8 residents) [WB] | `RelationshipActivity(kind = mini_group)` | |
-| "resident co-facilitation" [WB] | `resident_involvement = co_facilitated` | |
-| "Collab? = Yes" [WB] | `resident_involvement` ∈ {`co_facilitated`, `co_led`} | **Assumption (D6)** |
-| "collaborative event" | A `Session` whose `resident_involvement` ≠ `none` | **Assumption (D6)**; confirm |
-| "interaction type" [WB] | `InteractionType` | e.g. Open Rehearsal, Performance, Lecture/Discussion |
+| "resident co-facilitation" [WB] | `SessionReport.resident_involvement = co_facilitated` | Not an interaction type (D2) |
+| "Collab? = Yes" [WB], "collaborative" | `SessionReport.resident_involvement` ∈ {`co_facilitated`, `co_led`} | **Decided (D6)**. Recorded when documenting, not when scheduling |
+| "collaborative event" | A `Session` whose `SessionReport.resident_involvement` is `co_facilitated` or `co_led` | **Decided (D6)** |
+| "interaction type", "program type" (in documentation) [WB] | `InteractionType` on `SessionReport` | The 2026 documentation list (D2). Chosen only when documenting |
 | "type of engagement" | `EngagementType` | For relationship-building activities |
 | "attendance" | `SessionReport.resident_attendance` | Residents only (+ optional `other_attendance`) |
 | "highlights and successes", "challenges and suggestions" [WB] | `MonthlyReflection` | |
 | "rep" | Repertoire (version 2; not yet modeled) | |
 | "blackout dates" [WB] | `Closure(scope = person)` | |
+| "goals", "semester goals" | `Target` | Shown to musicians after they submit documentation; admins edit them anytime |
+| "deadline" (documentation, hours) | `Setting.documentation_and_time_due` | Tuesday 5 pm of the following week (D7) |
 | "holidays", "closures" | `Closure` | |
+
+### Scheduling and the monthly calendar
+
+| Team word | Object | Notes |
+|---|---|---|
+| "draft the schedule", "the draft" | `Session`s with `schedule_state = draft` | Drafted by the admin lead |
+| "review the schedule" (with the point person) | `CalendarExport` version 1, `state = reviewed` | Point person marks it after the review call (D5) |
+| "publish", "send the calendar to the community" | **Publish and download**: sessions become `published`; `CalendarExport` version 1, `state = sent` | The admin lead emails the PDF from their own email, point person cc'd |
+| "partner feedback", "changes from the community" | `CalendarExport.partner_feedback`, then edits to published `Session`s | Internal; never prints |
+| "updated calendar", "revised calendar" | The next `CalendarExport.version` | |
+| "change request" (from a musician) | `ChangeRequest` | For published sessions |
 
 ### Time, pay and paperwork
 
 | Team word | Object | Notes |
 |---|---|---|
-| "timesheet", "pay sheet" [CH] | `TimeEntry` records for a week | |
+| "timesheet", "pay sheet" [CH] | `TimeEntry` records for a week | What pay is calculated from (D3) |
 | "hours" | `TimeEntry.hours` | |
-| "contract" | `Contract` | Contractors only |
+| "contract" (with a musician) | `Contract` | Contractors only |
+| "contract" (with a partner), "Hebrew Home's contracts" | `PartnerAgreement` | Usually one per residency season; a site can have several (D4) |
 | "stipend" (project support, admin lead, training) [CH] | `Contract.stipends[]` | |
 | "special pay" [WB] | `PayAdjustment(kind = special_pay)` | |
 | "special project" [CH] | `SpecialProject` | |
 | "musician invoice" | `MusicianInvoice` | |
-| "community invoice" | `PartnerInvoice` | |
+| "community invoice" | `PartnerInvoice` | One per contract, per site, per month (D4) |
 | "pay period" | `PayPeriod` | Two weeks, Monday–Sunday |
-| "semester", "season" | `Season` | **Assumption (D8)** |
+| "semester", "season" | `Season` | Set per residency (**Decided, D8**); `kind` says which |
 | "the workbook" | Not an object | Today's spreadsheet; its contents map to `Session`, `SessionReport`, `RelationshipActivity`, `MonthlyReflection` |
 
 ---
@@ -127,14 +141,15 @@ internal codes.
 | Note | `Session.public_note` (never `internal_note`) |
 
 **Rules:** only `published` sessions print. Canceled sessions print only if
-the partner was told and a note is useful.
+the partner was told and a note is useful. Relationship-building activities
+(one-to-ones, mini-groups) **never** appear on partner calendars (D2).
 
 ### Community invoice (to a partner)
 
 | Printed | Source |
 |---|---|
 | Bill to | `Partner.legal_name`, `billing_address` |
-| Period | `PartnerInvoice.period_start`–`period_end` |
+| Period | `PartnerInvoice.month` (one invoice per contract, per site, per month; D4) |
 | Lines (e.g. "Programming, Ring House, [month]") | `InvoiceLine`s built from `Session`s and the `PartnerAgreement` |
 | Total | `PartnerInvoice.total` |
 
@@ -154,7 +169,7 @@ the partner was told and a note is useful.
 | "residents reached / served" | Distinct `Resident`s in `RelationshipActivity`, plus session attendance (reported separately; not de-duplicated) |
 | "programs / sessions delivered" | Count of completed `Session`s |
 | "hours of programming" | Sum of `TimeEntry.hours` (or of `SessionReport` durations; **always say which**) |
-| "resident-led programs" | `Session`s with `resident_involvement = co_led` |
+| "resident-led programs" | `Session`s whose `SessionReport.resident_involvement = co_led` |
 
 Evaluation exports are **de-identified**: `Resident` becomes a random code.
 
@@ -205,6 +220,6 @@ stored:
 | Balance | Share of completed `Session`s by `InteractionType.model_type`, plus relationship-building minutes |
 | Continuity | `RosterMember` tenure; share of `SessionAssignment`s with `status = substitute` |
 | Depth | Repeat residents in `RelationshipActivity`; relationship minutes per week |
-| Co-creation | Sessions with `resident_involvement` ≠ `none`; progress to the co-led target |
+| Co-creation | Sessions whose `SessionReport.resident_involvement` ≠ `none`; progress to the co-led target |
 | Emergence | `SpecialProject`s; activities linked to sessions via `prepares_session_id` |
 | Targets | `Target` progress, e.g. average attendance vs. 7 [CH] |
