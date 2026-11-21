@@ -1,6 +1,6 @@
 # Iris App — Domain Model (Language 1: the code)
 
-_Draft v0.11, November 22, 2026 (v0.11: `Partner`, `Site`, `Location` built; see section 1. v0.10: scheduled relationship building (e.g. Lessons) and the partner calendar layout; v0.9: partner permission for resident names confirmed; v0.8: decisions D14 and D15 settled: residents and attendance; v0.7: decisions D10, D11 and D16 settled: events, extras, absences, substitutes and the roster; v0.6: both D9 billing details confirmed; v0.5: decisions D9 and D13 settled: partner billing and version 1 scope; v0.4: decisions D2, D4, D6, D7 and D8 settled; v0.3: decisions D1, D3 and D5 settled, including how a month's schedule is reviewed, published and sent; v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
+_Draft v0.12, November 22, 2026 (v0.12: every roster musician edits draft titles, rooms and musicians; the point person assigns leaders. v0.11: `Partner`, `Site`, `Location` built; see section 1. v0.10: scheduled relationship building (e.g. Lessons) and the partner calendar layout; v0.9: partner permission for resident names confirmed; v0.8: decisions D14 and D15 settled: residents and attendance; v0.7: decisions D10, D11 and D16 settled: events, extras, absences, substitutes and the roster; v0.6: both D9 billing details confirmed; v0.5: decisions D9 and D13 settled: partner billing and version 1 scope; v0.4: decisions D2, D4, D6, D7 and D8 settled; v0.3: decisions D1, D3 and D5 settled, including how a month's schedule is reviewed, published and sent; v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
 app's objects. GLOSSARY.md translates the team's language (Language 2) and
 our partner-facing language (Language 3) into these objects._
 
@@ -435,10 +435,29 @@ document). A month can have several versions as the partner gives feedback.
 
 Built only from `published` sessions.
 
-**Publishing a month (decided, D5, Nov 21, 2026)**
-1. The Admin Lead drafts the month's sessions for a site (`schedule_state = draft`).
-2. The point person reviews the draft with the Admin Lead (often on a call)
-   and marks it reviewed. This creates version 1 with `state = reviewed`.
+**Publishing a month (decided, D5, Nov 21, 2026; drafting updated Nov 22)**
+
+Roles: the **point person** is Iris staff (`StaffAssignment`); the **Admin
+Lead** is the roster musician leading the project, still an independent
+contractor (`RosterMember.is_admin_lead`).
+
+1. **Auto-fill.** Weekly programs (`Series`) fill in the month's draft
+   sessions with their dates, times, rooms and default musicians, all
+   weekly programs at once, so nothing is re-entered month to month.
+   The Admin Lead (or point person, or an admin) adds one-time sessions
+   and special events.
+2. **Musicians edit the draft.** Every musician on the residency's current
+   roster can edit any draft session in that residency: its **title**,
+   **room**, and **who plays** (adding or removing roster musicians as
+   participants). For **special events** they can also change the **date
+   and time**. They can't set leaders, cancel, or change anything else.
+   **Assumption:** creating new special events stays with the Admin Lead,
+   point person and admins.
+3. **Leaders, then review.** The point person assigns each group session's
+   leader, then reviews the draft with the Admin Lead (often on a call) and
+   marks it reviewed. This creates version 1 with `state = reviewed`.
+   Afterwards the Admin Lead can swap a leader if needed (e.g. after a
+   sub); admins always can.
 3. The Admin Lead clicks **Publish and download**. All of that site's draft
    sessions for the month become `published`, the PDF is generated, and
    version 1 becomes `sent`. **Musicians treat the schedule as final from
@@ -708,6 +727,8 @@ Permissions come from **relationships**, not job titles.
 | Approve a residency's reports, activities and time | Current `StaffAssignment.role = point_person` |
 | Edit draft and published sessions; publish a month and download its partner calendar (after review) | `RosterMember.is_admin_lead` (current season); the current point person; admins |
 | Mark a month's draft schedule reviewed | Current `StaffAssignment.role = point_person`; admins |
+| Edit a draft session's title, room and who plays (participants); for special events also date and time | Any current `RosterMember` of the residency |
+| Assign session leaders | The current point person and admins; the Admin Lead may swap leaders afterwards |
 | See a residency's sessions and community info | Any current `RosterMember` |
 | See and edit `Partner`, `Site`, `Location` | `Person.system_roles ∋ admin`. **For now admins only;** roster members get read access to their residency's sites once `RosterMember` exists |
 | See a site's residents; add residents while logging | Current `RosterMember` of a residency serving that site; that residency's point person (see only); admins. Every view is logged (D14) |
