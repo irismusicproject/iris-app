@@ -57,4 +57,35 @@ r=await as(A,`update public.person set system_roles='{}' where id='${A}'`); chec
 r=await as(M,`select public.is_admin()`); check("is_admin false for deactivated musician", r.ok && r.rows[0].is_admin===false, r);
 r=await as(null,`select public.is_admin()`); check("anon cannot call is_admin", !r.ok, r);
 r=await as(A,`insert into public.person (id,name,email,employment_type) values ('${N}','Dup','NEW@example.org','volunteer')`); check("uppercase email rejected", !r.ok, r);
+
+// ---- partner, site, location (admins only; N is an active non-admin here) ----
+let q=await as(A,`insert into public.partner (legal_name, display_name) values ('Example Life Communities Inc.','Example Life Communities') returning id`);
+check("admin adds partner", q.ok && q.rows.length===1, q); const P=q.rows?.[0]?.id;
+q=await as(A,`insert into public.site (partner_id,name,display_name,care_levels,timezone) values ('${P}','North House','North House','{independent}','America/New_York') returning id`);
+check("admin adds site", q.ok, q); const S1=q.rows?.[0]?.id;
+q=await as(A,`insert into public.site (partner_id,name,display_name,care_levels) values ('${P}','South House','South House','{assisted,memory_care}') returning id`);
+check("admin adds multi-care-level site", q.ok, q); const S2=q.rows?.[0]?.id;
+q=await as(A,`insert into public.location (site_id,name,display_name) values ('${S1}','Auditorium','Auditorium'),('${S2}','Auditorium','Auditorium')`);
+check("same room name allowed in two sites", q.ok, q);
+q=await as(A,`insert into public.location (site_id,name,display_name) values ('${S1}','auditorium','Auditorium 2')`);
+check("duplicate room name within a site rejected", !q.ok, q);
+q=await as(A,`insert into public.site (partner_id,name,display_name,timezone) values ('${P}','West','West','Mars/Olympus')`);
+check("bad time zone rejected", !q.ok, q);
+q=await as(A,`insert into public.site (partner_id,name,display_name,timezone) values ('${P}','Tucson','Tucson','America/Phoenix')`);
+check("MST time zone accepted", q.ok, q);
+q=await as(A,`select count(*)::int as n from public.site`); check("admin reads sites", q.ok && q.rows[0].n===3, q);
+for (const tbl of ["partner","site","location"]) {
+  q=await as(N,`select * from public.${tbl}`); check(`non-admin reads no ${tbl}`, q.ok && q.rows.length===0, q);
+  q=await as(null,`select * from public.${tbl}`); check(`anon reads no ${tbl}`, !q.ok || q.rows.length===0, q);
+  q=await as(N,`update public.${tbl} set active=false`); check(`non-admin updates no ${tbl}`, q.ok && q.n===0, q);
+  q=await as(A,`delete from public.${tbl}`); check(`admin cannot delete ${tbl}`, !q.ok, q);
+}
+q=await as(N,`insert into public.partner (legal_name, display_name) values ('Sneaky','Sneaky')`); check("non-admin cannot add partner", !q.ok, q);
+q=await as(M,`select * from public.site`); check("deactivated person reads no sites", q.ok && q.rows.length===0, q);
+q=await as(A,`insert into public.partner (legal_name, display_name) values ('Other Org','Other Org') returning id`); const P2=q.rows?.[0]?.id;
+q=await as(A,`update public.site set partner_id='${P2}' where id='${S1}'`); check("site cannot move to another partner", !q.ok, q);
+q=await as(A,`update public.location set site_id='${S2}' where site_id='${S1}'`); check("location cannot move to another site", !q.ok, q);
+q=await as(A,`update public.site set active=false, care_levels='{independent,assisted}' where id='${S1}' returning updated_at > created_at as bumped`);
+check("admin retires site; updated_at moves", q.ok && q.rows[0]?.bumped===true, q);
+q=await as(A,`insert into public.partner (legal_name, display_name) values ('example life communities inc.','Dup')`); check("duplicate partner legal name rejected", !q.ok, q);
 console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail?1:0);

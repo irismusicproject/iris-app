@@ -15,6 +15,7 @@ The app is built with Next.js on Vercel. Sign-in runs through Supabase. Only inv
 | `/dashboard` | Home page after logging in. |
 | `/account/profile` | My profile: change your own phone and instruments. |
 | `/admin/people` | Admins only: add (invite), edit, deactivate and reactivate people. |
+| `/admin/partners` | Admins only: partners, their sites (buildings or campuses), and the rooms within each site. |
 | `/auth/confirm` | Handles the links in invite and password-reset emails. |
 
 ## How it's set up

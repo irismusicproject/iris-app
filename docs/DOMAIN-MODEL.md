@@ -1,6 +1,6 @@
 # Iris App — Domain Model (Language 1: the code)
 
-_Draft v0.10, November 21, 2026 (v0.10: scheduled relationship building (e.g. Lessons) and the partner calendar layout; v0.9: partner permission for resident names confirmed; v0.8: decisions D14 and D15 settled: residents and attendance; v0.7: decisions D10, D11 and D16 settled: events, extras, absences, substitutes and the roster; v0.6: both D9 billing details confirmed; v0.5: decisions D9 and D13 settled: partner billing and version 1 scope; v0.4: decisions D2, D4, D6, D7 and D8 settled; v0.3: decisions D1, D3 and D5 settled, including how a month's schedule is reviewed, published and sent; v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
+_Draft v0.11, November 22, 2026 (v0.11: `Partner`, `Site`, `Location` built; see section 1. v0.10: scheduled relationship building (e.g. Lessons) and the partner calendar layout; v0.9: partner permission for resident names confirmed; v0.8: decisions D14 and D15 settled: residents and attendance; v0.7: decisions D10, D11 and D16 settled: events, extras, absences, substitutes and the roster; v0.6: both D9 billing details confirmed; v0.5: decisions D9 and D13 settled: partner billing and version 1 scope; v0.4: decisions D2, D4, D6, D7 and D8 settled; v0.3: decisions D1, D3 and D5 settled, including how a month's schedule is reviewed, published and sent; v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
 app's objects. GLOSSARY.md translates the team's language (Language 2) and
 our partner-facing language (Language 3) into these objects._
 
@@ -97,6 +97,13 @@ Manors, Mather Tysons, Winter Growth Olney). Belongs to exactly one `Partner`.
 | `care_levels` | set of enum | `independent`, `assisted`, `memory_care`, `skilled_nursing`, `adult_day`, `affordable_housing`, `other` |
 | `address`, `city`, `state`, `timezone` | text | Timezone matters: sites span ET, CT and MST (Tucson) |
 | `active` | bool | |
+
+**Multi-building partners (decided by Ryan, Nov 2026).** There is no object between `Partner` and `Site`. A partner with several buildings, such as CESLC, is one `Partner` with one `Site` per building that has its own care level or calendar (independent living, assisted living, memory care…). How near the buildings are to each other (walking distance, a short drive, farther) is not stored; each `Site` has an address and time zone, and distance can be derived later if pay or scheduling needs it. A `Residency` may span several `Site`s.
+
+**Built (Nov 2026):** `Partner`, `Site` and `Location` are retired (`active = false`), never deleted. `Site.timezone` must be a real time zone. Names are unique within their parent. A `Site` can't move to another `Partner`, and a `Location` can't move to another `Site`. `Partner.billing_address` and `billing_email` are optional; invoices go one per contract, per site, per month (D4).
+
+Partners vary: one building with a single care level is one `Site`; a building shared by two care levels is one `Site` with both `care_levels`.
+
 
 ### `Location`
 A specific room, unit or floor within a `Site` (an auditorium, a named
@@ -702,6 +709,7 @@ Permissions come from **relationships**, not job titles.
 | Edit draft and published sessions; publish a month and download its partner calendar (after review) | `RosterMember.is_admin_lead` (current season); the current point person; admins |
 | Mark a month's draft schedule reviewed | Current `StaffAssignment.role = point_person`; admins |
 | See a residency's sessions and community info | Any current `RosterMember` |
+| See and edit `Partner`, `Site`, `Location` | `Person.system_roles ∋ admin`. **For now admins only;** roster members get read access to their residency's sites once `RosterMember` exists |
 | See a site's residents; add residents while logging | Current `RosterMember` of a residency serving that site; that residency's point person (see only); admins. Every view is logged (D14) |
 | Document a session | That session's leader; admins |
 | See own time, invoices, contract | The person |
