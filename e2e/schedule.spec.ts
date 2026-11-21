@@ -9,6 +9,12 @@ import { createPerson, logIn, open } from "./helpers/people";
 
 const db = () => createClient(SUPABASE_URL, SECRET_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
 
+/** Fails the test with the database's reason if a setup step didn't work. */
+function must<T>(r: { data: T; error: { message: string } | null }, step: string): NonNullable<T> {
+  if (r.error || r.data == null) throw new Error(`setup "${step}" failed: ${r.error?.message ?? "no data"}`);
+  return r.data as NonNullable<T>;
+}
+
 async function as(browser: import("@playwright/test").Browser, who: { email: string; password: string }, path: string): Promise<Page> {
   const ctx = await browser.newContext();
   const page = await ctx.newPage();
@@ -26,30 +32,32 @@ test("fill a month, musicians edit drafts, point person sets leaders, lead marks
   const point = await createPerson({ label: "point", name: `Paz Point ${run}` });
 
   const d = db();
-  const { data: partner } = await d.from("partner").insert({ legal_name: `Birch Living ${run} Inc.`, display_name: `Birch Living ${run}` }).select("id").single();
-  const { data: site } = await d.from("site").insert({ partner_id: partner!.id, name: `Birch House ${run}`, display_name: `Birch House ${run}`, timezone: "America/New_York" }).select("id").single();
-  const { data: rooms } = await d.from("location").insert([
-    { site_id: site!.id, name: "Library", display_name: "Library" },
-    { site_id: site!.id, name: "Lounge", display_name: "Lounge" },
-  ]).select("id, name");
-  const library = rooms!.find((r) => r.name === "Library")!.id;
-  const { data: res } = await d.from("residency").insert({ partner_id: partner!.id, name: `Birch ${run}`, display_name: `Iris at Birch ${run}`, status: "active" }).select("id").single();
-  await d.from("residency_site").insert({ residency_id: res!.id, site_id: site!.id });
-  const { data: season } = await d.from("season").insert({ residency_id: res!.id, name: `Spring ${year}`, starts_on: `${year}-01-01`, ends_on: `${year}-06-30`, kind: "semester" }).select("id").single();
-  await d.from("roster_member").insert([
-    { season_id: season!.id, person_id: lead.id, is_admin_lead: true },
-    { season_id: season!.id, person_id: mus.id },
-  ]);
-  await d.from("staff_assignment").insert({ residency_id: res!.id, person_id: point.id, role: "point_person", starts_on: "2020-01-01" });
-  const { data: jam } = await d.from("series").insert({ residency_id: res!.id, title: "Jam Band", default_location_id: library, weekdays: [2], start_time: "15:00", minutes: 45, active_from: `${year}-01-01` }).select("id").single();
-  await d.from("series_default_person").insert([{ series_id: jam!.id, person_id: lead.id }, { series_id: jam!.id, person_id: mus.id }]);
-  await d.from("series").insert({ residency_id: res!.id, kind: "relationship_building", title: "Lessons", default_location_id: library, weekdays: [2], active_from: `${year}-01-01` });
+  const partner = must(await d.from("partner").insert({ legal_name: `Birch Living ${run} Inc.`, display_name: `Birch Living ${run}` }).select("id").single(), "partner");
+  const site = must(await d.from("site").insert({ partner_id: partner.id, name: `Birch House ${run}`, display_name: `Birch House ${run}`, timezone: "America/New_York" }).select("id").single(), "site");
+  const rooms = must(await d.from("location").insert([
+    { site_id: site.id, name: "Library", display_name: "Library" },
+    { site_id: site.id, name: "Lounge", display_name: "Lounge" },
+  ]).select("id, name"), "rooms");
+  const library = rooms.find((r) => r.name === "Library")!.id;
+  const res = must(await d.from("residency").insert({ partner_id: partner.id, name: `Birch ${run}`, display_name: `Iris at Birch ${run}`, status: "active" }).select("id").single(), "residency");
+  must(await d.from("residency_site").insert({ residency_id: res.id, site_id: site.id }).select(), "residency site");
+  const season = must(await d.from("season").insert({ residency_id: res.id, name: `Spring ${year}`, starts_on: `${year}-01-01`, ends_on: `${year}-06-30`, kind: "semester" }).select("id").single(), "season");
+  must(await d.from("roster_member").insert([
+    { season_id: season.id, person_id: lead.id, is_admin_lead: true },
+    { season_id: season.id, person_id: mus.id },
+  ]).select(), "roster");
+  must(await d.from("staff_assignment").insert({ residency_id: res.id, person_id: point.id, role: "point_person", starts_on: "2020-01-01" }).select(), "point person");
+  const jam = must(await d.from("series").insert({ residency_id: res.id, title: "Jam Band", default_location_id: library, weekdays: [2], start_time: "15:00", minutes: 45, active_from: `${year}-01-01` }).select("id").single(), "Jam Band series");
+  must(await d.from("series_default_person").insert([{ series_id: jam.id, person_id: lead.id }, { series_id: jam.id, person_id: mus.id }]).select(), "usual musicians");
+  must(await d.from("series").insert({ residency_id: res.id, kind: "relationship_building", title: "Lessons", default_location_id: library, weekdays: [2], active_from: `${year}-01-01` }).select(), "Lessons series");
 
-  const path = `/residencies/${res!.id}/month/${month}`;
+  const path = `/residencies/${res.id}/month/${month}`;
 
   // 1. The admin lead fills in February.
   const leadPage = await as(browser, lead, path);
-  await leadPage.getByRole("button", { name: /^Fill in February/ }).click();
+  const fill = leadPage.getByRole("button", { name: /^Fill in February/ });
+  if (!(await fill.isVisible())) throw new Error(`No fill button. Page shows: ${(await leadPage.locator("main").innerText()).slice(0, 600)}`);
+  await fill.click();
   await expect(leadPage.getByRole("status")).toContainText(/Added \d+ programs/);
   await leadPage.reload();
   await expect(leadPage.getByRole("heading", { name: "Jam Band" })).toBeVisible();
@@ -85,6 +93,6 @@ test("fill a month, musicians edit drafts, point person sets leaders, lead marks
   leadPage.once("dialog", (dlg) => dlg.accept());
   await jamBlock.getByRole("button", { name: /No Program/ }).last().click();
   await expect(leadPage.getByText(/^Canceled ·/)).toHaveCount(1);
-  const { count } = await d.from("session").select("id", { count: "exact", head: true }).eq("residency_id", res!.id).eq("schedule_state", "canceled");
+  const { count } = await d.from("session").select("id", { count: "exact", head: true }).eq("residency_id", res.id).eq("schedule_state", "canceled");
   expect(count).toBe(1);
 });
