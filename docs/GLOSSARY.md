@@ -1,6 +1,6 @@
 # Iris App — Glossary (Languages 2 and 3)
 
-_Draft v0.4, November 21, 2026 (v0.4: D2, D4, D6, D7, D8 settled; v0.3: D1, D3, D5 settled; schedule review and sending words added). Translates the words people use into the objects
+_Draft v0.5, November 21, 2026 (v0.5: D9, D13 settled: partner billing words added; v0.4: D2, D4, D6, D7, D8 settled; v0.3: D1, D3, D5 settled; schedule review and sending words added). Translates the words people use into the objects
 defined in DOMAIN-MODEL.md (Language 1), which is authoritative._
 
 - **Part A: Team language.** How Iris staff and musicians talk, and which object each word means.
@@ -84,7 +84,7 @@ enough context to tell which object it is.
 | "type of engagement" | `EngagementType` | For relationship-building activities |
 | "attendance" | `SessionReport.resident_attendance` | Residents only (+ optional `other_attendance`) |
 | "highlights and successes", "challenges and suggestions" [WB] | `MonthlyReflection` | |
-| "rep" | Repertoire (version 2; not yet modeled) | |
+| "rep" | Repertoire (not in version 1, D13; not yet modeled) | |
 | "blackout dates" [WB] | `Closure(scope = person)` | |
 | "goals", "semester goals" | `Target` | Shown to musicians after they submit documentation; admins edit them anytime |
 | "deadline" (documentation, hours) | `Setting.documentation_and_time_due` | Tuesday 5 pm of the following week (D7) |
@@ -107,13 +107,20 @@ enough context to tell which object it is.
 |---|---|---|
 | "timesheet", "pay sheet" [CH] | `TimeEntry` records for a week | What pay is calculated from (D3) |
 | "hours" | `TimeEntry.hours` | |
-| "contract" (with a musician) | `Contract` | Contractors only |
+| "contract" (with a musician) | `Contract` | Contractors only; holds the musician's hourly rate (D9) |
 | "contract" (with a partner), "Hebrew Home's contracts" | `PartnerAgreement` | Usually one per residency season; a site can have several (D4) |
 | "stipend" (project support, admin lead, training) [CH] | `Contract.stipends[]` | |
 | "special pay" [WB] | `PayAdjustment(kind = special_pay)` | |
 | "special project" [CH] | `SpecialProject` | |
 | "musician invoice" | `MusicianInvoice` | |
-| "community invoice" | `PartnerInvoice` | One per contract, per site, per month (D4) |
+| "community invoice" | `PartnerInvoice(kind = site)` | One per contract, per site, per month (D4) |
+| "billable hours", "contract hours delivered" | Documented session hours + relationship-building minutes at a site | Same for every site (D9) |
+| "rate" (partner) | `PartnerAgreement.hourly_rate` | Admin-editable |
+| "overhead", "15% overhead" | `PartnerAgreement.overhead_percent` | Optional per contract |
+| "corporate office" (billing) | `PartnerContact` used as `overhead_bill_to_id` | Receives the separate overhead invoice |
+| "overhead invoice", "corporate invoice" | `PartnerInvoice(kind = overhead)` | |
+| "quarterly installments" (partner) | `PartnerAgreement.installments` (`billing_basis = installments`) | Monthly invoice still shows progress and the amount due |
+| "late cancellation" (by a partner) | `Session` canceled with `cancellation_reason = partner` after 9 am that day | Billed by default (D9) |
 | "pay period" | `PayPeriod` | Two weeks, Monday–Sunday |
 | "semester", "season" | `Season` | Set per residency (**Decided, D8**); `kind` says which |
 | "the workbook" | Not an object | Today's spreadsheet; its contents map to `Session`, `SessionReport`, `RelationshipActivity`, `MonthlyReflection` |
@@ -147,9 +154,10 @@ the partner was told and a note is useful. Relationship-building activities
 
 | Printed | Source |
 |---|---|
-| Bill to | `Partner.legal_name`, `billing_address` |
+| Bill to | `Partner.legal_name` and the invoice's `bill_to_id` contact (the site's billing contact, or the corporate office for an overhead invoice) |
 | Period | `PartnerInvoice.month` (one invoice per contract, per site, per month; D4) |
-| Lines (e.g. "Programming, Ring House, [month]") | `InvoiceLine`s built from `Session`s and the `PartnerAgreement` |
+| Lines (e.g. "Programming, Ring House, [month]") | `InvoiceLine`s built from billable hours (`SessionReport`s and `RelationshipActivity`s at the site), billed stipends, overhead and installments per the `PartnerAgreement` |
+| Hours this month / to date / contracted | Billable hours; `PartnerAgreement.contracted_hours` |
 | Total | `PartnerInvoice.total` |
 
 ### Musician invoice (contractor to Iris)

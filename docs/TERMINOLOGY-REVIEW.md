@@ -248,6 +248,15 @@ and contracts all depend on this.
 
 ### D9. Pay components need a Contract object
 
+> **Decided (Nov 21, 2026):** musicians' hourly rate lives on each contract.
+> Partners pay per hour (most) or in installments (one partner, quarterly),
+> and every partner gets a monthly invoice showing hours against the
+> contract. Billable hours everywhere are session hours plus relationship
+> building at the site; each contract sets the rate, whether stipends are
+> billed, an optional overhead (e.g. 15%), and whether overhead goes to a
+> separate corporate-office invoice. Canceled sessions are billed only for
+> late partner cancellations unless the contract says otherwise.
+
 The handbook's pay elements:
 - **Hourly pay:** a flat rate, prep time included, set per region (the
   timesheet uses one "normal hourly rate").
@@ -312,6 +321,9 @@ and **location** are separate fields. The partner calendar combines them for
 display, so a substitution never means retyping a title.
 
 ### D13. Workbook functions missing from the requirements
+
+> **Decided (Nov 21, 2026):** monthly reflections and blackout dates are in
+> version 1. Repertoire planning and weekly meeting notes are not.
 
 The workbooks also hold:
 - **Monthly reflections** (see D3)

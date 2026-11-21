@@ -94,11 +94,11 @@ D1: the review suggested "Ensemble Program"; the model uses `Residency`).
 | D6 | Resident involvement levels; meaning of "collaborative event" | **Decided:** co-facilitated or co-led, recorded when documenting |
 | D7 | Conflicting handbook deadlines | **Decided:** schedule 10th/15th; documentation + hours Tuesday 5 pm; cancellations 9 am (monthly reflection due date assumed) |
 | D8 | Semester vs. season | **Decided:** seasons per residency (`Season.kind`) |
-| D9 | Contract and pay components; partner billing basis | Open (partner billing) |
+| D9 | Contract and pay components; partner billing basis | **Decided:** musician rate per contract; partners per hour or installments; billable hours = session + relationship building per site; admin-set rate, stipends, overhead, corporate invoice (two details assumed) |
 | D10 | Events, extras, special projects | Assumed |
 | D11 | Absences, substitutes, cancellation reasons | Assumed |
 | D12 | Titles separate from personnel and location | Adopted |
-| D13 | Workbook functions in or out of version 1 | Open |
+| D13 | Workbook functions in or out of version 1 | **Decided:** monthly reflections and blackout dates in; repertoire and meeting notes out |
 | D14 | Residents as records; how they're identified | Assumed; confirm |
 | D15 | Attendance counting; individually led vs. multi-musician | Assumed |
 | D16 | Ensemble vs. roster (`RosterMember.is_core`) | Assumed |
