@@ -1,6 +1,6 @@
 # Iris App — Domain Model (Language 1: the code)
 
-_Draft v0.1, November 2026. This is the **authoritative** definition of the
+_Draft v0.2, November 21, 2026 (v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
 app's objects. GLOSSARY.md translates the team's language (Language 2) and
 our partner-facing language (Language 3) into these objects._
 
@@ -183,6 +183,12 @@ Anyone who signs in: musicians, staff, volunteers. One record per human.
 | `job_title` | text | Org-chart title, e.g. "Director of Programs", "Musician in Residence 1". **Display only. Grants no permissions** |
 | `active` | bool | Deactivated people keep history and cannot sign in |
 | `certified_on` | date | Creative Aging Practitioner certification, if completed |
+
+**Rules (confirmed by Ryan, Nov 21, 2026; built in `supabase/migrations`):**
+- People are **deactivated, never deleted**. Deactivating blocks sign-in and hides all data from that person at once (R9.5).
+- A person may change only their own `phone` and `instruments`. Everything else is admin-only.
+- `email` can't be changed in the app: it's the sign-in identity.
+- An admin can't remove their own `admin` role or deactivate themselves, so Iris can't be locked out by accident.
 
 ### `RosterMember`
 A `Person`'s membership on a `Residency` for one `Season`.
@@ -531,6 +537,8 @@ Permissions come from **relationships**, not job titles.
 | See and log residents | Current `RosterMember` at that residency's sites; admins |
 | Document a session | That session's leader; admins |
 | See own time, invoices, contract | The person |
+| See and edit any `Person`; add, deactivate and reactivate people | `Person.system_roles ∋ admin` |
+| See own `Person` record; change own `phone` and `instruments` | The person (while `active`) |
 
 ---
 

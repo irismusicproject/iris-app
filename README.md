@@ -12,7 +12,9 @@ The app is built with Next.js on Vercel. Sign-in runs through Supabase. Only inv
 | `/login/code` | Fallback: log in with a one-time code sent by email. |
 | `/forgot-password` | Emails a link to set a new password. |
 | `/account/password` | Set or change your password (signed in only). New people land here from their invite. |
-| `/dashboard` | Signed-in placeholder. It redirects to `/login` if you are not signed in. |
+| `/dashboard` | Home page after logging in. |
+| `/account/profile` | My profile: change your own phone and instruments. |
+| `/admin/people` | Admins only: add (invite), edit, deactivate and reactivate people. |
 | `/auth/confirm` | Handles the links in invite and password-reset emails. |
 
 ## How it's set up
@@ -32,6 +34,8 @@ The app is built with Next.js on Vercel. Sign-in runs through Supabase. Only inv
 3. Run `npm install`, then `npm run dev`, and open http://localhost:3000.
 
 ## Adding staff
+
+Admins add people in the app at **People** (`/admin/people`). The app sends the invite. The steps below are the older way, through Supabase directly; use them only if the People screen isn't available.
 
 Public sign-up is off. To give someone access, go to Supabase, then **Authentication → Users → Add user → Send invitation**, and enter their email. They click the link in the email, choose a password (12 characters or more), and land on the dashboard. After that, they log in at `/login` with their email and password.
 
@@ -83,13 +87,30 @@ Managed in Squarespace under **Domains → irismusicproject.org → DNS → Cust
 
 Don't change the other records. They run the main website (Squarespace) and staff email (Google Workspace).
 
+## Database changes (migrations)
+
+The database's tables and security rules live in `supabase/migrations/`, one SQL file per change, applied in filename order. `npm run test:db` checks the security rules in a throwaway database, and CI runs it on every pull request.
+
+**To apply a new migration** (Ryan or Lauren, as a Supabase owner): open Supabase → **SQL Editor → New query**, paste the whole file, and click **Run**. Apply each file once, in order, **before** merging the pull request that needs it.
+
+**First admins (one-time, after `20261121120000_person.sql`).** People who signed in before the People screen existed have no record yet. In the SQL Editor, run this once per person, filling in their details. (Real names and emails go in Supabase, never in this repo.)
+
+```sql
+insert into public.person (id, name, email, employment_type, system_roles)
+select id, 'FULL NAME', lower(email), 'employee_w2', '{admin}'
+from auth.users where email = 'THEIR EMAIL';
+```
+
+Use `'{}'` instead of `'{admin}'` for non-admins, and `contractor_1099` or `volunteer` as the employment type where it fits. After that, admins add everyone else from the People screen.
+
 ## Deploying
 
-Vercel deploys every merge to `main` automatically. It needs these three environment variables, under Settings, then Environment Variables:
+Vercel deploys every merge to `main` automatically. It needs these four environment variables, under Settings, then Environment Variables:
 
 - `NEXT_PUBLIC_SUPABASE_URL`: the Supabase project URL
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: the Supabase publishable key
 - `NEXT_PUBLIC_SITE_URL`: `https://app.irismusicproject.org`
+- `SUPABASE_SECRET_KEY`: the Supabase **secret** key (`sb_secret_…`), from Project Settings → API Keys. Mark it **Sensitive** in Vercel. The People screen uses it to send invites and block sign-in; nothing else does.
 
 After changing a variable, redeploy from the **Deployments** tab so it takes effect.
 
