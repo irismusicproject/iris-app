@@ -1,4 +1,4 @@
-# Iris App — Requirements (Draft v0.4)
+# Iris App — Requirements (Draft v0.8)
 
 _Status: draft for discussion. Owner: Lauren Latessa. Last updated: November 2026._
 
@@ -75,6 +75,14 @@ Priority: **P1** = needed for the first version; **P2** = soon after; **P3** = l
 - **R2.3 (P1)** Edit a single occurrence (change the title, swap personnel,
   cancel) without changing the whole series.
 - **R2.4 (P1)** Locations are set up once per community and picked from a list.
+- **R2.7 (P1) Absences and subs (D11).** An absence known before the 10th
+  with no sub makes that session "No Program" on the partner calendar. When a
+  sub is needed, the musician records it on their session, picking any
+  active musician (admins add people from outside the Iris network); the
+  admin lead and point person are notified. The app counts each musician's
+  missed sessions per season and warns past an admin-set limit.
+- **R2.6 (P1)** Musicians enter their blackout dates, which show when
+  scheduling (D13).
 - **R2.5 (P2)** Holidays and community closures can be entered once and
   automatically shown on, or remove, affected sessions.
 
@@ -100,7 +108,8 @@ after the program. The form is pre-filled from the schedule.
   - **Collaboration**: none, co-facilitated or co-led (D6). Not set on the
     schedule
   - **Location**: pre-filled from the schedule, editable if it moved
-  - **Attendance** (headcount for group programs)
+  - **Attendance**: one headcount of everyone present (residents, staff,
+    family, guests) (D15)
   - **Program length**: start/stop timer in the app, or enter start and end
     times manually
   - Personnel who actually played (pre-filled; editable for substitutions)
@@ -108,8 +117,10 @@ after the program. The form is pre-filled from the schedule.
 - **R4.2 (P1) Relationship-building activities**, logged after they happen
   (they're often unscheduled) and never shown on partner calendars (D2). For
   each activity:
-  - Resident, picked from a resident list for that community (see section 6
-    for how residents are identified)
+  - Resident(s): picked from the site's list, or added on the spot (first
+    name + last initial). The list builds up as musicians work; nothing is
+    preloaded (D14). At Hebrew Home, musicians also keep the partner's
+    "Bedside Melodies" workbook up to date
   - Type of engagement (picked from a defined list, e.g. listening, singing,
     playing along, conversation, request)
   - Length of engagement (minutes)
@@ -118,10 +129,14 @@ after the program. The form is pre-filled from the schedule.
   of the following week** (D7, an admin setting). The app reminds musicians
   and flags overdue items to admins.
 - **R4.5 (P1)** Admins review and approve documentation. Community invoices
-  are built from approved sessions; musician pay comes from weekly hours (D3).
+  are built from approved session documentation and relationship-building
+  logs (D9); musician pay comes from weekly hours (D3).
 - **R4.6** After submitting documentation, the musician sees where they and
   their residency stand on this season's goals (e.g. co-led sessions so far
   this semester). Priority to be set with 4.7.
+- **R4.7 (P1)** Monthly reflections: each musician writes highlights and
+  successes, and challenges and suggestions, for each residency each month
+  (D13).
 
 ### 4.5 Invoicing
 
@@ -132,10 +147,19 @@ after the program. The form is pre-filled from the schedule.
 - **R5.2 (P1) Community invoices** (what Iris charges each partner): one
   invoice **per contract, per site, per month**, built from approved sessions
   × that contract's rates (D4). Most sites have one contract; Hebrew Home has
-  three.
-- **R5.3 (P1)** Admins set rates: per musician and per community, by program
-  type if needed, with effective dates so rate changes don't rewrite past
-  invoices.
+  three. Billable hours are the same everywhere: documented session hours
+  plus relationship-building time at that site (D9). Partners on quarterly
+  installments still get a monthly invoice showing hours delivered against
+  the contract and the amount due that month.
+- **R5.3 (P1)** From the admin view, admins can easily change, per contract:
+  a) the partner's hourly rate; b) whether musicians' stipends are billed;
+  c) an overhead percentage (e.g. 15%); d) whether overhead is billed on the
+  site invoice or on a **separate invoice to the partner's corporate
+  office**. Musicians' hourly rates are set per musician contract (D9).
+  Changes don't rewrite invoices already generated.
+- **R5.6 (P1)** Canceled sessions aren't paid to musicians. They're billed
+  to the partner only when the partner cancels after 9 am that day, unless
+  the contract says otherwise (D9).
 - **R5.4 (P1)** Invoices export as PDF, and as a spreadsheet for bookkeeping.
 - **R5.5 (P2)** Invoice status tracking: draft → sent → paid.
 - Note: W-2 staff hours are tracked for reporting but are paid through
@@ -214,11 +238,12 @@ Documenting relationship-building activities by resident name makes this app hol
 information about older adults. Whether or not HIPAA applies to Iris legally,
 we should design as if it does, and as our community partners would expect:
 
-- **R9.1** Collect the minimum: resident name (or an identifier; see Q1) and
-  the type and length of the engagement. **No health information**:
+- **R9.1** Collect the minimum: resident first name + last initial (D14; see
+  Q1) and the type and length of the engagement. **No health information**:
   no diagnoses, medications, room-level care notes.
 - **R9.2** Only people who need resident information can see it: the
-  musicians at that community and admins. Partner calendars and invoices never
+  musicians on that site's current roster, the residency's point person, and
+  admins (D14). Partner calendars and invoices never
   include resident names.
 - **R9.3** All access to resident records is logged.
 - **R9.4** Data is encrypted in transit and at rest, backed up, and hosted with
@@ -233,18 +258,20 @@ we should design as if it does, and as our community partners would expect:
 
 ## 7. Phasing
 
-1. **Version 1 (P1):** accounts, scheduling, partner calendar export,
-   documentation with relationship-building activities, schedule/record locking, musician and
-   community invoices.
+1. **Version 1 (P1):** accounts, scheduling (with musicians' blackout
+   dates), partner calendar export, documentation with relationship-building
+   activities and monthly reflections, schedule/record locking, musician and
+   community invoices. **Not in version 1 (D13):** repertoire planning
+   (later), weekly meeting notes (kept outside the app).
 2. **Version 2 (P2):** targets and program health, reminders, invoice status,
    community-limited admins.
 3. **Pilot:** one ensemble for a month before rolling out to everyone.
 
 ## 8. Open questions
 
-- **Q1 Resident names.** Do our partner agreements allow us to record resident
-  names? Would initials or a community-assigned resident ID work instead? Do
-  any partners require a BAA or confidentiality agreement?
+- **Q1 Resident names.** _Settled (Nov 21, 2026)._ Format: first name + last
+  initial (D14). Partners are comfortable with this because only minimal
+  information is recorded and none is shared.
 - **Q2 Who schedules?** Can musicians create new programs and events
   themselves (then an admin publishes), or only edit within what admins set up?
 - **Q3 Rates.** How are musicians paid (per session, per hour, flat per
@@ -256,5 +283,5 @@ we should design as if it does, and as our community partners would expect:
 - **Q7 Contractor status.** Locked schedules and set targets give Iris more
   control over contractors' work. Worth a quick check with our accountant or
   employment advisor that this stays consistent with 1099 classification.
-- **Q8 Hosting and BAA.** If we need a BAA (Q1), confirm which Supabase and
-  Vercel plans offer one, and what they cost.
+- **Q8 Hosting and BAA.** Not needed for now (partners are comfortable; Q1). If a partner asks for one,
+  confirm which Supabase and Vercel plans offer one, and what they cost.
