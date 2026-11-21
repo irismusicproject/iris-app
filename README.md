@@ -86,6 +86,19 @@ Vercel deploys every merge to `main` automatically. It needs these three environ
 
 After changing a variable, redeploy from the **Deployments** tab so it takes effect.
 
+## Planning documents
+
+The app's design documents are in `docs/`, and they are public like the rest of this repo:
+
+| File | What it is |
+|------|------------|
+| `docs/DOMAIN-MODEL.md` | The app's objects, attributes and rules. The authority for code. |
+| `docs/GLOSSARY.md` | How the team's words and partner-facing words map to those objects. |
+| `docs/REQUIREMENTS.md` | What the app needs to do. |
+| `docs/TERMINOLOGY-REVIEW.md` | Open naming and design decisions (D1–D16). |
+
+See `CLAUDE.md` for how these are used when coding.
+
 ## Security
 
 This repository is public. Anyone can read the code, so the code must never hold anything private. Our data lives in Supabase, not here.
@@ -95,7 +108,6 @@ This repository is public. Anyone can read the code, so the code must never hold
 - The Supabase **secret key** (`sb_secret_…`, or the older `service_role` key). It skips every access rule. If the app ever needs it, add it only in Vercel's environment variables, and never with a `NEXT_PUBLIC_` name.
 - Passwords, tokens or other service keys.
 - Real people's data: names, emails, phone numbers, hours, exports, CSVs or database dumps. Use made-up data in tests and examples.
-- Planning documents. They are kept privately in the "iris-app" folder in Google Drive, and `docs/` is ignored for this reason.
 
 **Safe to commit:** the Supabase project URL and the **publishable** key (`sb_publishable_…`). They are sent to every visitor's browser anyway.
 
