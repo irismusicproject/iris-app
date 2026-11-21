@@ -26,7 +26,7 @@ test("wrong password is rejected without saying whether the account exists", asy
     await page.locator('input[name="email"]').fill(email);
     await page.locator('input[name="password"]').fill("not the right password");
     await page.getByRole("button", { name: "Log in", exact: true }).click();
-    await expect(page.getByRole("alert")).toContainText("don't match");
+    await expect(page.locator("main").getByRole("alert")).toContainText("don't match");
   }
 });
 
@@ -37,7 +37,7 @@ test("@phone logs in with an emailed code", async ({ page }) => {
   const since = Date.now();
   await page.locator('input[name="email"]').fill(me.email);
   await page.getByRole("button", { name: "Email me a code" }).click();
-  await expect(page.getByRole("status")).toContainText(me.email);
+  await expect(page.locator("main").getByRole("status")).toContainText(me.email);
 
   const code = signInCode(await waitForEmail(me.email, since));
   await page.locator('input[name="code"]').fill(code);
@@ -54,21 +54,21 @@ test("resets a forgotten password", async ({ page }) => {
   const since = Date.now();
   await page.locator('input[name="email"]').fill(me.email);
   await page.getByRole("button", { name: "Email me a reset link" }).click();
-  await expect(page.getByRole("status")).toContainText("Check your email");
+  await expect(page.locator("main").getByRole("status")).toContainText("Check your email");
 
   await page.goto(confirmLink(await waitForEmail(me.email, since)));
   await expect(page.getByRole("heading", { name: "Set your password" })).toBeVisible();
   await page.locator('input[name="password"]').fill(newPassword);
   await page.locator('input[name="confirm"]').fill(newPassword);
   await page.getByRole("button", { name: "Save password" }).click();
-  await expect(page.getByRole("status")).toContainText("Your password is saved");
+  await expect(page.locator("main").getByRole("status")).toContainText("Your password is saved");
 
   await logOut(page);
   await page.goto("/login");
   await page.locator('input[name="email"]').fill(me.email);
   await page.locator('input[name="password"]').fill(me.password);
   await page.getByRole("button", { name: "Log in", exact: true }).click();
-  await expect(page.getByRole("alert")).toContainText("don't match");
+  await expect(page.locator("main").getByRole("alert")).toContainText("don't match");
   await logIn(page, me.email, newPassword);
 });
 
@@ -81,7 +81,7 @@ test("rejects a password shorter than 12 characters", async ({ page }) => {
   await page.locator('input[name="password"]').fill("too short");
   await page.locator('input[name="confirm"]').fill("too short");
   await page.getByRole("button", { name: "Save password" }).click();
-  await expect(page.getByRole("alert")).toContainText("at least 12");
+  await expect(page.locator("main").getByRole("alert")).toContainText("at least 12");
 });
 
 test("a deactivated person is told so at log-in", async ({ page }) => {
@@ -94,5 +94,5 @@ test("a deactivated person is told so at log-in", async ({ page }) => {
   await page.locator('input[name="email"]').fill(me.email);
   await page.locator('input[name="password"]').fill(me.password);
   await page.getByRole("button", { name: "Log in", exact: true }).click();
-  await expect(page.getByRole("alert")).toContainText("deactivated");
+  await expect(page.locator("main").getByRole("alert")).toContainText("deactivated");
 });
