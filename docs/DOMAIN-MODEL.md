@@ -1,6 +1,6 @@
 # Iris App — Domain Model (Language 1: the code)
 
-_Draft v0.7, November 21, 2026 (v0.7: decisions D10, D11 and D16 settled: events, extras, absences, substitutes and the roster; v0.6: both D9 billing details confirmed; v0.5: decisions D9 and D13 settled: partner billing and version 1 scope; v0.4: decisions D2, D4, D6, D7 and D8 settled; v0.3: decisions D1, D3 and D5 settled, including how a month's schedule is reviewed, published and sent; v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
+_Draft v0.8, November 21, 2026 (v0.8: decisions D14 and D15 settled: residents and attendance; v0.7: decisions D10, D11 and D16 settled: events, extras, absences, substitutes and the roster; v0.6: both D9 billing details confirmed; v0.5: decisions D9 and D13 settled: partner billing and version 1 scope; v0.4: decisions D2, D4, D6, D7 and D8 settled; v0.3: decisions D1, D3 and D5 settled, including how a month's schedule is reviewed, published and sent; v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
 app's objects. GLOSSARY.md translates the team's language (Language 2) and
 our partner-facing language (Language 3) into these objects._
 
@@ -125,13 +125,28 @@ by design. **Never** holds health information.
 | Attribute | Type | Notes |
 |---|---|---|
 | `site_id` | → Site | Required. A resident belongs to one site |
-| `display_name` | text | As musicians know them, e.g. first name + last initial |
+| `display_name` | text | **First name + last initial** (e.g. "Ruth K."), as musicians know them (D14) |
 | `disambiguator` | text | Optional short note to tell residents with the same name apart (e.g. unit or "violin student"). **No health details** |
 | `active` | bool | Deactivate when a resident moves or passes away; never delete (history) |
 
 **Invariant:** `display_name` + `disambiguator` is unique within a `Site`.
-**Assumption (D14, Q1):** residents are recorded by name, visible only to
-musicians on that site's roster and to admins.
+
+**Decided (D14, Nov 21, 2026)**
+- **No preloaded list.** The resident list for a site is built by
+  musicians as they work: when logging a `RelationshipActivity`, a musician
+  picks a resident already on the site's list or adds a new one (first name
+  + last initial, plus a disambiguator if the name is taken).
+- **Who can see a site's residents:** musicians on the current roster of a
+  residency serving that site (including subs who joined it, D16), that
+  residency's point person, and admins. **Every view is logged**
+  (`AuditLog`).
+- **Hebrew Home** keeps its own "Bedside Melodies" workbook, which the
+  partner's team also edits. Musicians there log relationship building in
+  **both** places; the app doesn't import or sync the workbook.
+- **Still open (REQUIREMENTS Q1):** whether each partner is comfortable
+  with Iris recording residents' first names and last initials, and whether
+  any needs a confidentiality agreement or BAA. Check with a partner before
+  real residents are entered at its sites; until then, use made-up data.
 
 ---
 
@@ -425,8 +440,7 @@ The documentation of one `Session`, written by its **leader**. **Decided (D3):**
 | `session_id` | → Session | One report per session |
 | `author_id` | → Person | The session leader (or an admin) |
 | `actual_start`, `actual_end` | datetime | From the in-app timer or entered by hand |
-| `resident_attendance` | int | Residents only |
-| `other_attendance` | int | Optional: staff, family. **Assumption (D15)** |
+| `attendance` | int | **Everyone present**: residents, staff, family and guests, counted together (D15) |
 | `interaction_type_id` | → InteractionType | Chosen by the leader when documenting (D2) |
 | `resident_involvement` | enum `ResidentInvolvement` | `none`, `co_facilitated`, `co_led`. What actually happened. **Decided (D6):** a "collaborative event" is a session documented as `co_facilitated` or `co_led`; `co_led` also counts toward the handbook's per-semester target |
 | `notes` | text | No health information |
@@ -618,7 +632,7 @@ A goal set by an admin.
 |---|---|---|
 | `scope` | enum + id | `residency`, `roster_member` (per musician) |
 | `season_id` | → Season | |
-| `metric` | enum | `avg_resident_attendance` (default 7, handbook), `co_led_sessions_per_musician` (default 2 per semester, handbook), `relationship_minutes_per_week`, `sessions_by_model_type`, `other` |
+| `metric` | enum | `avg_attendance` (default 7, handbook; counts everyone present, D15), `co_led_sessions_per_musician` (default 2 per semester, handbook), `relationship_minutes_per_week`, `sessions_by_model_type`, `other` |
 | `value` | number | Admins can change targets at any time from the admin view; changes are logged in `AuditLog` |
 
 ### `SpecialProject`
@@ -670,7 +684,7 @@ Permissions come from **relationships**, not job titles.
 | Edit draft and published sessions; publish a month and download its partner calendar (after review) | `RosterMember.is_admin_lead` (current season); the current point person; admins |
 | Mark a month's draft schedule reviewed | Current `StaffAssignment.role = point_person`; admins |
 | See a residency's sessions and community info | Any current `RosterMember` |
-| See and log residents | Current `RosterMember` at that residency's sites; admins |
+| See a site's residents; add residents while logging | Current `RosterMember` of a residency serving that site; that residency's point person (see only); admins. Every view is logged (D14) |
 | Document a session | That session's leader; admins |
 | See own time, invoices, contract | The person |
 | Mark self absent on a published session and name a substitute (any active person; joins the roster if needed) | A musician assigned to that session (D11) |

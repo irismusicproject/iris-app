@@ -1,6 +1,6 @@
 # Iris App — Glossary (Languages 2 and 3)
 
-_Draft v0.6, November 21, 2026 (v0.6: D10, D11, D16 settled; "No Program" and roster words added; v0.5: D9, D13 settled: partner billing words added; v0.4: D2, D4, D6, D7, D8 settled; v0.3: D1, D3, D5 settled; schedule review and sending words added). Translates the words people use into the objects
+_Draft v0.7, November 21, 2026 (v0.7: D14, D15 settled; v0.6: D10, D11, D16 settled; "No Program" and roster words added; v0.5: D9, D13 settled: partner billing words added; v0.4: D2, D4, D6, D7, D8 settled; v0.3: D1, D3, D5 settled; schedule review and sending words added). Translates the words people use into the objects
 defined in DOMAIN-MODEL.md (Language 1), which is authoritative._
 
 - **Part A: Team language.** How Iris staff and musicians talk, and which object each word means.
@@ -35,7 +35,7 @@ workbooks and timesheets.
 | "programming hours" [WB] | All paid hours for the week | Sum of `TimeEntry.hours` |
 | "programming" [JAAH] | Everything an ensemble offers | Not an object (see Part C) |
 | "extra programs" [CH] | Work beyond contracted hours, separately paid; musicians may decline | `Session.is_extra` + `PayAdjustment(kind = extra_program)`. Billed to the partner like any session unless `billable = false` (D10) |
-| "individually led programs" / "programs with multiple musicians" [CH] | Sessions with one vs. several musicians | Derived from count of `SessionAssignment`s |
+| "individually led programs" / "programs with multiple musicians" [CH] | Sessions with one vs. several musicians | Derived from the count of musicians who played (not `absent`); nothing extra to enter (**Decided, D15**) |
 | "resident led programs" [CH] | Sessions co-designed and co-led with residents | `SessionReport.resident_involvement = co_led` |
 
 **App display rule:** the screen for a `Residency` is labeled "Program"
@@ -70,7 +70,8 @@ enough context to tell which object it is.
 | "sub", "substitute", "Musician Absent" [WB] | `SessionAssignment.status` = `substitute` / `absent` | Recorded by the absent musician; any active person; joins the roster (D11, D16) |
 | "No Program" (a planned absence) | A `Session` canceled in the draft with `cancellation_reason = musician` | Prints as "No Program" on the partner calendar (D11) |
 | "missed sessions" | A musician's `absent` assignments and musician-reason cancellations in a season | Warning past `Setting.max_musician_absences_per_season` (D11) |
-| "resident" | `Resident` | |
+| "resident" | `Resident` | First name + last initial; added by musicians as they work (D14) |
+| "Bedside Melodies" (Hebrew Home) | Not an object | The partner's own workbook; stays outside the app. Musicians log in both (D14) |
 
 ### Documentation
 
@@ -85,7 +86,7 @@ enough context to tell which object it is.
 | "collaborative event" | A `Session` whose `SessionReport.resident_involvement` is `co_facilitated` or `co_led` | **Decided (D6)** |
 | "interaction type", "program type" (in documentation) [WB] | `InteractionType` on `SessionReport` | The 2026 documentation list (D2). Chosen only when documenting |
 | "type of engagement" | `EngagementType` | For relationship-building activities |
-| "attendance" | `SessionReport.resident_attendance` | Residents only (+ optional `other_attendance`) |
+| "attendance" | `SessionReport.attendance` | Everyone present together: residents, staff, family, guests (**Decided, D15**). The target of 7 uses this |
 | "highlights and successes", "challenges and suggestions" [WB] | `MonthlyReflection` | |
 | "rep" | Repertoire (not in version 1, D13; not yet modeled) | |
 | "blackout dates" [WB] | `Closure(scope = person)` | |
@@ -179,7 +180,7 @@ if the partner was told and a note is useful. Relationship-building activities
 
 | Outward phrase | Source |
 |---|---|
-| "residents reached / served" | Distinct `Resident`s in `RelationshipActivity`, plus session attendance (reported separately; not de-duplicated) |
+| "residents reached / served" | Distinct `Resident`s in `RelationshipActivity`. Session attendance is reported separately as "people at programs" because it includes staff and family (D15); never add the two |
 | "programs / sessions delivered" | Count of completed `Session`s |
 | "hours of programming" | Sum of `TimeEntry.hours` (or of `SessionReport` durations; **always say which**) |
 | "resident-led programs" | `Session`s whose `SessionReport.resident_involvement = co_led` |
