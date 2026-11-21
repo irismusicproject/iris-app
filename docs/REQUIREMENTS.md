@@ -1,4 +1,4 @@
-# Iris App — Requirements (Draft v0.3)
+# Iris App — Requirements (Draft v0.4)
 
 _Status: draft for discussion. Owner: Lauren Latessa. Last updated: November 2026._
 
@@ -26,7 +26,8 @@ both the musician's and the community's invoice.
    - Clear, stable schedules: once a schedule is published, it doesn't shift
      under them, and they can't accidentally break it (see 4.6).
    - Visible targets for their ensemble, so they know what success looks like.
-   - Reminders of holidays, closures and upcoming collaborative events.
+   - Reminders of holidays, closures and upcoming special events, and their
+     progress toward collaboration goals each time they document (D2).
    - Invoices generated for them, instead of built by hand.
 2. **Less administrative work and more visibility for the core team.**
    Every program, community and musician in one view, with partner calendars
@@ -92,34 +93,46 @@ Each scheduled session turns into a documentation form that musicians complete
 after the program. The form is pre-filled from the schedule.
 
 - **R4.1 (P1)** Fields:
-  - **Program type** (performance / open rehearsal, small group, or
-    relationship-building activity; see Glossary): pre-filled from the schedule
+  - **Program type**: chosen by the session leader from the 2026
+    documentation list (Music Instructional Programs, Lecture/Discussion,
+    Interdisciplinary Program, Open Rehearsal, Performance, Other). Not set
+    on the schedule (D2)
+  - **Collaboration**: none, co-facilitated or co-led (D6). Not set on the
+    schedule
   - **Location**: pre-filled from the schedule, editable if it moved
   - **Attendance** (headcount for group programs)
   - **Program length**: start/stop timer in the app, or enter start and end
     times manually
   - Personnel who actually played (pre-filled; editable for substitutions)
   - Notes
-- **R4.2 (P1) Relationship-building activities.** For each activity:
+- **R4.2 (P1) Relationship-building activities**, logged after they happen
+  (they're often unscheduled) and never shown on partner calendars (D2). For
+  each activity:
   - Resident, picked from a resident list for that community (see section 6
     for how residents are identified)
   - Type of engagement (picked from a defined list, e.g. listening, singing,
     playing along, conversation, request)
   - Length of engagement (minutes)
 - **R4.3 (P1)** Musicians can complete the form on a phone in a few minutes.
-- **R4.4 (P1)** Documentation has a deadline (per the handbook); the app
-  reminds musicians and flags overdue sessions to admins.
-- **R4.5 (P1)** Admins review and approve documentation. Approved records are
-  what invoices are built from.
+- **R4.4 (P1)** Documentation and hours share one deadline: **5 pm Tuesday
+  of the following week** (D7, an admin setting). The app reminds musicians
+  and flags overdue items to admins.
+- **R4.5 (P1)** Admins review and approve documentation. Community invoices
+  are built from approved sessions; musician pay comes from weekly hours (D3).
+- **R4.6** After submitting documentation, the musician sees where they and
+  their residency stand on this season's goals (e.g. co-led sessions so far
+  this semester). Priority to be set with 4.7.
 
 ### 4.5 Invoicing
 
-- **R5.1 (P1) Musician invoices** (what Iris pays each contractor): built from
-  approved documentation × the musician's rates, for a chosen pay period.
+- **R5.1 (P1) Musician invoices** (what Iris pays each contractor): approved
+  weekly hours × the musician's rate, plus stipend installments and approved
+  adjustments, for a two-week pay period (D3).
   Musicians can view and download their own invoices.
-- **R5.2 (P1) Community invoices** (what Iris charges each partner): built
-  from approved sessions × the community's contract rates, for a chosen billing
-  period.
+- **R5.2 (P1) Community invoices** (what Iris charges each partner): one
+  invoice **per contract, per site, per month**, built from approved sessions
+  × that contract's rates (D4). Most sites have one contract; Hebrew Home has
+  three.
 - **R5.3 (P1)** Admins set rates: per musician and per community, by program
   type if needed, with effective dates so rate changes don't rewrite past
   invoices.
@@ -142,7 +155,8 @@ after the program. The form is pre-filled from the schedule.
 
 - **R7.1 (P2)** Admins set **targets for each ensemble** (the team of musicians
   at a community): e.g. relationship-building activities per week, small-group programs per month,
-  collaborative events per quarter.
+  collaborative events per quarter. Goals change, so admins can edit them at
+  any time from the admin view.
 - **R7.2 (P2)** Musicians see their ensemble's progress toward targets on
   their home screen.
 - **R7.3 (P2)** Admins see a health view per program and ensemble: progress
@@ -151,8 +165,8 @@ after the program. The form is pre-filled from the schedule.
 ### 4.8 Reminders
 
 - **R8.1 (P2)** Calendar reminders for holidays and closures, upcoming special
-  and collaborative events, documentation due, and progress toward
-  collaborative-event targets.
+  events, and documentation and hours due. Collaboration progress is shown
+  when musicians document (R4.6), not as advance reminders (D2).
 - **R8.2 (P2)** Reminders by email; option to add the schedule to a personal
   calendar (Google, Apple, Outlook).
 

@@ -1,6 +1,6 @@
 # Iris App — Domain Model (Language 1: the code)
 
-_Draft v0.3, November 21, 2026 (v0.3: decisions D1, D3 and D5 settled, including how a month's schedule is reviewed, published and sent; v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
+_Draft v0.4, November 21, 2026 (v0.4: decisions D2, D4, D6, D7 and D8 settled; v0.3: decisions D1, D3 and D5 settled, including how a month's schedule is reviewed, published and sent; v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
 app's objects. GLOSSARY.md translates the team's language (Language 2) and
 our partner-facing language (Language 3) into these objects._
 
@@ -52,7 +52,9 @@ erDiagram
   Session ||--o{ SessionAssignment : staffed_by
   Person ||--o{ SessionAssignment : plays_in
   Session ||--o| SessionReport : "documented by"
-  Session }o--|| InteractionType : "is a"
+  SessionReport }o--|| InteractionType : "records a"
+  PartnerAgreement ||--o{ Session : covers
+  PartnerAgreement ||--o{ PartnerInvoice : "billed by"
   Person ||--o{ RelationshipActivity : logs
   RelationshipActivity }o--o{ Resident : with
   RelationshipActivity }o--o| Session : "prepares for"
@@ -169,7 +171,8 @@ Fall 2026").
 | `starts_on`, `ends_on` | date | |
 | `kind` | enum | `semester`, `season`, `summer_session`, `other` |
 
-**Assumption (D8):** a semester is a `Season` with `kind = semester`;
+**Decided (D8, Nov 21, 2026):** seasons are set **per residency**, with
+each residency's own dates. A semester is a `Season` with `kind = semester`;
 "twice per semester" stipends and per-semester targets attach to `Season`.
 
 ### `Person`
@@ -236,9 +239,25 @@ W-2 employees have no `Contract`. They are paid through payroll.
 ## 3. Scheduling
 
 ### `InteractionType`
-The admin-managed, versioned list of kinds of session (Language 2 examples:
-Open Rehearsal, Performance, Lecture/Discussion, Music Instructional
-Program, Interdisciplinary Program, Special Event).
+The admin-managed, versioned list of kinds of group session, chosen **only
+when documenting** a session (`SessionReport`), not when scheduling it.
+
+**Decided (D2, Nov 21, 2026):** the starting list is the 2026 documentation
+pages' list, kept for organization-wide stats and evaluation:
+
+| Starting value | `model_type` |
+|---|---|
+| Music Instructional Programs | `small_group` |
+| Lecture/Discussion | `small_group` |
+| Interdisciplinary Program | `small_group` |
+| Open Rehearsal | `performance` |
+| Performance | `performance` |
+| Other | set by an admin |
+
+One-to-ones, mini-group sessions and resident co-facilitation are **not**
+interaction types. One-to-ones and mini-groups are `RelationshipActivity`
+records; co-facilitation is `SessionReport.resident_involvement` (D6).
+Pay categories are a separate list (`TimeCategory`).
 
 | Attribute | Type | Notes |
 |---|---|---|
@@ -257,7 +276,6 @@ it doesn't happen. Its `Session`s happen.
 |---|---|---|
 | `residency_id` | → Residency | |
 | `title` | text | **Title only.** Never personnel or location (D12) |
-| `interaction_type_id` | → InteractionType | |
 | `default_location_id` | → Location | Must be at one of the residency's sites |
 | `recurrence` | rule | e.g. weekly on Wednesdays 11:00, 120 minutes |
 | `default_personnel` | → Person (many) | Must be on the current roster |
@@ -274,7 +292,6 @@ an extra program).
 | `residency_id` | → Residency | Required |
 | `series_id` | → Series | Optional. Null = one-time session |
 | `title` | text | Copied from the series and editable per session |
-| `interaction_type_id` | → InteractionType | Copied from the series and editable |
 | `location_id` | → Location | |
 | `starts_at` | datetime (site timezone) | |
 | `scheduled_minutes` | int | |
@@ -282,7 +299,7 @@ an extra program).
 | `is_special_event` | bool | Shown in the "Special events" section of partner calendars |
 | `is_extra` | bool | Outside contracted hours; separately negotiated pay (D10) |
 | `special_project_id` | → SpecialProject | Optional |
-| `planned_resident_involvement` | enum `ResidentInvolvement` | `none`, `co_facilitated`, `co_led` (D6) |
+| `partner_agreement_id` | → PartnerAgreement | The contract the session falls under. Defaults to the residency's only agreement for the season; required when there are several (D4) |
 | `schedule_state` | enum | `draft`, `published`, `canceled` |
 | `cancellation_reason` | enum | `partner`, `weather`, `musician`, `other`. Required if canceled |
 | `public_note` | text | May print on partner calendars |
@@ -381,8 +398,8 @@ The documentation of one `Session`, written by its **leader**. **Decided (D3):**
 | `actual_start`, `actual_end` | datetime | From the in-app timer or entered by hand |
 | `resident_attendance` | int | Residents only |
 | `other_attendance` | int | Optional: staff, family. **Assumption (D15)** |
-| `interaction_type_id` | → InteractionType | What actually happened; defaults to the session's |
-| `resident_involvement` | enum `ResidentInvolvement` | What actually happened |
+| `interaction_type_id` | → InteractionType | Chosen by the leader when documenting (D2) |
+| `resident_involvement` | enum `ResidentInvolvement` | `none`, `co_facilitated`, `co_led`. What actually happened. **Decided (D6):** a "collaborative event" is a session documented as `co_facilitated` or `co_led`; `co_led` also counts toward the handbook's per-semester target |
 | `notes` | text | No health information |
 | `state` | enum | `due`, `submitted`, `approved` |
 | `submitted_at`, `approved_by`, `approved_at` | | |
@@ -391,9 +408,16 @@ The documentation of one `Session`, written by its **leader**. **Decided (D3):**
 the past. Locked once `approved`; corrections go through an admin and are
 logged.
 
+**After submitting** (D2 follow-up), the musician sees where they and their
+residency stand on this season's `Target`s (e.g. co-led sessions so far
+this semester, average attendance). Interaction type and collaboration are
+captured only here, never on the schedule.
+
 ### `RelationshipActivity`
 One logged instance of relationship building with one or more residents
 (Language 2: "relationship-building activity", formerly "one-to-one").
+**Logged after it happens** (they're often organic and unscheduled), and
+**never shown on partner calendars** (D2).
 
 | Attribute | Type | Notes |
 |---|---|---|
@@ -482,22 +506,32 @@ invoice to Iris).
 `PayAdjustment`s. Only `employment_type = contractor_1099`.
 
 ### `PartnerAgreement`
-What Iris charges a `Partner` for a `Residency` and `Season`.
+A contract under which Iris charges a `Partner` for services at one or more
+`Site`s of a `Residency` in a `Season`. Usually one per residency season;
+a site can have several (e.g. Hebrew Home has three contracts for different
+services).
 
 | Attribute | Type | Notes |
 |---|---|---|
 | `partner_id`, `residency_id`, `season_id` | → | |
+| `site_ids` | → Site (many, ≥1) | Sites this contract covers; all in the residency |
+| `name` | text | Internal, e.g. which service it covers |
 | `billing_basis` | enum | `per_session`, `per_hour`, `flat_monthly`, `flat_season`. **Open (D9)** |
 | `rates` | structured | By interaction type or flat |
-| `billing_period` | enum | `monthly`, `per_season`, `custom` |
 | `bill_canceled` | rule | Per cancellation reason |
 
 ### `PartnerInvoice`
-What Iris bills a `Partner` for one billing period (Language 3 document).
+What Iris bills a `Partner` under one `PartnerAgreement`, for one `Site`,
+for one month (Language 3 document, the "community invoice").
+
+**Decided (D4, Nov 21, 2026):** one invoice **per contract, per site, per
+month**. Most sites have one contract, so that's one invoice per site per
+month. A site with several contracts (Hebrew Home) gets one per contract.
 
 | Attribute | Type | Notes |
 |---|---|---|
-| `partner_id`, `period_start`, `period_end` | | |
+| `partner_id`, `partner_agreement_id`, `site_id` | → | |
+| `month` | year-month | Unique with `partner_agreement_id` and `site_id` |
 | `lines` | → InvoiceLine (many) | |
 | `total` | money | |
 | `state` | enum | `draft`, `sent`, `paid` |
@@ -520,7 +554,7 @@ A goal set by an admin.
 | `scope` | enum + id | `residency`, `roster_member` (per musician) |
 | `season_id` | → Season | |
 | `metric` | enum | `avg_resident_attendance` (default 7, handbook), `co_led_sessions_per_musician` (default 2 per semester, handbook), `relationship_minutes_per_week`, `sessions_by_model_type`, `other` |
-| `value` | number | |
+| `value` | number | Admins can change targets at any time from the admin view; changes are logged in `AuditLog` |
 
 ### `SpecialProject`
 A one-time, mission-aligned initiative proposed and funded outside regular
@@ -536,10 +570,18 @@ modeled here. **Assumption (D10)**
 | `state` | enum | `proposed`, `approved`, `declined`, `complete` |
 
 ### `Setting`
-Admin-editable rules from the handbook, so compliance is data:
-`schedule_internal_due_day` (10), `schedule_partner_due_day` (15),
-`documentation_due` (last day of month), `time_entry_due` (weekday + time),
-`cancellation_notice_time` (09:00). **Values pending D7.**
+Admin-editable rules from the handbook, so compliance is data.
+**Decided (D7, Nov 21, 2026):**
+
+| Setting | Value |
+|---|---|
+| `schedule_internal_due_day` | 10th of the prior month (draft ready for review) |
+| `schedule_partner_due_day` | 15th of the prior month (version 1 sent to the partner) |
+| `documentation_and_time_due` | **One deadline** for `SessionReport`s, `RelationshipActivity` logs and `TimeEntry` hours: **Tuesday 17:00 of the following week** |
+| `cancellation_notice_time` | 09:00 the same day, for illness or emergency |
+
+**Assumption (D7):** a `MonthlyReflection` is due by the same Tuesday
+17:00 deadline in the week after the month ends.
 
 ### `AuditLog`
 Every create, change or approval of schedules, reports, activities, time,
