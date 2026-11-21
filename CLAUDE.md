@@ -118,10 +118,53 @@ This repository is **public**. Never commit:
 Never store resident health information anywhere in the app. Use made-up
 data in tests, seeds and examples.
 
+## Platform strategy
+
+We're building a **web prototype** at app.irismusicproject.org first, and
+**Android and iPhone apps** later. Build now so the native apps can reuse
+the same backend:
+
+- **Rules live in Supabase, not in page code.** Business rules and
+  permissions are Row Level Security policies and database functions, so
+  every client (web or native) gets the same behavior. Pages only display
+  and submit.
+- **Shared types and validation.** Each domain object has one TypeScript
+  type and one validation schema, kept in a shared folder that native apps
+  can import.
+- **Phone-first musician screens.** Musicians mostly use a phone right
+  after a session; design for that first, and for desktop second.
+- **Installable web app.** Ship a web app manifest so people can add the
+  app to their home screen.
+- **One notification layer.** All reminders and alerts go through a single
+  module that starts with email (Resend) and can add push notifications
+  later.
+- **Offline-friendly drafts.** Documentation forms keep drafts on the device
+  and submit when there's a connection.
+- **Sign-in direction.** Move toward emailed **one-time codes**, which work
+  on web and native, possibly alongside passwords. Today's emailed links
+  work on the web only. (Ryan owns this decision.)
+
 ## Working style
 
-- Small changes, one concern at a time. Branch and open a pull request;
-  merging to `main` deploys to production.
+- Small changes, one concern at a time, on a short-lived branch per task.
+  Open a pull request; keep it small. Merging to `main` deploys to the live
+  site at app.irismusicproject.org.
+- **Pull `main`** before starting any task, and again before merging.
+- **Merge only when** the build, lint and type checks pass and the Vercel
+  preview deploys.
+- Claude may pull, commit, push, open pull requests and merge them without
+  asking first (permission from Lauren, Nov 2026). This does **not** replace
+  the stop-and-ask rules above.
+- Lauren and Ryan may be working in the repo at the same time:
+  - Resolve trivial conflicts yourself: non-overlapping changes,
+    formatting, lockfile updates.
+  - **Stop and ask** when two changes touch the same logic, database
+    schema, migrations, permissions or docs in incompatible ways, or when
+    resolving would discard someone's work.
+  - Never force-push, rewrite `main`'s history, or delete branches you
+    didn't create.
+- Who owns what: **Lauren** owns product decisions and testing; **Ryan**
+  owns the database, sign-in, permissions, infrastructure and code review.
 - Before every commit, check `git status` and `git diff --staged` for
   anything private.
 - Explain changes in plain language. The project owner is not a
