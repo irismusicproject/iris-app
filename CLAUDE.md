@@ -155,9 +155,13 @@ the same backend:
 - **Merge only when** the build, lint and type checks pass and the Vercel
   preview deploys.
 - **Previews use the staging database**, which holds fake data only (README,
-  "Staging database"). A new migration runs on staging first and is tested
-  on the preview; it runs on production just before merging. Put realistic
-  test data in `supabase/seed.sql`, never in production.
+  "Staging database"). Put realistic test data in `supabase/seed.sql`, never
+  in production.
+- **Migrations deploy themselves** (README, "Automated database changes"):
+  staging on every pull request, production after an owner approves, and
+  *before* merge. So every migration must keep the current live code working
+  (add, don't break), and an applied migration is never edited. Never tell
+  anyone to paste a migration into the SQL Editor.
 - Claude may pull, commit, push, open pull requests and merge them without
   asking first (permission from Lauren, Nov 2026). This does **not** replace
   the stop-and-ask rules above.

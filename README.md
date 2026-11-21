@@ -92,7 +92,7 @@ Don't change the other records. They run the main website (Squarespace) and staf
 
 The database's tables and security rules live in `supabase/migrations/`, one SQL file per change, applied in filename order. `npm run test:db` checks the security rules in a throwaway database, and CI runs it on every pull request.
 
-**To apply a new migration** (Ryan or Lauren, as a Supabase owner): open the project's **SQL Editor → New query**, paste the whole file, and click **Run**. Run it on **staging first** and test on the pull request's preview. Then run it on **production** just before merging. Apply each file once per project, in order.
+**To apply a new migration:** open a pull request. GitHub applies it to staging, and to production after an owner approves (see [Automated database changes](#automated-database-changes)).
 
 **First admins (one-time, after `20261121120000_person.sql`).** People who signed in before the People screen existed have no record yet. In the SQL Editor, run this once per person, filling in their details. (Real names and emails go in Supabase, never in this repo.)
 
@@ -112,14 +112,14 @@ Iris has **two** Supabase projects:
 |---|---|---|
 | Used by | The live site, app.irismusicproject.org | Every Vercel **preview** (addresses ending in `vercel.app`) |
 | Data | Real people and partners | **Fake data only** (`supabase/seed.sql`) |
-| Migrations | Run **after** testing on staging, **before** merging | Run **first**, when a pull request adds one |
+| Migrations | Applied by GitHub after an owner approves, **before** merging | Applied by GitHub automatically on every pull request |
 
 Testing on a preview never touches real data. A preview's invite and reset emails link back to that same preview. You'll need to be logged in to Vercel to open them, so test with your own email (a `+test` address works).
 
 ### Setting it up (one time, Ryan)
 
-1. **Create the project.** In Supabase, in the Iris organization, click **New project**. Name it `iris-staging`, pick the same region as production, and save the database password in your password manager.
-2. **Build the tables.** In the staging project's **SQL Editor**, run every file in `supabase/migrations/` in filename order, then run `supabase/seed.sql` for the fake partners and sites. Both are safe to run once each; the seed is safe to repeat.
+1. **Create the project.** In Supabase, in the Iris organization, click **New project** (an organization-level project, not a branch). Name it `iris-staging`, choose **East US (North Virginia)** like production, and save the database password in your password manager.
+2. **Build the tables.** After the GitHub environments exist ([Automated database changes](#automated-database-changes)), run **Actions → Database migrations → Run workflow → build-staging**. It applies every migration plus `supabase/seed.sql` (fake data) to staging only.
 3. **Sign-in settings** (under **Authentication**), matching production except for the email links:
    - **Sign In / Providers:** turn "Allow new users to sign up" **off**. Set **Minimum password length** to **12**.
    - **URL Configuration:** Site URL `http://localhost:3000`. Staging links don't use it; it only has to be a valid address. Redirect URLs: `https://*-rhearty1-5601s-projects.vercel.app/**` and `http://localhost:3000/**`.
@@ -135,6 +135,31 @@ Testing on a preview never touches real data. A preview's invite and reset email
    - `SUPABASE_SECRET_KEY`: a staging secret key named `vercel-iris-app-staging` (Sensitive)
    - `NEXT_PUBLIC_SITE_URL`: **Production only.** Remove it from Preview, so each preview uses its own address (`src/lib/site-url.ts`).
 6. **Check it.** Redeploy any preview, log in with your staging account, and confirm that **People** lists only staging's people, not real ones.
+
+## Automated database changes
+
+Pull requests apply their own migrations. **Don't paste migrations into the SQL Editor any more.**
+
+1. A pull request that adds or changes a file in `supabase/migrations/` starts the **Database migrations** workflow.
+2. **Staging** gets the migration automatically, plus the fake data in `supabase/seed.sql`.
+3. **Production** waits for an owner's approval. GitHub shows **Review deployments** on the pull request: check the "Migrations that will run on production" step on the staging run, then approve.
+4. **Merge after the production job succeeds.** Merging deploys the code that uses the new tables.
+
+**Rules for migrations:**
+- **Add, don't break.** Production gets a migration *before* its code is merged, so the live code must keep working with it. To rename or remove a column, first add the new one (one pull request), switch the code over (the next), then drop the old one (a third).
+- **Never edit a migration that has already run.** Fix it with a new migration.
+- **The seed is staging-only.** Production never gets `seed.sql`.
+
+### One-time setup (Ryan)
+
+1. **Get each database's connection string.** In each Supabase project (staging and production), click **Connect** and copy the **Session pooler** URI. GitHub's machines can't reach the direct connection. Replace `[YOUR-PASSWORD]` with that project's database password. If the password contains symbols, percent-encode them (for example, `@` becomes `%40`).
+2. **Create two GitHub environments.** In the repository's **Settings → Environments**, create:
+   - **`staging`**, with the secret `DATABASE_URL` set to staging's connection string.
+   - **`production`**, with **Required reviewers** set to Ryan and Lauren, and the secret `DATABASE_URL` set to production's connection string.
+
+   Each secret lives only in its environment, so the staging job can never reach production.
+3. **Build staging's tables.** Open **Actions → Database migrations → Run workflow**, choose **build-staging**, and run it. It applies every migration plus the fake data to staging only.
+4. **Tell the tool what production already has.** Production's first migrations were run by hand. Open **Actions → Database migrations → Run workflow**, choose **mark-applied**, and enter the versions already run on production, for example `20261121120000 20261122120000`. Approve the run. Its last step should show nothing pending.
 
 ## Deploying
 
