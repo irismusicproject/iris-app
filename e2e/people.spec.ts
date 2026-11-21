@@ -19,7 +19,7 @@ test("admin invites a musician, who sets a password and sees only their own scre
   await admin.locator('select[name="employment_type"]').selectOption("contractor_1099");
   await admin.locator('input[name="instruments"]').fill("cello, piano");
   await admin.getByRole("button", { name: "Add and send invite" }).click();
-  await expect(admin.getByRole("status")).toContainText(`Invite sent to ${musicianEmail}`);
+  await expect(admin.locator("main").getByRole("status")).toContainText(`Invite sent to ${musicianEmail}`);
   await expect(admin.getByText("Milo Musician")).toBeVisible();
 
   // The musician accepts the invite in their own browser.
@@ -42,7 +42,7 @@ test("admin invites a musician, who sets a password and sees only their own scre
   await expect(musician.locator('input[name="instruments"]')).toHaveValue("cello, piano");
   await musician.locator('input[name="phone"]').fill("555-0100");
   await musician.getByRole("button", { name: "Save" }).click();
-  await expect(musician.getByRole("status")).toContainText("Saved");
+  await expect(musician.locator("main").getByRole("status")).toContainText("Saved");
   await musician.reload();
   await expect(musician.locator('input[name="phone"]')).toHaveValue("555-0100");
 
@@ -51,7 +51,7 @@ test("admin invites a musician, who sets a password and sees only their own scre
   await admin.getByRole("link", { name: /Milo Musician/ }).click();
   admin.once("dialog", (d) => d.accept());
   await admin.getByRole("button", { name: "Deactivate Milo Musician" }).click();
-  await expect(admin.getByRole("status")).toContainText("is deactivated");
+  await expect(admin.locator("main").getByRole("status")).toContainText("is deactivated");
 
   await musician.goto("/dashboard");
   await expect(musician.getByRole("heading", { name: "Your account isn't active" })).toBeVisible();
@@ -60,13 +60,13 @@ test("admin invites a musician, who sets a password and sees only their own scre
   await musician.locator('input[name="email"]').fill(musicianEmail);
   await musician.locator('input[name="password"]').fill(TEST_PASSWORD);
   await musician.getByRole("button", { name: "Log in", exact: true }).click();
-  await expect(musician.getByRole("alert")).toContainText("deactivated");
+  await expect(musician.locator("main").getByRole("alert")).toContainText("deactivated");
 
   // Admin reactivates: the musician can log in again.
   await admin.goto("/admin/people");
   await admin.getByRole("link", { name: /Milo Musician/ }).click();
   await admin.getByRole("button", { name: "Reactivate Milo Musician" }).click();
-  await expect(admin.getByRole("status")).toContainText("is active again");
+  await expect(admin.locator("main").getByRole("status")).toContainText("is active again");
   await logIn(musician, musicianEmail, TEST_PASSWORD);
 
   await adminCtx.close();
