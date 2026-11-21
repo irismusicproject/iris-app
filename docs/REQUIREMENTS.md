@@ -1,4 +1,4 @@
-# Iris App — Requirements (Draft v0.7)
+# Iris App — Requirements (Draft v0.8)
 
 _Status: draft for discussion. Owner: Lauren Latessa. Last updated: November 2026._
 
@@ -269,10 +269,9 @@ we should design as if it does, and as our community partners would expect:
 
 ## 8. Open questions
 
-- **Q1 Resident names.** _Format decided (D14): first name + last initial._
-  Still open: is each partner comfortable with Iris recording residents this
-  way, and does any partner require a BAA or confidentiality agreement? Check
-  with a partner before real residents are entered at its sites.
+- **Q1 Resident names.** _Settled (Nov 21, 2026)._ Format: first name + last
+  initial (D14). Partners are comfortable with this because only minimal
+  information is recorded and none is shared.
 - **Q2 Who schedules?** Can musicians create new programs and events
   themselves (then an admin publishes), or only edit within what admins set up?
 - **Q3 Rates.** How are musicians paid (per session, per hour, flat per
@@ -284,5 +283,5 @@ we should design as if it does, and as our community partners would expect:
 - **Q7 Contractor status.** Locked schedules and set targets give Iris more
   control over contractors' work. Worth a quick check with our accountant or
   employment advisor that this stays consistent with 1099 classification.
-- **Q8 Hosting and BAA.** If we need a BAA (Q1), confirm which Supabase and
-  Vercel plans offer one, and what they cost.
+- **Q8 Hosting and BAA.** Not needed for now (partners are comfortable; Q1). If a partner asks for one,
+  confirm which Supabase and Vercel plans offer one, and what they cost.
