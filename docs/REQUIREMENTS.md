@@ -1,4 +1,4 @@
-# Iris App — Requirements (Draft v0.6)
+# Iris App — Requirements (Draft v0.7)
 
 _Status: draft for discussion. Owner: Lauren Latessa. Last updated: November 2026._
 
@@ -108,7 +108,8 @@ after the program. The form is pre-filled from the schedule.
   - **Collaboration**: none, co-facilitated or co-led (D6). Not set on the
     schedule
   - **Location**: pre-filled from the schedule, editable if it moved
-  - **Attendance** (headcount for group programs)
+  - **Attendance**: one headcount of everyone present (residents, staff,
+    family, guests) (D15)
   - **Program length**: start/stop timer in the app, or enter start and end
     times manually
   - Personnel who actually played (pre-filled; editable for substitutions)
@@ -116,8 +117,10 @@ after the program. The form is pre-filled from the schedule.
 - **R4.2 (P1) Relationship-building activities**, logged after they happen
   (they're often unscheduled) and never shown on partner calendars (D2). For
   each activity:
-  - Resident, picked from a resident list for that community (see section 6
-    for how residents are identified)
+  - Resident(s): picked from the site's list, or added on the spot (first
+    name + last initial). The list builds up as musicians work; nothing is
+    preloaded (D14). At Hebrew Home, musicians also keep the partner's
+    "Bedside Melodies" workbook up to date
   - Type of engagement (picked from a defined list, e.g. listening, singing,
     playing along, conversation, request)
   - Length of engagement (minutes)
@@ -235,11 +238,12 @@ Documenting relationship-building activities by resident name makes this app hol
 information about older adults. Whether or not HIPAA applies to Iris legally,
 we should design as if it does, and as our community partners would expect:
 
-- **R9.1** Collect the minimum: resident name (or an identifier; see Q1) and
-  the type and length of the engagement. **No health information**:
+- **R9.1** Collect the minimum: resident first name + last initial (D14; see
+  Q1) and the type and length of the engagement. **No health information**:
   no diagnoses, medications, room-level care notes.
 - **R9.2** Only people who need resident information can see it: the
-  musicians at that community and admins. Partner calendars and invoices never
+  musicians on that site's current roster, the residency's point person, and
+  admins (D14). Partner calendars and invoices never
   include resident names.
 - **R9.3** All access to resident records is logged.
 - **R9.4** Data is encrypted in transit and at rest, backed up, and hosted with
@@ -265,9 +269,10 @@ we should design as if it does, and as our community partners would expect:
 
 ## 8. Open questions
 
-- **Q1 Resident names.** Do our partner agreements allow us to record resident
-  names? Would initials or a community-assigned resident ID work instead? Do
-  any partners require a BAA or confidentiality agreement?
+- **Q1 Resident names.** _Format decided (D14): first name + last initial._
+  Still open: is each partner comfortable with Iris recording residents this
+  way, and does any partner require a BAA or confidentiality agreement? Check
+  with a partner before real residents are entered at its sites.
 - **Q2 Who schedules?** Can musicians create new programs and events
   themselves (then an admin publishes), or only edit within what admins set up?
 - **Q3 Rates.** How are musicians paid (per session, per hour, flat per

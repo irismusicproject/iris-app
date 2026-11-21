@@ -355,6 +355,13 @@ The workbooks also hold:
 
 ### D14. Residents are already tracked by name
 
+> **Decided (Nov 21, 2026):** first name + last initial, entered by
+> musicians as they work (no preloaded list). Visible to the site's current
+> roster, the residency's point person and admins; every view logged.
+> Hebrew Home's "Bedside Melodies" workbook stays outside the app and
+> musicians log in both. Partner permission to record names is still to be
+> confirmed per partner (REQUIREMENTS Q1).
+
 Relationship-building logs record residents by first name, with a short
 description. The handbook says the shared template exists to **track
 individuals served and avoid duplicating efforts**. So **Resident** must be
@@ -365,6 +372,10 @@ the site. This also sharpens REQUIREMENTS Q1: the question is no longer
 information stays out (handbook, "Confidentiality").
 
 ### D15. Attendance has a handbook target, and "individually led" is a category
+
+> **Decided (Nov 21, 2026):** attendance is one count of everyone present
+> (residents, staff, family, guests), and the target of 7 uses it.
+> Individually led vs. multi-musician comes from how many musicians played.
 
 The handbook expects **an average of 7 residents** at each individually led
 program, with a strategy conversation if attendance stays below that. It also
