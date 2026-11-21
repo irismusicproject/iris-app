@@ -87,13 +87,13 @@ D1: the review suggested "Ensemble Program"; the model uses `Residency`).
 | ID | Topic | Status |
 |---|---|---|
 | D1 | Meanings of "program" → `Residency` / `Series` / `Session` / `TimeCategory` | **Decided:** code name `Residency` |
-| D2 | Time categories vs. interaction types vs. model types; which interaction-type list is current | Open |
+| D2 | Time categories vs. interaction types vs. model types; which interaction-type list is current | **Decided:** 2026 documentation list, chosen only when documenting; one-to-ones logged after the fact, never on calendars |
 | D3 | Pay comes from weekly `TimeEntry`, not from session documentation; the session leader documents | **Decided** (option A; leader documents) |
-| D4 | `Partner` / `Site` / `Location`; who receives community invoices | Open (billing entity) |
+| D4 | `Partner` / `Site` / `Location`; who receives community invoices | **Decided:** one invoice per contract (`PartnerAgreement`), per site, per month |
 | D5 | Roles: program leader per session; admin lead; point person | **Decided:** admin lead per residency season; core team = admins; review → publish → send flow (DOMAIN-MODEL, `CalendarExport`) |
-| D6 | Resident involvement levels; meaning of "collaborative event" | Assumed; confirm |
-| D7 | Conflicting handbook deadlines | Open |
-| D8 | Semester vs. season | Assumed (`Season.kind`) |
+| D6 | Resident involvement levels; meaning of "collaborative event" | **Decided:** co-facilitated or co-led, recorded when documenting |
+| D7 | Conflicting handbook deadlines | **Decided:** schedule 10th/15th; documentation + hours Tuesday 5 pm; cancellations 9 am (monthly reflection due date assumed) |
+| D8 | Semester vs. season | **Decided:** seasons per residency (`Season.kind`) |
 | D9 | Contract and pay components; partner billing basis | Open (partner billing) |
 | D10 | Events, extras, special projects | Assumed |
 | D11 | Absences, substitutes, cancellation reasons | Assumed |
