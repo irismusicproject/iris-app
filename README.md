@@ -28,11 +28,29 @@ The app is built with Next.js on Vercel. Sign-in runs through Supabase. Only inv
 | Email sending | Resend | Sends from `no-reply@mail.irismusicproject.org`. |
 | DNS | Squarespace (irismusicproject.org) | The main website and Google email stay on the root domain. |
 
-## Local setup
+## Prototyping locally
 
-1. Install Node.js. On a Mac with Homebrew: `brew install node`.
-2. Copy `.env.example` to `.env.local` and fill in the Supabase project URL and **publishable** key (`sb_publishable_…`). Find both in Supabase under Project Settings, then API. The publishable key goes in `NEXT_PUBLIC_SUPABASE_ANON_KEY` (its older name). Keep `NEXT_PUBLIC_SITE_URL=http://localhost:3000`.
-3. Run `npm install`, then `npm run dev`, and open http://localhost:3000.
+The fastest way to try things: a private Supabase on your own computer, with no Supabase account, no approvals, and no way to touch real data.
+
+**One time:** install [Node.js](https://nodejs.org) and [Docker Desktop](https://www.docker.com/products/docker-desktop/) (free for nonprofits), open Docker Desktop once, and run `npm install`.
+
+**Every time:** with Docker Desktop open, run `npm run dev:local` and go to http://localhost:3000.
+
+| | |
+|---|---|
+| Admin login | `admin@example.com` / `local-only-password` |
+| Musician login | `musician@example.com` / `local-only-password` |
+| Emails (invites, codes, resets) | the mail viewer address the command prints (usually http://127.0.0.1:54324) |
+| Start over | `npm run db:reset` rebuilds the database from `supabase/migrations/` and `supabase/seed.sql` |
+| Stop | `npm run db:stop` |
+
+The command writes `.env.development.local` (ignored by git), which points `npm run dev` at the local database. Delete it to point back at whatever `.env.local` says.
+
+**Database changes:** add a file to `supabase/migrations/` (named `YYYYMMDDHHMMSS_what.sql`), then `npm run db:reset`. Until it's merged, edit it as often as you like. Check with `npm run test:db` and `npm run test:e2e`.
+
+## Local setup against a hosted database
+
+Only for checking something on staging. Copy `.env.example` to `.env.local`, fill in staging's URL and publishable key, run `npm install`, then `npm run dev`.
 
 ## Adding staff
 
@@ -138,15 +156,14 @@ Testing on a preview never touches real data. A preview's invite and reset email
 
 ## Automated database changes
 
-Pull requests apply their own migrations. **Don't paste migrations into the SQL Editor any more.**
+GitHub applies migrations. **Don't paste migrations into the SQL Editor.** While Iris is prototyping:
 
-1. A pull request that adds or changes a file in `supabase/migrations/` starts the **Database migrations** workflow.
-2. **Staging** gets the migration automatically, plus the fake data in `supabase/seed.sql`.
-3. **Production** waits for an owner's approval. GitHub shows **Review deployments** on the pull request: check the "Migrations that will run on production" step on the staging run, then approve.
-4. **Merge after the production job succeeds.** Merging deploys the code that uses the new tables.
+1. **Pull requests never touch a real database.** Prototype locally; CI tests every pull request in a throwaway database.
+2. **Merging to `main`** applies new migrations to **staging** automatically, plus the fake data in `supabase/seed.sql`.
+3. **Production** changes only when an owner (Ryan) runs **Actions → Database migrations → Run workflow → deploy-production** and approves it. Until then, new screens that need new tables won't work on the live site.
 
 **Rules for migrations:**
-- **Add, don't break.** Production gets a migration *before* its code is merged, so the live code must keep working with it. To rename or remove a column, first add the new one (one pull request), switch the code over (the next), then drop the old one (a third).
+- **Add, don't break.** When production is updated, the live code must keep working. To rename or remove a column, first add the new one, switch the code over, then drop the old one.
 - **Never edit a migration that has already run.** Fix it with a new migration.
 - **The seed is staging-only.** Production never gets `seed.sql`.
 
