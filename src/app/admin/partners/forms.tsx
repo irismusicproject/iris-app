@@ -75,18 +75,7 @@ export function PartnerForm({ partner }: { partner?: Partner }) {
 
 // ---- Site ----
 
-type Option = { id: string; label: string };
-
-export function SiteForm({
-  partnerId,
-  site,
-  partners,
-}: {
-  partnerId: string;
-  site?: Site;
-  /** When editing: partners this site can be moved to. */
-  partners?: Option[];
-}) {
+export function SiteForm({ partnerId, site }: { partnerId: string; site?: Site }) {
   const [state, action, pending] = useActionState(
     site ? updateSite.bind(null, site.id) : addSite.bind(null, partnerId),
     initial,
@@ -123,15 +112,6 @@ export function SiteForm({
           </select>
         </Field>
         {site && <ActiveSelect active={site.active} />}
-        {site && partners && partners.length > 1 && (
-          <Field label="Partner" hint="Move this site to another partner if it was filed under the wrong one.">
-            <select name="partner_id" defaultValue={partnerId} className={inputClass}>
-              {partners.map((p) => (
-                <option key={p.id} value={p.id}>{p.label}</option>
-              ))}
-            </select>
-          </Field>
-        )}
       </div>
       <fieldset>
         <legend className="text-sm font-medium">Care levels</legend>
@@ -183,7 +163,7 @@ export function AddLocationForm({ siteId }: { siteId: string }) {
   );
 }
 
-export function LocationRow({ location, sites }: { location: Location; sites: Option[] }) {
+export function LocationRow({ location }: { location: Location }) {
   const [state, action, pending] = useActionState(
     updateLocation.bind(null, location.id, location.site_id),
     initial,
@@ -191,7 +171,7 @@ export function LocationRow({ location, sites }: { location: Location; sites: Op
   return (
     <form
       action={action}
-      className={`grid gap-3 px-4 py-3 sm:grid-cols-[1fr_1fr_8rem_10rem_auto] sm:items-end ${location.active ? "" : "opacity-70"}`}
+      className={`grid gap-3 px-4 py-3 sm:grid-cols-[1fr_1fr_8rem_auto] sm:items-end ${location.active ? "" : "opacity-70"}`}
     >
       <Field label="Room or area" error={state.errors?.name}>
         <input name="name" required defaultValue={location.name} className={inputClass} />
@@ -205,13 +185,6 @@ export function LocationRow({ location, sites }: { location: Location; sites: Op
           <option value="off">Retired</option>
         </select>
       </Field>
-      <Field label="Site">
-        <select name="site_id" defaultValue={location.site_id} className={inputClass}>
-          {sites.map((s) => (
-            <option key={s.id} value={s.id}>{s.label}</option>
-          ))}
-        </select>
-      </Field>
       <button
         type="submit"
         disabled={pending}
@@ -219,7 +192,7 @@ export function LocationRow({ location, sites }: { location: Location; sites: Op
       >
         {pending ? "Saving..." : "Save"}
       </button>
-      <div className="sm:col-span-5"><Status state={state} saving={pending} /></div>
+      <div className="sm:col-span-4"><Status state={state} saving={pending} /></div>
     </form>
   );
 }

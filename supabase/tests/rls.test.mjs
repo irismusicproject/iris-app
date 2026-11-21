@@ -83,12 +83,8 @@ for (const tbl of ["partner","site","location"]) {
 q=await as(N,`insert into public.partner (legal_name, display_name) values ('Sneaky','Sneaky')`); check("non-admin cannot add partner", !q.ok, q);
 q=await as(M,`select * from public.site`); check("deactivated person reads no sites", q.ok && q.rows.length===0, q);
 q=await as(A,`insert into public.partner (legal_name, display_name) values ('Other Org','Other Org') returning id`); const P2=q.rows?.[0]?.id;
-// Moving is allowed while the structure is provisional (20261122130000).
-q=await as(A,`update public.location set site_id='${S2}', name='Chapel' where site_id='${S1}'`); check("admin moves a location to another site", q.ok && q.n===1, q);
-q=await as(A,`update public.site set partner_id='${P2}' where id='${S1}'`); check("admin moves a site to another partner", q.ok && q.n===1, q);
-q=await as(A,`update public.site set partner_id='${P}' where id='${S1}'`);
-q=await as(N,`update public.location set site_id='${S1}'`); check("non-admin cannot move locations", q.ok && q.n===0, q);
-q=await as(A,`update public.location set site_id='${S2}' where name='Auditorium' and site_id<>'${S2}'`); check("move into a site with a same-named room rejected", !q.ok || q.n===0, q);
+q=await as(A,`update public.site set partner_id='${P2}' where id='${S1}'`); check("site cannot move to another partner", !q.ok, q);
+q=await as(A,`update public.location set site_id='${S2}' where site_id='${S1}'`); check("location cannot move to another site", !q.ok, q);
 q=await as(A,`update public.site set active=false, care_levels='{independent,assisted}' where id='${S1}' returning updated_at > created_at as bumped`);
 check("admin retires site; updated_at moves", q.ok && q.rows[0]?.bumped===true, q);
 q=await as(A,`insert into public.partner (legal_name, display_name) values ('example life communities inc.','Dup')`); check("duplicate partner legal name rejected", !q.ok, q);

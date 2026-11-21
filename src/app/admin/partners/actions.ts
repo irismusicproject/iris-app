@@ -13,14 +13,6 @@ export type PlaceFormState = {
   savedAt?: number;
 };
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-/** Optional "move to" field. Moving is allowed while the structure is provisional. */
-function moveTarget(form: FormData, key: string): string | undefined {
-  const v = String(form.get(key) ?? "");
-  return UUID.test(v) ? v : undefined;
-}
-
 function dbMessage(error: { code?: string; message: string }, what: string): string {
   if (error.code === "23505") return `A ${what} with that name already exists here.`;
   if (error.code === "22023") return "That time zone isn't recognized.";
@@ -76,14 +68,9 @@ export async function updateSite(id: string, _prev: PlaceFormState, form: FormDa
   const parsed = validateSite(form);
   if (!parsed.ok) return { status: "error", errors: parsed.errors };
   const supabase = await createClient();
-  const partner_id = moveTarget(form, "partner_id");
-  const { error } = await supabase
-    .from("site")
-    .update(partner_id ? { ...parsed.value, partner_id } : parsed.value)
-    .eq("id", id);
+  const { error } = await supabase.from("site").update(parsed.value).eq("id", id);
   if (error) return { status: "error", message: dbMessage(error, "site") };
   revalidatePath(`/admin/sites/${id}`);
-  revalidatePath("/admin/partners", "layout");
   return { status: "saved" };
 }
 
@@ -110,13 +97,8 @@ export async function updateLocation(
   const parsed = validateLocation(form);
   if (!parsed.ok) return { status: "error", errors: parsed.errors };
   const supabase = await createClient();
-  const site_id = moveTarget(form, "site_id");
-  const { error } = await supabase
-    .from("location")
-    .update(site_id ? { ...parsed.value, site_id } : parsed.value)
-    .eq("id", id);
+  const { error } = await supabase.from("location").update(parsed.value).eq("id", id);
   if (error) return { status: "error", message: dbMessage(error, "location") };
   revalidatePath(`/admin/sites/${siteId}`);
-  if (site_id && site_id !== siteId) revalidatePath(`/admin/sites/${site_id}`);
   return { status: "saved" };
 }
