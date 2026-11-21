@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { confirmUrl } from "@/lib/site-url";
 import { isValidEmail } from "@/shared/auth/password";
 
 export type ResetState = { status: "idle" | "sent" | "error"; message?: string; email?: string };
@@ -15,9 +16,8 @@ export async function sendResetLink(
   }
 
   const supabase = await createClient();
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${siteUrl}/auth/confirm?next=/account/password`,
+    redirectTo: confirmUrl("/account/password"),
   });
 
   if (error) {
