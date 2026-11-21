@@ -1,6 +1,6 @@
 # Iris App — Domain Model (Language 1: the code)
 
-_Draft v0.9, November 21, 2026 (v0.9: partner permission for resident names confirmed; v0.8: decisions D14 and D15 settled: residents and attendance; v0.7: decisions D10, D11 and D16 settled: events, extras, absences, substitutes and the roster; v0.6: both D9 billing details confirmed; v0.5: decisions D9 and D13 settled: partner billing and version 1 scope; v0.4: decisions D2, D4, D6, D7 and D8 settled; v0.3: decisions D1, D3 and D5 settled, including how a month's schedule is reviewed, published and sent; v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
+_Draft v0.10, November 21, 2026 (v0.10: scheduled relationship building (e.g. Lessons) and the partner calendar layout; v0.9: partner permission for resident names confirmed; v0.8: decisions D14 and D15 settled: residents and attendance; v0.7: decisions D10, D11 and D16 settled: events, extras, absences, substitutes and the roster; v0.6: both D9 billing details confirmed; v0.5: decisions D9 and D13 settled: partner billing and version 1 scope; v0.4: decisions D2, D4, D6, D7 and D8 settled; v0.3: decisions D1, D3 and D5 settled, including how a month's schedule is reviewed, published and sent; v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
 app's objects. GLOSSARY.md translates the team's language (Language 2) and
 our partner-facing language (Language 3) into these objects._
 
@@ -297,9 +297,10 @@ it doesn't happen. Its `Session`s happen.
 | Attribute | Type | Notes |
 |---|---|---|
 | `residency_id` | → Residency | |
+| `kind` | enum `SessionKind` | `group_session` (default) or `relationship_building` (e.g. "Lessons"). See below |
 | `title` | text | **Title only.** Never personnel or location (D12) |
 | `default_location_id` | → Location | Must be at one of the residency's sites |
-| `recurrence` | rule | e.g. weekly on Wednesdays 11:00, 120 minutes |
+| `recurrence` | rule | Weekly on chosen weekdays, e.g. Wednesdays 11:00, 120 minutes. Time and length are **optional** for `relationship_building` |
 | `default_personnel` | → Person (many) | Must be on the current roster |
 | `active_from`, `active_until` | date | |
 
@@ -313,10 +314,12 @@ an extra program).
 |---|---|---|
 | `residency_id` | → Residency | Required |
 | `series_id` | → Series | Optional. Null = one-time session |
+| `kind` | enum `SessionKind` | Copied from the series. `group_session` or `relationship_building` |
 | `title` | text | Copied from the series and editable per session |
 | `location_id` | → Location | |
-| `starts_at` | datetime (site timezone) | |
-| `scheduled_minutes` | int | |
+| `starts_at` | datetime (site timezone) | The date, and the time when there is one |
+| `has_set_time` | bool | False for a `relationship_building` session with no set time: it prints with a blank time |
+| `scheduled_minutes` | int | Optional for `relationship_building` |
 | `call_time` | time | Optional (concerts) |
 | `is_special_event` | bool | Shown in the "Special events" section of partner calendars. Concerts are special events (D10) |
 | `is_extra` | bool | An "extra program": outside contracted hours, separately negotiated pay, and musicians may decline. **Billed to the partner like any session (D10)** |
@@ -329,10 +332,22 @@ an extra program).
 | `public_note` | text | May print on partner calendars |
 | `internal_note` | text | Never prints |
 
+**Scheduled relationship building (decided Nov 21, 2026).** Some weekly
+offerings are relationship building, not group sessions: e.g. "Lessons with
+[musicians]" on Tuesdays, often without a set time. They're a `Series` with
+`kind = relationship_building`, set up once and filled in each month like
+any other weekly program, and they print on the partner calendar (blank
+time if none). They're **documented as `RelationshipActivity` records**
+(linked through `RelationshipActivity.session_id`), not by a
+`SessionReport`; they need no leader, and their hours come only from those
+logged activities, so nothing is counted twice. Unscheduled relationship
+building (one-to-ones that happen organically) never prints (D2).
+
 **Invariants**
 - `location.site` ∈ `residency.sites`.
-- A non-canceled session has **exactly one** `SessionAssignment` with
-  `role = leader`.
+- A non-canceled `group_session` has **exactly one** playing
+  `SessionAssignment` with `role = leader`. `relationship_building`
+  sessions need none.
 - Once `published`, only admins, the point person and the Admin Lead can
   edit it. Every edit is logged in `AuditLog`, and the session's musicians
   are notified. Others submit a `ChangeRequest`. (D5) Exception: a musician
@@ -474,6 +489,7 @@ One logged instance of relationship building with one or more residents
 | `engagement_type_id` | → EngagementType | Admin-managed list (e.g. conversation, lesson, rehearsal, music for comfort, planning) |
 | `minutes` | int | |
 | `resident_ids` | → Resident (many, ≥1) | All at `site_id` |
+| `session_id` | → Session | Optional: the scheduled `relationship_building` session it happened in (e.g. that Tuesday's Lessons) |
 | `prepares_session_id` | → Session | Optional: planning a co-led session (handbook: ≥5 meetings) |
 | `note` | text | One sentence. **No health information** |
 | `state` | enum | `submitted`, `approved` |
@@ -573,8 +589,9 @@ services).
 | `bill_canceled` | rule | Default: bill a session's scheduled hours only when `cancellation_reason = partner` and it was canceled after `Setting.cancellation_notice_time` that day. Weather, musician and on-time partner cancellations aren't billed. Admins can override per contract |
 
 **Decided (D9, Nov 21, 2026): billable hours.** Every site tracks the same
-billable hours: **documented session hours** (`SessionReport` actual length)
-plus **relationship-building minutes** logged at that site
+billable hours: **documented session hours** (`SessionReport` actual length,
+group sessions only) plus **relationship-building minutes** logged at that
+site, including those logged against scheduled relationship building
 (`RelationshipActivity.site_id`). What each partner pays for those hours
 varies, so it's set per contract above. Admins can change the rate, turn
 on overhead (e.g. 15%), and send overhead to a separate corporate invoice

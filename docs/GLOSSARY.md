@@ -1,6 +1,6 @@
 # Iris App — Glossary (Languages 2 and 3)
 
-_Draft v0.7, November 21, 2026 (v0.7: D14, D15 settled; v0.6: D10, D11, D16 settled; "No Program" and roster words added; v0.5: D9, D13 settled: partner billing words added; v0.4: D2, D4, D6, D7, D8 settled; v0.3: D1, D3, D5 settled; schedule review and sending words added). Translates the words people use into the objects
+_Draft v0.8, November 21, 2026 (v0.8: partner calendar layout from the Dec 2026 sample; "Lessons"; v0.7: D14, D15 settled; v0.6: D10, D11, D16 settled; "No Program" and roster words added; v0.5: D9, D13 settled: partner billing words added; v0.4: D2, D4, D6, D7, D8 settled; v0.3: D1, D3, D5 settled; schedule review and sending words added). Translates the words people use into the objects
 defined in DOMAIN-MODEL.md (Language 1), which is authoritative._
 
 - **Part A: Team language.** How Iris staff and musicians talk, and which object each word means.
@@ -68,7 +68,8 @@ enough context to tell which object it is.
 | "point person", "designated Iris staff member" [CH] | `StaffAssignment.role = point_person` | |
 | "admin", "core team", "core salaried team" | `Person.system_roles ∋ admin` | Sees and does everything across every residency, with its own admin view (D5). In scheduling talk, "the admin" usually means the **admin lead**; check context |
 | "sub", "substitute", "Musician Absent" [WB] | `SessionAssignment.status` = `substitute` / `absent` | Recorded by the absent musician; any active person; joins the roster (D11, D16) |
-| "No Program" (a planned absence) | A `Session` canceled in the draft with `cancellation_reason = musician` | Prints as "No Program" on the partner calendar (D11) |
+| "No Program" | A canceled `Session` (any reason; e.g. a planned absence before the 10th, D11, or a holiday) | Prints as "No Program" on the partner calendar |
+| "Lessons" (on a schedule) | A `Series`/`Session` with `kind = relationship_building`, often without a set time | Documented as `RelationshipActivity` records, not a session report |
 | "missed sessions" | A musician's `absent` assignments and musician-reason cancellations in a season | Warning past `Setting.max_musician_absences_per_season` (D11) |
 | "resident" | `Resident` | First name + last initial; added by musicians as they work (D14) |
 | "Bedside Melodies" (Hebrew Home) | Not an object | The partner's own workbook; stays outside the app. Musicians log in both (D14) |
@@ -137,25 +138,31 @@ Outward documents use the partner's names and Iris's public voice. They
 **never** show resident names, internal notes, rates paid to musicians, or
 internal codes.
 
-### Monthly partner calendar (e.g. for Ring House)
+### Monthly partner calendar (e.g. for Revitz House)
+
+One per site per month (`CalendarExport`). Layout follows the calendars Iris
+sends today (sample: Dec 2026), with the Iris logo added.
 
 | Printed | Source |
 |---|---|
-| Header: "Iris Music Project at [site]", "[Month Year] Programming" | `Residency.display_name`, `Site.display_name`, `CalendarExport.month` |
-| "Special events" section | `Session`s with `is_special_event` |
-| "Regular programming" section | `Session`s from `Series` |
-| Date, time | `Session.starts_at` (site timezone) |
-| Program title | `Session.title` |
-| Location | `Location.display_name` |
-| Musicians | `SessionAssignment`s that aren't `absent` (display names; leader first) |
+| Iris logo | Brand assets (`public/brand/`) |
+| "Month: [Month Year]" | `CalendarExport.month` |
+| "[Site] Programming" (e.g. "Revitz House Programming") | `Site.display_name` |
+| Columns: **Day**, **Time**, **Program Title**, **Musicians** | |
+| "Special events" section | `Session`s with `is_special_event`; Day as "December 1" |
+| "Regular programming" section | One **block per `Series`** (ordered by weekday, then time), with a row for **every date** the series falls on that month; then one-time sessions that aren't special events. Day as "Tuesday, December 1" |
+| Time | `Session.starts_at` in the site's time zone (e.g. "3:00 PM"); **blank** when `has_set_time` is false (e.g. Lessons) |
+| Program Title | `Session.title` + " with " + musicians' first names, e.g. "Jam Band with Ana", "Lessons with Ben and Cara", "Lessons with Ana, Ben, Cara" |
+| Musicians | First names of `SessionAssignment`s that aren't `absent`, leader first; subs included |
+| Canceled date | **"No Program"** in Program Title (any cancellation reason, e.g. holidays, breaks, absences); Musicians blank |
 | Note | `Session.public_note` (never `internal_note`) |
 
-| "No Program" | A session canceled with `cancellation_reason = musician` (planned absence, D11): printed at its usual date and time |
-
-**Rules:** only `published` sessions print. Sessions canceled for a planned
-musician absence print as "No Program". Other canceled sessions print only
-if the partner was told and a note is useful. Relationship-building activities
-(one-to-ones, mini-groups) **never** appear on partner calendars (D2).
+**Rules:** only `published` sessions print. Every canceled session prints as
+"No Program" at its usual date and time. Scheduled relationship building
+(e.g. Lessons, `kind = relationship_building`) prints like any weekly
+program. **Logged** relationship-building activities (one-to-ones,
+mini-groups) never print (D2). The calendar never shows resident names,
+internal notes, cancellation reasons or rates.
 
 ### Community invoice (to a partner)
 

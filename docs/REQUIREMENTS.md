@@ -89,6 +89,7 @@ Priority: **P1** = needed for the first version; **P2** = soon after; **P3** = l
 ### 4.3 Monthly partner calendar
 
 - **R3.1 (P1)** Generate a readable **monthly calendar for each community**
+  (layout: GLOSSARY Part B, from Iris's current calendars)
   from the schedule: program titles, times, locations, and musicians.
 - **R3.2 (P1)** Export as **PDF** and **Word (.docx)**, with Iris branding.
 - **R3.3 (P2)** Choose what appears (e.g. hide internal notes or personnel
