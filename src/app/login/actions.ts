@@ -4,6 +4,10 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isValidEmail, normalizeCode } from "@/shared/auth/password";
 
+// Supabase reports "user_banned" for people an admin has deactivated.
+const DEACTIVATED_MESSAGE =
+  "Your account has been deactivated. If you think that's a mistake, contact an Iris administrator.";
+
 export type FormState = {
   status: "idle" | "sent" | "error";
   message?: string;
@@ -26,6 +30,9 @@ export async function signInWithPassword(
   if (error) {
     if (error.code === "over_request_rate_limit") {
       return { status: "error", message: "Too many attempts. Wait a few minutes and try again.", email };
+    }
+    if (error.code === "user_banned") {
+      return { status: "error", message: DEACTIVATED_MESSAGE, email };
     }
     // Same message for a wrong password and an unknown email.
     return {
@@ -55,6 +62,9 @@ export async function sendSignInCode(
   });
 
   // Unknown emails get the same reply, so the form doesn't reveal who has an account.
+  if (error?.code === "user_banned") {
+    return { status: "error", message: DEACTIVATED_MESSAGE, email };
+  }
   if (error && error.code !== "otp_disabled" && error.code !== "user_not_found") {
     if (error.code === "over_email_send_rate_limit" || error.status === 429) {
       return { status: "error", message: "A code was sent recently. Wait a minute before asking for another.", email };
@@ -79,6 +89,9 @@ export async function verifySignInCode(
   const supabase = await createClient();
   const { error } = await supabase.auth.verifyOtp({ email, token, type: "email" });
   if (error) {
+    if (error.code === "user_banned") {
+      return { status: "sent", message: DEACTIVATED_MESSAGE, email };
+    }
     return { status: "sent", message: "That code is wrong or has expired. Check the latest email, or ask for a new code.", email };
   }
 
