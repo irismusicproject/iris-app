@@ -28,6 +28,19 @@ export default async function SitePage({ params }: { params: Promise<{ id: strin
     .order("name");
   const locations = (data ?? []) as Location[];
 
+  // While the structure is provisional, rooms can move between this partner's
+  // sites, and the site can move to another partner.
+  const [{ data: siblings }, { data: partners }] = await Promise.all([
+    supabase.from("site").select("id, name, active").eq("partner_id", site.partner_id).order("name"),
+    supabase.from("partner").select("id, display_name, active").order("display_name"),
+  ]);
+  const siteOptions = (siblings ?? [])
+    .filter((s) => s.active || s.id === site.id)
+    .map((s) => ({ id: s.id as string, label: s.name as string }));
+  const partnerOptions = (partners ?? [])
+    .filter((p) => p.active || p.id === site.partner_id)
+    .map((p) => ({ id: p.id as string, label: p.display_name as string }));
+
   return (
     <AppShell isAdmin={isAdmin}>
       <nav className="text-sm text-muted">
@@ -43,7 +56,7 @@ export default async function SitePage({ params }: { params: Promise<{ id: strin
         <h2 className="text-lg font-semibold">Locations</h2>
         <p className="mt-1 text-sm text-muted">Rooms, units or areas within this site.</p>
         <div className="mt-3 divide-y divide-border rounded-xl border border-border bg-surface">
-          {locations.map((l) => <LocationRow key={l.id} location={l} />)}
+          {locations.map((l) => <LocationRow key={l.id} location={l} sites={siteOptions} />)}
           {locations.length === 0 && <p className="px-4 py-6 text-sm text-muted">No locations yet.</p>}
         </div>
         <div className="mt-4 rounded-xl border border-border bg-surface p-4">
@@ -53,7 +66,7 @@ export default async function SitePage({ params }: { params: Promise<{ id: strin
 
       <section className="mt-8 rounded-xl border border-border bg-surface p-5 sm:p-6">
         <h2 className="text-lg font-semibold">Site details</h2>
-        <div className="mt-5"><SiteForm partnerId={site.partner_id} site={site} /></div>
+        <div className="mt-5"><SiteForm partnerId={site.partner_id} site={site} partners={partnerOptions} /></div>
       </section>
     </AppShell>
   );
