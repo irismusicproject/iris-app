@@ -33,3 +33,26 @@ The app is built with Next.js on Vercel. Sign-in runs through Supabase. For now 
 2. Add the three variables from `.env.example` to the Vercel project. Set `NEXT_PUBLIC_SITE_URL` to `https://app.irismusicproject.com`.
 3. In the Vercel project, open Settings, then Domains, and add `app.irismusicproject.com`.
 4. At the registrar for irismusicproject.com, add the CNAME record Vercel shows. It is usually `app` pointing to `cname.vercel-dns.com`. The main website at irismusicproject.com stays as it is.
+
+## Security
+
+This repository is public. Anyone can read the code, so the code must never hold anything private. Our data lives in Supabase, not here.
+
+**Never commit:**
+- `.env.local` or any other `.env` file except `.env.example`. These are already in `.gitignore`.
+- The Supabase **secret key** (`sb_secret_…`, or the older `service_role` key). It skips every access rule. If the app ever needs it, add it only in Vercel's environment variables, and never with a `NEXT_PUBLIC_` name.
+- Passwords, tokens or other service keys.
+- Real people's data: names, emails, phone numbers, hours, exports, CSVs or database dumps. Use made-up data in tests and examples.
+- Planning documents. They are kept privately in the "iris-app" folder in Google Drive, and `docs/` is ignored for this reason.
+
+**Safe to commit:** the Supabase project URL and the **publishable** key (`sb_publishable_…`). They are sent to every visitor's browser anyway.
+
+**The database protects the data.** Because the publishable key is public, anyone can send requests to our Supabase project. Turn on Row Level Security (RLS) for every table, with rules that let each person see only what their role allows. Do this when you create the table, before it holds real data.
+
+**Before every commit,** look over what is staged (`git status` and `git diff --staged`). If a secret is ever pushed, deleting the commit is not enough: change (rotate) the key in Supabase or the other service right away, then remove it from the code.
+
+**Found a security problem?** Please don't open a public issue. Email the Iris Music Project team instead.
+
+## License
+
+[MIT](LICENSE). You're welcome to reuse this code.
