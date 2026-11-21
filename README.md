@@ -1,16 +1,19 @@
 # iris-app
 This is the first app for Iris Music Project, a Maryland-based nonprofit.
 
-The app is built with Next.js on Vercel. Sign-in runs through Supabase. For now only staff and volunteers have accounts, and they sign in with an emailed link instead of a password.
+The app is built with Next.js on Vercel. Sign-in runs through Supabase. Only invited staff and musicians have accounts. They log in with their email and a password, or with a one-time code emailed to them.
 
 ## Pages
 
 | Path | What it does |
 |------|--------------|
 | `/` | Welcome page |
-| `/login` | The log-in page. Enter an email address to get a sign-in link. |
+| `/login` | Log in with email and password. |
+| `/login/code` | Fallback: log in with a one-time code sent by email. |
+| `/forgot-password` | Emails a link to set a new password. |
+| `/account/password` | Set or change your password (signed in only). New people land here from their invite. |
 | `/dashboard` | Signed-in placeholder. It redirects to `/login` if you are not signed in. |
-| `/auth/confirm` | Handles the link from the sign-in and invite emails. |
+| `/auth/confirm` | Handles the links in invite and password-reset emails. |
 
 ## How it's set up
 
@@ -18,7 +21,7 @@ The app is built with Next.js on Vercel. Sign-in runs through Supabase. For now 
 |-------|-------|-------|
 | Code | GitHub, `irismusicproject/iris-app` (public) | Merging to `main` deploys automatically. |
 | Hosting | Vercel | Live at https://app.irismusicproject.org |
-| Sign-in and data | Supabase | Invite-only; sign-in by emailed link. |
+| Sign-in and data | Supabase | Invite-only; email and password, or an emailed code. |
 | Email sending | Resend | Sends from `no-reply@mail.irismusicproject.org`. |
 | DNS | Squarespace (irismusicproject.org) | The main website and Google email stay on the root domain. |
 
@@ -30,7 +33,9 @@ The app is built with Next.js on Vercel. Sign-in runs through Supabase. For now 
 
 ## Adding staff
 
-Public sign-up is off. To give someone access, go to Supabase, then **Authentication → Users → Add user → Send invitation**, and enter their email. They click the link in the email to get in. After that, they sign in from `/login` with an emailed link.
+Public sign-up is off. To give someone access, go to Supabase, then **Authentication → Users → Add user → Send invitation**, and enter their email. They click the link in the email, choose a password (12 characters or more), and land on the dashboard. After that, they log in at `/login` with their email and password.
+
+People who joined before passwords existed have no password yet. They can use **Email me a code instead** on the log-in page, then **Set or change your password** on the dashboard, or use **Forgot password?**.
 
 ## Supabase settings
 
@@ -40,9 +45,11 @@ All under **Authentication**:
 - **URL Configuration:**
   - Site URL: `https://app.irismusicproject.org`
   - Redirect URLs: `https://app.irismusicproject.org/**` and `http://localhost:3000/**`
-- **Emails → Templates:** the links in these two templates go through the app's `/auth/confirm` page:
-  - **Magic Link:** `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/dashboard`
-  - **Invite user:** `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=invite&next=/dashboard`
+- **Sign In / Providers → Email:** **Minimum password length** is **12**. This matches `PASSWORD_MIN_LENGTH` in `src/shared/auth/password.ts`; change both together. Leave **Email OTP Length** at 6.
+- **Emails → Templates:**
+  - **Invite user:** the link is `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=invite&next=/account/password?welcome=1`. The new person sets a password right away.
+  - **Reset Password:** the link is `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/account/password`. This works even when the email is opened on a different device.
+  - **Magic Link:** shows a **code** instead of a link, because `/login/code` asks people to type it. Put `{{ .Token }}` in the body, for example: "Your Iris Music Project sign-in code is **{{ .Token }}**. It expires in one hour." Remove the old link.
 - **Emails → SMTP Settings:** custom SMTP through Resend:
 
   | Field | Value |

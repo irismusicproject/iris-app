@@ -175,9 +175,8 @@ can reuse the same backend:
   notifications later.
 - **Offline-friendly drafts** for documentation, submitted when the device
   is back online.
-- **Sign-in moves toward emailed one-time codes**, which work on web and
-  native, possibly alongside passwords. Today's emailed sign-in links work
-  on the web only.
+- **Sign-in by email and password** (12 characters or more), with an
+  emailed one-time code as the fallback. Both work on web and native.
 
 ### 5.2 Other requirements
 
@@ -185,7 +184,8 @@ can reuse the same backend:
   computer, with no app-store install needed during the prototype.
 - **Current stack (already live at app.irismusicproject.org):** Next.js on
   Vercel; Supabase for sign-in and data; Resend for email. Sign-in is
-  invite-only by emailed link, so contractors don't need Iris Google accounts.
+  invite-only, by email and password, so contractors don't need Iris Google
+  accounts.
 - **Exports:** PDF, Word (.docx), and spreadsheet/CSV.
 - **Data ownership:** admins can export all data at any time.
 - **Cost:** free or nonprofit-discounted services wherever possible.

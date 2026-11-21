@@ -140,9 +140,11 @@ the same backend:
   later.
 - **Offline-friendly drafts.** Documentation forms keep drafts on the device
   and submit when there's a connection.
-- **Sign-in direction.** Move toward emailed **one-time codes**, which work
-  on web and native, possibly alongside passwords. Today's emailed links
-  work on the web only. (Ryan owns this decision.)
+- **Sign-in (decided by Ryan, Nov 2026).** Email and **password** is the
+  normal way in, with a minimum of 12 characters. The rule lives in
+  `src/shared/auth/password.ts` and in Supabase. An emailed **one-time
+  code** is the fallback. Both work on web and native. Emailed links are
+  used only for invites and password resets.
 
 ## Working style
 
