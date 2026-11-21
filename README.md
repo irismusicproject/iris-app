@@ -125,7 +125,8 @@ Pull requests apply their own migrations. **Don't paste migrations into the SQL 
    - **`production`**, with **Required reviewers** set to Ryan and Lauren, and the secret `DATABASE_URL` set to production's connection string.
 
    Each secret lives only in its environment, so the staging job can never reach production.
-3. **Tell the tool what production already has.** Production's first migrations were run by hand. Open **Actions → Database migrations → Run workflow**, choose **mark-applied**, and enter the versions already run on production, for example `20261121120000 20261122120000`. Approve the run. Its last step should show nothing pending.
+3. **Build staging's tables.** Open **Actions → Database migrations → Run workflow**, choose **build-staging**, and run it. It applies every migration plus the fake data to staging only.
+4. **Tell the tool what production already has.** Production's first migrations were run by hand. Open **Actions → Database migrations → Run workflow**, choose **mark-applied**, and enter the versions already run on production, for example `20261121120000 20261122120000`. Approve the run. Its last step should show nothing pending.
 
 ## Deploying
 

@@ -17,9 +17,9 @@ on:
   workflow_dispatch:
     inputs:
       task:
-        description: "plan = show pending migrations on both databases; mark-applied = record already-applied migrations in production's history"
+        description: "plan = show pending migrations on both databases; build-staging = apply all migrations and fake data to staging; mark-applied = record already-applied migrations in production's history"
         type: choice
-        options: [plan, mark-applied]
+        options: [plan, build-staging, mark-applied]
         default: plan
       versions:
         description: "For mark-applied: migration versions separated by spaces, e.g. 20261121120000 20261122120000"
@@ -41,7 +41,7 @@ jobs:
     # Skip pull requests from forks: they never get database access.
     if: >-
       (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
-      || (github.event_name == 'workflow_dispatch' && inputs.task == 'plan')
+      || (github.event_name == 'workflow_dispatch' && (inputs.task == 'plan' || inputs.task == 'build-staging'))
     runs-on: ubuntu-latest
     environment: staging
     steps:
@@ -66,13 +66,15 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
       - name: Apply migrations and fake seed data to staging
-        if: steps.cfg.outputs.ok == 'true' && github.event_name == 'pull_request'
+        if: steps.cfg.outputs.ok == 'true' && (github.event_name == 'pull_request' || inputs.task == 'build-staging')
         run: supabase db push --include-seed --yes --db-url "$DATABASE_URL"
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
   production:
     needs: staging
+    # build-staging never touches production.
+    if: github.event_name == 'pull_request' || inputs.task == 'plan'
     runs-on: ubuntu-latest
     # The "production" environment requires an owner's approval before this
     # job starts, and is the only place production's connection string lives.
