@@ -36,7 +36,7 @@ jobs:
             echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY"
             echo "SUPABASE_SECRET_KEY=$SERVICE_ROLE_KEY"
             echo "MAIL_URL=${MAILPIT_URL:-$INBUCKET_URL}"
-            echo "NEXT_PUBLIC_SITE_URL=http://127.0.0.1:3000"
+            echo "NEXT_PUBLIC_SITE_URL=http://localhost:3000"
           } >> "$GITHUB_ENV"
 
       - run: npx playwright install --with-deps chromium

@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { confirmLink, signInCode, waitForEmail } from "./helpers/mail";
-import { createPerson, logIn, logOut } from "./helpers/people";
+import { createPerson, logIn, logOut, open } from "./helpers/people";
 import { createClient } from "@supabase/supabase-js";
 import { SECRET_KEY, SUPABASE_URL } from "./helpers/env";
 
@@ -22,7 +22,7 @@ test("@phone logs in with email and password", async ({ page }) => {
 test("wrong password is rejected without saying whether the account exists", async ({ page }) => {
   const me = await createPerson({ label: "wrongpw", name: "Wes Wrong" });
   for (const email of [me.email, "nobody-here@example.com"]) {
-    await page.goto("/login");
+    await open(page, "/login");
     await page.locator('input[name="email"]').fill(email);
     await page.locator('input[name="password"]').fill("not the right password");
     await page.getByRole("button", { name: "Log in", exact: true }).click();
@@ -32,8 +32,10 @@ test("wrong password is rejected without saying whether the account exists", asy
 
 test("@phone logs in with an emailed code", async ({ page }) => {
   const me = await createPerson({ label: "code", name: "Cora Code" });
-  await page.goto("/login");
+  await open(page, "/login");
   await page.getByRole("link", { name: "Email me a code instead" }).click();
+  await page.waitForURL(/\/login\/code$/);
+  await page.waitForLoadState("networkidle");
   const since = Date.now();
   await page.locator('input[name="email"]').fill(me.email);
   await page.getByRole("button", { name: "Email me a code" }).click();
@@ -49,14 +51,16 @@ test("resets a forgotten password", async ({ page }) => {
   const me = await createPerson({ label: "reset", name: "Rae Reset" });
   const newPassword = "viola thursday 77 new";
 
-  await page.goto("/login");
+  await open(page, "/login");
   await page.getByRole("link", { name: "Forgot password?" }).click();
+  await page.waitForURL(/\/forgot-password$/);
+  await page.waitForLoadState("networkidle");
   const since = Date.now();
   await page.locator('input[name="email"]').fill(me.email);
   await page.getByRole("button", { name: "Email me a reset link" }).click();
   await expect(page.locator("main").getByRole("status")).toContainText("Check your email");
 
-  await page.goto(confirmLink(await waitForEmail(me.email, since)));
+  await open(page, confirmLink(await waitForEmail(me.email, since)));
   await expect(page.getByRole("heading", { name: "Set your password" })).toBeVisible();
   await page.locator('input[name="password"]').fill(newPassword);
   await page.locator('input[name="confirm"]').fill(newPassword);
@@ -64,7 +68,7 @@ test("resets a forgotten password", async ({ page }) => {
   await expect(page.locator("main").getByRole("status")).toContainText("Your password is saved");
 
   await logOut(page);
-  await page.goto("/login");
+  await open(page, "/login");
   await page.locator('input[name="email"]').fill(me.email);
   await page.locator('input[name="password"]').fill(me.password);
   await page.getByRole("button", { name: "Log in", exact: true }).click();
@@ -75,7 +79,7 @@ test("resets a forgotten password", async ({ page }) => {
 test("rejects a password shorter than 12 characters", async ({ page }) => {
   const me = await createPerson({ label: "short", name: "Sam Short" });
   await logIn(page, me.email, me.password);
-  await page.goto("/account/password");
+  await open(page, "/account/password");
   // Bypass the browser's own minlength check to test the server's rule.
   await page.locator("form").evaluate((f) => f.setAttribute("novalidate", ""));
   await page.locator('input[name="password"]').fill("too short");
@@ -90,7 +94,7 @@ test("a deactivated person is told so at log-in", async ({ page }) => {
   await db.from("person").update({ active: false }).eq("id", me.id);
   await db.auth.admin.updateUserById(me.id, { ban_duration: "876000h" });
 
-  await page.goto("/login");
+  await open(page, "/login");
   await page.locator('input[name="email"]').fill(me.email);
   await page.locator('input[name="password"]').fill(me.password);
   await page.getByRole("button", { name: "Log in", exact: true }).click();
