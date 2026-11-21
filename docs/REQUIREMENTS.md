@@ -57,8 +57,9 @@ Priority: **P1** = needed for the first version; **P2** = soon after; **P3** = l
 | **Musician** | Contractors and staff musicians | See their own schedule and ensemble; propose or schedule programs and events (within the rules in 4.6); document sessions; view their targets and invoices |
 
 - **R1.1 (P1)** Each person signs in with their own login, on phone or computer.
-- **R1.2 (P1)** Admins can add, deactivate and remove people. Deactivated people
-  keep their history (past sessions, invoices) but can no longer sign in.
+- **R1.2 (P1)** Admins can add and deactivate people (never delete). Deactivated
+  people keep their history (past sessions, invoices) but can no longer sign in.
+  _Built Nov 2026: People screen at `/admin/people`._
 - **R1.3 (P2)** Admin permissions can be limited to certain communities or
   ensembles (e.g. a coordinator who oversees only some teams).
 

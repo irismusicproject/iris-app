@@ -24,3 +24,15 @@ jobs:
       - run: npm ci
       - name: Fail on high or critical vulnerabilities
         run: npm audit --audit-level=high
+
+  db-permissions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Test Row Level Security rules in supabase/migrations
+        run: npm run test:db
