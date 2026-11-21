@@ -1,6 +1,6 @@
 # Iris App — Domain Model (Language 1: the code)
 
-_Draft v0.8, November 21, 2026 (v0.8: decisions D14 and D15 settled: residents and attendance; v0.7: decisions D10, D11 and D16 settled: events, extras, absences, substitutes and the roster; v0.6: both D9 billing details confirmed; v0.5: decisions D9 and D13 settled: partner billing and version 1 scope; v0.4: decisions D2, D4, D6, D7 and D8 settled; v0.3: decisions D1, D3 and D5 settled, including how a month's schedule is reviewed, published and sent; v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
+_Draft v0.9, November 21, 2026 (v0.9: partner permission for resident names confirmed; v0.8: decisions D14 and D15 settled: residents and attendance; v0.7: decisions D10, D11 and D16 settled: events, extras, absences, substitutes and the roster; v0.6: both D9 billing details confirmed; v0.5: decisions D9 and D13 settled: partner billing and version 1 scope; v0.4: decisions D2, D4, D6, D7 and D8 settled; v0.3: decisions D1, D3 and D5 settled, including how a month's schedule is reviewed, published and sent; v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
 app's objects. GLOSSARY.md translates the team's language (Language 2) and
 our partner-facing language (Language 3) into these objects._
 
@@ -143,10 +143,11 @@ by design. **Never** holds health information.
 - **Hebrew Home** keeps its own "Bedside Melodies" workbook, which the
   partner's team also edits. Musicians there log relationship building in
   **both** places; the app doesn't import or sync the workbook.
-- **Still open (REQUIREMENTS Q1):** whether each partner is comfortable
-  with Iris recording residents' first names and last initials, and whether
-  any needs a confidentiality agreement or BAA. Check with a partner before
-  real residents are entered at its sites; until then, use made-up data.
+- **Partner permission (REQUIREMENTS Q1), confirmed by Lauren, Nov 21,
+  2026:** partners are comfortable with Iris recording residents this way,
+  because only minimal information is kept and none of it is shared. If a
+  partner later asks for a confidentiality agreement or BAA, revisit
+  REQUIREMENTS Q8 (hosting).
 
 ---
 

@@ -359,8 +359,8 @@ The workbooks also hold:
 > musicians as they work (no preloaded list). Visible to the site's current
 > roster, the residency's point person and admins; every view logged.
 > Hebrew Home's "Bedside Melodies" workbook stays outside the app and
-> musicians log in both. Partner permission to record names is still to be
-> confirmed per partner (REQUIREMENTS Q1).
+> musicians log in both. Partners are comfortable with this, since only
+> minimal information is kept and none is shared (confirmed Nov 21, 2026).
 
 Relationship-building logs record residents by first name, with a short
 description. The handbook says the shared template exists to **track
