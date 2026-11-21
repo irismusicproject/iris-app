@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:db": "node supabase/tests/rls.test.mjs && node supabase/tests/scheduling.test.mjs"
+    "test:db": "node supabase/tests/rls.test.mjs && node supabase/tests/scheduling.test.mjs",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@supabase/ssr": "^0.7.0",
@@ -20,6 +21,7 @@
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.15",
     "@eslint/eslintrc": "^3",
+    "@playwright/test": "^1.65.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

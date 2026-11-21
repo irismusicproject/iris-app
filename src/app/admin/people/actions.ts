@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { confirmUrl } from "@/lib/site-url";
 import { validateAdminEdit, validateNewPerson } from "@/shared/domain/person";
 
 export type PersonFormState = {
@@ -34,9 +35,8 @@ export async function addPerson(_prev: PersonFormState, form: FormData): Promise
   const p = parsed.value;
 
   const admin = createAdminClient();
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(p.email, {
-    redirectTo: `${siteUrl}/auth/confirm?next=/account/password?welcome=1`,
+    redirectTo: confirmUrl("/account/password?welcome=1"),
   });
   if (inviteError || !invited.user) {
     if (inviteError?.code === "email_exists" || inviteError?.status === 422) {

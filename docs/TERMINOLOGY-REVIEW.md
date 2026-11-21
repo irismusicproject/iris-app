@@ -248,6 +248,15 @@ and contracts all depend on this.
 
 ### D9. Pay components need a Contract object
 
+> **Decided (Nov 21, 2026):** musicians' hourly rate lives on each contract.
+> Partners pay per hour (most) or in installments (one partner, quarterly),
+> and every partner gets a monthly invoice showing hours against the
+> contract. Billable hours everywhere are session hours plus relationship
+> building at the site; each contract sets the rate, whether stipends are
+> billed, an optional overhead (e.g. 15%), and whether overhead goes to a
+> separate corporate-office invoice. Canceled sessions are billed only for
+> late partner cancellations unless the contract says otherwise.
+
 The handbook's pay elements:
 - **Hourly pay:** a flat rate, prep time included, set per region (the
   timesheet uses one "normal hourly rate").
@@ -271,6 +280,11 @@ payment dates.
 
 ### D10. "Event", "concert", "extra", "special project", "project"
 
+> **Decided (Nov 21, 2026):** as recommended. One-time sessions have no
+> series; concerts are special events; emergent projects like *Voices of
+> Ring House* are Special Projects. Extras are billed to the partner like
+> any session unless an admin marks one not billable.
+
 - Workbooks have a **Special events** section and a **Concerts** tab (with
   call times).
 - The timesheet has a **Concerts** time category.
@@ -293,6 +307,13 @@ Projects, or need a separate object.
 
 ### D11. Absences, substitutes and cancellations
 
+> **Decided (Nov 21, 2026):** an absence known before the 10th usually means
+> no sub: the session is canceled (reason: musician) and prints as "No
+> Program". When a sub is needed (rare), the musician records it in the app;
+> the sub can be any active musician (an admin adds people from outside the
+> Iris network). The app counts missed sessions per season and warns past an
+> admin-set limit.
+
 Workbooks track "Musician Absent", "Participating Musicians" and "Subs and
 Notes". The handbook says musicians must arrange their own substitute and
 notify Iris and the partner by 9 am; canceled sessions are unpaid; partners
@@ -313,6 +334,9 @@ display, so a substitution never means retyping a title.
 
 ### D13. Workbook functions missing from the requirements
 
+> **Decided (Nov 21, 2026):** monthly reflections and blackout dates are in
+> version 1. Repertoire planning and weekly meeting notes are not.
+
 The workbooks also hold:
 - **Monthly reflections** (see D3)
 - **Repertoire planning** per concert (composer, title, timing, personnel,
@@ -331,6 +355,13 @@ The workbooks also hold:
 
 ### D14. Residents are already tracked by name
 
+> **Decided (Nov 21, 2026):** first name + last initial, entered by
+> musicians as they work (no preloaded list). Visible to the site's current
+> roster, the residency's point person and admins; every view logged.
+> Hebrew Home's "Bedside Melodies" workbook stays outside the app and
+> musicians log in both. Partners are comfortable with this, since only
+> minimal information is kept and none is shared (confirmed Nov 21, 2026).
+
 Relationship-building logs record residents by first name, with a short
 description. The handbook says the shared template exists to **track
 individuals served and avoid duplicating efforts**. So **Resident** must be
@@ -341,6 +372,10 @@ the site. This also sharpens REQUIREMENTS Q1: the question is no longer
 information stays out (handbook, "Confidentiality").
 
 ### D15. Attendance has a handbook target, and "individually led" is a category
+
+> **Decided (Nov 21, 2026):** attendance is one count of everyone present
+> (residents, staff, family, guests), and the target of 7 uses it.
+> Individually led vs. multi-musician comes from how many musicians played.
 
 The handbook expects **an average of 7 residents** at each individually led
 program, with a strategy conversation if attendance stays below that. It also
@@ -355,6 +390,10 @@ leader) differently from **individually led** ones.
   too.
 
 ### D16. Ensemble vs. roster
+
+> **Decided (Nov 21, 2026):** the roster is everyone who plays that season;
+> the core ensemble is flagged on the roster; a sub not on the roster joins
+> it as a non-core member.
 
 The JAAH papers describe an ensemble of two to three musicians, but the Fall
 2026 Manors timesheet pays eight contractors, with two to four at a session.
