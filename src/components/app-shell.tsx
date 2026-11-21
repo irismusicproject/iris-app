@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Logo } from "@/components/logo";
 
 export function AppShell({
   isAdmin,
@@ -12,12 +13,13 @@ export function AppShell({
     <div className="min-h-screen">
       <header className="border-b border-border bg-surface">
         <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-2 px-4 py-3 sm:px-6">
-          <Link href="/dashboard" className="font-semibold tracking-tight">
-            Iris Music Project
+          <Link href="/dashboard" aria-label="Iris Music Project home">
+            <Logo className="h-11 w-auto" priority />
           </Link>
           <nav className="flex flex-wrap items-center gap-1 text-sm">
             <Link href="/dashboard" className={nav}>Home</Link>
             {isAdmin && <Link href="/admin/people" className={nav}>People</Link>}
+            {isAdmin && <Link href="/admin/partners" className={nav}>Partners</Link>}
             <Link href="/account/profile" className={nav}>My profile</Link>
             <form action="/auth/signout" method="post">
               <button className={nav}>Log out</button>

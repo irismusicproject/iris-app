@@ -54,6 +54,11 @@ export default async function Dashboard({
             <Link href="/admin/people" className={link}>People</Link>: add, edit and deactivate staff and musicians
           </li>
         )}
+        {isAdmin && (
+          <li>
+            <Link href="/admin/partners" className={link}>Partners</Link>: partners, their sites, and the rooms within them
+          </li>
+        )}
         <li>
           <Link href="/account/profile" className={link}>My profile</Link>: your phone number and instruments
         </li>
