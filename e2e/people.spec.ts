@@ -5,6 +5,8 @@ import { createPerson, logIn, open, TEST_PASSWORD, uniqueEmail } from "./helpers
 test("admin invites a musician, who sets a password and sees only their own screens", async ({ browser }) => {
   const adminUser = await createPerson({ label: "admin", name: "Ada Admin", isAdmin: true });
   const musicianEmail = uniqueEmail("musician");
+  // Unique per run, so a CI retry doesn't find the previous attempt's musician.
+  const musicianName = `Milo Musician ${Date.now() % 100000}`;
 
   // Admin adds the musician.
   const adminCtx = await browser.newContext();
@@ -16,13 +18,13 @@ test("admin invites a musician, who sets a password and sees only their own scre
   await expect(admin.getByText(adminUser.email)).toBeVisible();
 
   const since = Date.now();
-  await admin.locator('input[name="name"]').fill("Milo Musician");
+  await admin.locator('input[name="name"]').fill(musicianName);
   await admin.locator('input[name="email"]').fill(musicianEmail);
   await admin.locator('select[name="employment_type"]').selectOption("contractor_1099");
   await admin.locator('input[name="instruments"]').fill("cello, piano");
   await admin.getByRole("button", { name: "Add and send invite" }).click();
   await expect(admin.locator("main").getByRole("status")).toContainText(`Invite sent to ${musicianEmail}`);
-  await expect(admin.getByRole("link", { name: /Milo Musician/ })).toBeVisible();
+  await expect(admin.getByRole("link", { name: musicianName })).toBeVisible();
 
   // The musician accepts the invite in their own browser.
   const musicianCtx = await browser.newContext();
@@ -50,14 +52,19 @@ test("admin invites a musician, who sets a password and sees only their own scre
 
   // Admin deactivates the musician: they lose access at once.
   await open(admin, "/admin/people");
-  await admin.getByRole("link", { name: /Milo Musician/ }).click();
+  await admin.getByRole("link", { name: musicianName }).click();
   admin.once("dialog", (d) => d.accept());
-  await admin.getByRole("button", { name: "Deactivate Milo Musician" }).click();
+  await admin.getByRole("button", { name: `Deactivate ${musicianName}` }).click();
   await expect(admin.locator("main").getByRole("status")).toContainText("is deactivated");
 
+  // Access ends at once. Depending on the Supabase version, a banned person is
+  // either signed out (sent to log-in) or shown "Your account isn't active".
   await musician.goto("/dashboard");
-  await expect(musician.getByRole("heading", { name: "Your account isn't active" })).toBeVisible();
-  await musician.getByRole("button", { name: "Log out" }).click();
+  await expect(musician.getByRole("heading", { name: /^Hi, / })).toHaveCount(0);
+  await expect(
+    musician.getByRole("heading", { name: /Your account isn't active|^Log in$/ }),
+  ).toBeVisible();
+  await musicianCtx.clearCookies();
   await open(musician, "/login");
   await musician.locator('input[name="email"]').fill(musicianEmail);
   await musician.locator('input[name="password"]').fill(TEST_PASSWORD);
@@ -66,8 +73,8 @@ test("admin invites a musician, who sets a password and sees only their own scre
 
   // Admin reactivates: the musician can log in again.
   await open(admin, "/admin/people");
-  await admin.getByRole("link", { name: /Milo Musician/ }).click();
-  await admin.getByRole("button", { name: "Reactivate Milo Musician" }).click();
+  await admin.getByRole("link", { name: musicianName }).click();
+  await admin.getByRole("button", { name: `Reactivate ${musicianName}` }).click();
   await expect(admin.locator("main").getByRole("status")).toContainText("is active again");
   await logIn(musician, musicianEmail, TEST_PASSWORD);
 
