@@ -92,7 +92,19 @@ r = await as(M1, `select public.generate_series_month('${SER}','2027-03-01') as 
 r = await as(L, `select count(*)::int as n from public.session_assignment`); check("default musicians added (16 assignments)", r.ok && r.rows[0].n === 16, r);
 r = await as(L, `select bool_and((starts_at at time zone 'America/New_York')::time = '14:00') as ok from public.session`);
 check("sessions start 2:00 pm site time", r.ok && r.rows[0].ok === true, r);
-const sessions = (await as(L, `select id from public.session order by starts_at`)).rows.map((x) => x.id);
+const sessions = (await as(L, `select id from public.session where series_id='${SER}' order by starts_at`)).rows.map((x) => x.id);
+
+// ---- Scheduled relationship building ("Lessons"): weekly, no set time, no leader
+r = await as(L, `insert into public.series (residency_id,kind,title,default_location_id,weekdays,active_from)
+  values ('${RES}','group_session','No Time','${ROOM}','{2}','2027-01-01')`);
+check("group session series needs a time", !r.ok, r);
+r = await as(L, `insert into public.series (residency_id,kind,title,default_location_id,weekdays,active_from)
+  values ('${RES}','relationship_building','Lessons','${ROOM}','{2}','2027-01-01') returning id`);
+check("admin lead creates a weekly Lessons series with no time", r.ok, r); const LES = r.rows?.[0]?.id;
+r = await as(L, `insert into public.series_default_person values ('${LES}','${M1}'),('${LES}','${M2}')`);
+r = await as(L, `select public.generate_series_month('${LES}','2027-02-01') as n`); check("Lessons fills Feb's 4 Tuesdays", r.ok && r.rows[0].n === 4, r);
+r = await as(L, `select bool_and(not has_set_time and kind='relationship_building' and scheduled_minutes is null) as ok from public.session where series_id='${LES}'`);
+check("Lessons sessions have no set time", r.ok && r.rows[0].ok === true, r);
 
 // ---- Editing rules
 r = await as(M1, `update public.session set title='Hacked'`); check("musician can't edit sessions (0 rows)", r.ok && r.n === 0, r);
@@ -121,7 +133,7 @@ check("two playing leaders on one session rejected", !r.ok, r);
 r = await as(M1, `select public.publish_month('${RES}','${SITE}','2027-02-01')`); check("musician can't publish", !r.ok, r);
 r = await as(L, `select public.publish_month('${RES}','${SITE}','2027-02-01')`); check("admin lead publishes the month", r.ok, r);
 r = await as(L, `select schedule_state, count(*)::int as n from public.session group by 1 order by 1`);
-check("8 published, 1 canceled", r.ok && JSON.stringify(r.rows) === JSON.stringify([{ schedule_state: "published", n: 8 }, { schedule_state: "canceled", n: 1 }]), r);
+check("12 published (incl. 4 Lessons without a leader), 1 canceled", r.ok && JSON.stringify(r.rows) === JSON.stringify([{ schedule_state: "published", n: 12 }, { schedule_state: "canceled", n: 1 }]), r);
 r = await as(M1, `select version, state from public.calendar_export`); check("musician sees calendar version 1 sent", r.ok && r.rows.length === 1 && r.rows[0].state === "sent", r);
 r = await as(L, `select public.publish_month('${RES}','${SITE}','2027-02-01')`); check("can't publish twice", !r.ok, r);
 r = await as(L, `update public.session set schedule_state='draft' where id='${sessions[0]}'`); check("published can't go back to draft", !r.ok, r);

@@ -43,6 +43,16 @@ export type AssignmentRole = (typeof ASSIGNMENT_ROLES)[number];
 export const ASSIGNMENT_STATUSES = ["assigned", "absent", "substitute"] as const;
 export type AssignmentStatus = (typeof ASSIGNMENT_STATUSES)[number];
 
+/** group_session: documented by its leader. relationship_building: e.g. weekly
+ *  "Lessons"; time optional, no leader, documented as relationship-building
+ *  activities (DOMAIN-MODEL v0.10). */
+export const SESSION_KINDS = ["group_session", "relationship_building"] as const;
+export type SessionKind = (typeof SESSION_KINDS)[number];
+export const SESSION_KIND_LABELS: Record<SessionKind, string> = {
+  group_session: "Group session",
+  relationship_building: "Relationship building (e.g. lessons)",
+};
+
 export const CALENDAR_STATES = ["reviewed", "sent"] as const;
 export type CalendarState = (typeof CALENDAR_STATES)[number];
 
@@ -101,11 +111,12 @@ export type StaffAssignment = {
 export type Series = {
   id: string;
   residency_id: string;
+  kind: SessionKind;
   title: string;
   default_location_id: string;
   weekdays: number[];
-  start_time: string;
-  minutes: number;
+  start_time: string | null;
+  minutes: number | null;
   active_from: string;
   active_until: string | null;
 };
@@ -114,10 +125,12 @@ export type Session = {
   id: string;
   residency_id: string;
   series_id: string | null;
+  kind: SessionKind;
   title: string;
   location_id: string;
   starts_at: string;
-  scheduled_minutes: number;
+  has_set_time: boolean;
+  scheduled_minutes: number | null;
   call_time: string | null;
   is_special_event: boolean;
   is_extra: boolean;
@@ -156,11 +169,12 @@ export type CalendarExport = {
 // ---- Validation for forms (the database enforces the same rules) ----
 
 export type SeriesInput = {
+  kind: SessionKind;
   title: string;
   default_location_id: string;
   weekdays: number[];
-  start_time: string;
-  minutes: number;
+  start_time: string | null;
+  minutes: number | null;
   active_from: string;
   active_until?: string | null;
 };
@@ -173,8 +187,10 @@ export function validateSeries(input: SeriesInput): Record<string, string> {
   if (!input.default_location_id) errors.default_location_id = "Pick a room or area.";
   if (!input.weekdays.length) errors.weekdays = "Pick at least one day.";
   if (input.weekdays.some((d) => !Number.isInteger(d) || d < 1 || d > 7)) errors.weekdays = "Pick valid days.";
-  if (!/^\d{2}:\d{2}$/.test(input.start_time)) errors.start_time = "Enter a start time.";
-  if (!Number.isInteger(input.minutes) || input.minutes < 5 || input.minutes > 600)
+  const timeOptional = input.kind === "relationship_building";
+  if (input.start_time ? !/^\d{2}:\d{2}$/.test(input.start_time) : !timeOptional)
+    errors.start_time = "Enter a start time.";
+  if (input.minutes == null ? !timeOptional : !Number.isInteger(input.minutes) || input.minutes < 5 || input.minutes > 600)
     errors.minutes = "Length must be between 5 and 600 minutes.";
   if (!input.active_from) errors.active_from = "Enter a start date.";
   if (input.active_until && input.active_from && input.active_until < input.active_from)
@@ -182,7 +198,7 @@ export function validateSeries(input: SeriesInput): Record<string, string> {
   return errors;
 }
 
-/** A session needs exactly one playing leader before its month is published. */
+/** A group session needs exactly one playing leader before its month is published. */
 export function playingLeaders(assignments: Pick<SessionAssignment, "role" | "status">[]): number {
   return assignments.filter((a) => a.role === "leader" && a.status !== "absent").length;
 }

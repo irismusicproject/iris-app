@@ -30,6 +30,10 @@ create type public.cancellation_reason as enum ('partner', 'weather', 'musician'
 create type public.assignment_role     as enum ('leader', 'participant');
 create type public.assignment_status   as enum ('assigned', 'absent', 'substitute');
 create type public.calendar_state      as enum ('reviewed', 'sent');
+-- group_session: documented by its leader. relationship_building: e.g.
+-- weekly "Lessons", time optional, no leader, documented as
+-- relationship-building activities (DOMAIN-MODEL v0.10).
+create type public.session_kind        as enum ('group_session', 'relationship_building');
 
 -- ---------------------------------------------------------------------------
 -- Residency, its sites, seasons
@@ -114,16 +118,18 @@ create index staff_assignment_person_id_idx on public.staff_assignment (person_i
 create table public.series (
   id                  uuid primary key default gen_random_uuid(),
   residency_id        uuid not null references public.residency (id) on delete restrict,
+  kind                public.session_kind not null default 'group_session',
   title               text not null check (length(btrim(title)) between 1 and 200),
   default_location_id uuid not null references public.location (id) on delete restrict,
   weekdays            smallint[] not null check (cardinality(weekdays) >= 1 and weekdays <@ '{1,2,3,4,5,6,7}'),
-  start_time          time not null,
-  minutes             integer not null check (minutes between 5 and 600),
+  start_time          time,
+  minutes             integer check (minutes between 5 and 600),
   active_from         date not null,
   active_until        date,
   created_at          timestamptz not null default now(),
   updated_at          timestamptz not null default now(),
-  check (active_until is null or active_until >= active_from)
+  check (active_until is null or active_until >= active_from),
+  check (kind = 'relationship_building' or (start_time is not null and minutes is not null))
 );
 create index series_residency_id_idx on public.series (residency_id);
 comment on column public.series.weekdays is 'ISO weekdays: 1 = Monday … 7 = Sunday. Weekly recurrence.';
@@ -139,10 +145,12 @@ create table public.session (
   id                  uuid primary key default gen_random_uuid(),
   residency_id        uuid not null references public.residency (id) on delete restrict,
   series_id           uuid references public.series (id) on delete restrict,
+  kind                public.session_kind not null default 'group_session',
   title               text not null check (length(btrim(title)) between 1 and 200),
   location_id         uuid not null references public.location (id) on delete restrict,
   starts_at           timestamptz not null,
-  scheduled_minutes   integer not null check (scheduled_minutes between 5 and 600),
+  has_set_time        boolean not null default true,
+  scheduled_minutes   integer check (scheduled_minutes between 5 and 600),
   call_time           time,
   is_special_event    boolean not null default false,
   is_extra            boolean not null default false,
@@ -154,8 +162,11 @@ create table public.session (
   internal_note       text check (internal_note is null or length(internal_note) <= 2000),
   created_at          timestamptz not null default now(),
   updated_at          timestamptz not null default now(),
-  check ((schedule_state = 'canceled') = (cancellation_reason is not null))
+  check ((schedule_state = 'canceled') = (cancellation_reason is not null)),
+  check (kind = 'relationship_building' or (has_set_time and scheduled_minutes is not null))
 );
+comment on column public.session.has_set_time is
+  'False for relationship building with no set time: starts_at is then midnight site time and the calendar shows no time.';
 create index session_residency_starts_idx on public.session (residency_id, starts_at);
 create index session_location_id_idx on public.session (location_id);
 create unique index session_series_start_key on public.session (series_id, starts_at) where series_id is not null;
@@ -617,8 +628,9 @@ begin
   for d in select g::date from generate_series(first_day, (first_day + interval '1 month - 1 day')::date, interval '1 day') g loop
     continue when extract(isodow from d)::smallint <> all (s.weekdays);
     continue when d < s.active_from or (s.active_until is not null and d > s.active_until);
-    insert into public.session (residency_id, series_id, title, location_id, starts_at, scheduled_minutes)
-    values (s.residency_id, s.id, s.title, s.default_location_id, (d + s.start_time) at time zone tz, s.minutes)
+    insert into public.session (residency_id, series_id, kind, title, location_id, starts_at, has_set_time, scheduled_minutes)
+    values (s.residency_id, s.id, s.kind, s.title, s.default_location_id,
+            (d + coalesce(s.start_time, time '00:00')) at time zone tz, s.start_time is not null, s.minutes)
     on conflict (series_id, starts_at) where series_id is not null do nothing
     returning id into new_id;
     if new_id is not null then
@@ -691,11 +703,11 @@ begin
   end if;
   select count(*) into missing from public.month_sessions(p_residency, p_site, m) ms(id)
    join public.session se on se.id = ms.id
-   where se.schedule_state <> 'canceled'
+   where se.schedule_state <> 'canceled' and se.kind = 'group_session'
      and (select count(*) from public.session_assignment sa
           where sa.session_id = se.id and sa.role = 'leader' and sa.status <> 'absent') <> 1;
   if missing > 0 then
-    raise exception '% session(s) still need a leader', missing using errcode = '23514';
+    raise exception '% group session(s) still need a leader', missing using errcode = '23514';
   end if;
   perform set_config('iris.publishing', 'on', true);
   update public.session set schedule_state = 'published'
