@@ -6,7 +6,8 @@
 //
 // Findings: a check can carry a tag { kind: "KNOWN BUG" | "QUESTION", id }.
 // A tagged check that fails is reported, not counted as a failure, so CI stays
-// green while the problem stays visible. Every tag is described once in
+// green while the problem stays visible. A tagged check that PASSES counts as
+// a failure (like a strict "expected failure"): the fix must remove the tag. Every tag is described once in
 // FINDINGS below with its doc reference and a minimal reproduction.
 import { PGlite } from "@electric-sql/pglite";
 import fs from "node:fs";
@@ -100,11 +101,15 @@ export function checker() {
   let pass = 0, fail = 0, flagged = 0;
   const seen = new Map(); // id -> [{name, detail}]
   function check(name, cond, detail, tagId) {
-    if (cond) {
-      pass++; console.log("PASS", name);
-      if (tagId) console.log(`  NOTE: ${FINDINGS[tagId].kind} ${tagId} passed here; if it's fixed everywhere, drop the marker`);
+    if (cond && tagId) {
+      // Strict: a tagged check that now passes means the bug was fixed (or the
+      // question answered). Fail, so whoever fixed it removes the tag in the
+      // same change and the check starts guarding against a comeback.
+      fail++;
+      console.log(`FAIL ${name}: ${FINDINGS[tagId].kind} ${tagId} now passes. Remove its tag from this check (and from FINDINGS if no check uses it).`);
       return true;
     }
+    if (cond) { pass++; console.log("PASS", name); return true; }
     if (tagId) {
       flagged++;
       const f = FINDINGS[tagId];
