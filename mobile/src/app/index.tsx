@@ -1,98 +1,55 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Redirect } from "expo-router";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { useSession } from "@/lib/session";
+import { supabase } from "@/lib/supabase";
+import { colors } from "@/lib/theme";
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+// Home, for now: proves the phone reaches the database through its
+// permission rules by reading the signed-in person's own name.
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
+export default function Home() {
+  const { session, loading } = useSession();
+  const [name, setName] = useState<string | null>(null);
+  const [problem, setProblem] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!session) return;
+    supabase
+      .from("person")
+      .select("name")
+      .eq("id", session.user.id)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (error) setProblem("Couldn't load your details. Check your connection and try again.");
+        else if (!data) setProblem("Signed in, but no Iris profile was found for this account.");
+        else setName(data.name);
+      });
+  }, [session]);
+
+  if (loading) return <View style={styles.center}><ActivityIndicator color={colors.iris} /></View>;
+  if (!session) return <Redirect href="/sign-in" />;
+
+  const first = name?.trim().split(/\s+/)[0];
   return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
-
-export default function HomeScreen() {
-  return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
-
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
-
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
+    <View style={styles.screen}>
+      <Text style={styles.greeting}>{first ? `Hello, ${first}.` : problem ? "Hello." : "Hello…"}</Text>
+      {problem && <Text style={styles.problem}>{problem}</Text>}
+      <Text style={styles.muted}>Signed in as {session.user.email}</Text>
+      <Pressable style={({ pressed }) => [styles.button, pressed && styles.pressed]} onPress={() => supabase.auth.signOut()} accessibilityRole="button">
+        <Text style={styles.buttonText}>Sign out</Text>
+      </Pressable>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
-  },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
-  },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
-  },
-  title: {
-    textAlign: 'center',
-  },
-  code: {
-    textTransform: 'uppercase',
-  },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
-  },
+  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+  screen: { flex: 1, padding: 24, gap: 12 },
+  greeting: { fontSize: 28, fontWeight: "700", color: colors.iris, marginTop: 24 },
+  problem: { color: colors.error, fontSize: 15 },
+  muted: { color: colors.muted, fontSize: 14 },
+  button: { alignSelf: "flex-start", borderWidth: 1, borderColor: colors.border, borderRadius: 999, paddingVertical: 10, paddingHorizontal: 18, marginTop: 24 },
+  pressed: { opacity: 0.6 },
+  buttonText: { color: colors.iris, fontSize: 15, fontWeight: "600" },
 });
