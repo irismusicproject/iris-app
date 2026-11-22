@@ -657,9 +657,7 @@ program the musician led that week (and that has happened) has no
 hours are calculated from documentation: **Programs** = the documented
 length of each program they played (not absent), **Concerts** = the same
 for special events, **Relationship Building** = minutes of every log they
-logged or were added to. **The 15 minutes before and after a program are
-not paid anywhere** (not as program time, not as relationship building;
-corrected by Lauren, Nov 22, 2026). To change pay, fix the documentation. Approving a week refreshes its hours
+logged or were added to. To change pay, fix the documentation. Approving a week refreshes its hours
 from documentation first (keeping the original submission time).
 
 ### `PayPeriod`
