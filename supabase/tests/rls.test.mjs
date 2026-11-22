@@ -52,6 +52,13 @@ r=await as(A,`insert into public.person (id,name,email,employment_type) values (
 r=await as(A,`update public.person set name='Maxine', job_title='Musician in Residence 1', active=false where id='${M}'`); check("admin edits & deactivates others", r.ok && r.n===1, r);
 r=await as(M,`select id from public.person`); check("newly deactivated musician now reads nothing", r.ok && r.rows.length===0, r);
 r=await as(A,`update public.person set email='other@example.org' where id='${N}'`); check("admin cannot change email", !r.ok, r);
+// v0.32: the server's secret key (service_role, nobody signed in) may change an email (Admin → People → Change email).
+// Hosted Supabase gives service_role every table by default; the grant here copies that.
+{ let ok = true, err = null;
+  try { await db.exec(`reset role; grant all on all tables in schema public to service_role; select set_config('request.jwt.claim.sub','',false); set role service_role; update public.person set email='fixed@example.org' where id='${N}'; reset role;`); }
+  catch (e) { ok = false; err = e.message; await db.exec("reset role"); }
+  const after = (await db.query(`select email from public.person where id='${N}'`)).rows[0]?.email;
+  check("the server key can change an email (v0.32)", ok && after === "fixed@example.org", { err, after }); }
 r=await as(A,`update public.person set active=false where id='${A}'`); check("admin cannot deactivate self", !r.ok, r);
 r=await as(A,`update public.person set system_roles='{}' where id='${A}'`); check("admin cannot drop own admin role", !r.ok, r);
 r=await as(M,`select public.is_admin()`); check("is_admin false for deactivated musician", r.ok && r.rows[0].is_admin===false, r);

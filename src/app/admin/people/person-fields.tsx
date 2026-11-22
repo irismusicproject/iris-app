@@ -21,7 +21,7 @@ export function PersonFields({
           <input name="email" type="email" required autoComplete="off" className={inputClass} />
         </Field>
       ) : (
-        <Field label="Email" hint="Email is their sign-in and can't be changed here.">
+        <Field label="Email" hint="Their sign-in. To change it, use Change email above.">
           <input value={person?.email} readOnly disabled className={`${inputClass} opacity-70`} />
         </Field>
       )}
