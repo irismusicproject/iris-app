@@ -17,7 +17,7 @@ export function PersonFields({
         <input name="name" required defaultValue={person?.name} autoComplete="off" className={inputClass} />
       </Field>
       {includeEmail ? (
-        <Field label="Email" hint="They'll get an invite at this address." error={errors?.email}>
+        <Field label="Email" hint="Their sign-in. The invite goes here (now or later)." error={errors?.email}>
           <input name="email" type="email" required autoComplete="off" className={inputClass} />
         </Field>
       ) : (

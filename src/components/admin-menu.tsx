@@ -12,6 +12,7 @@ const ADMIN_LINKS = [
   { href: "/admin/invoices", label: "Invoices" },
   { href: "/admin/follow-up", label: "Follow-up" },
   { href: "/admin/notifications", label: "Outbox" },
+  { href: "/admin/import", label: "Import" },
 ];
 
 export function AdminMenu({ className }: { className: string }) {

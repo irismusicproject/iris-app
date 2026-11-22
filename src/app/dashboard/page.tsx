@@ -92,6 +92,9 @@ export default async function Dashboard({
             <li>
               <Link href="/admin/notifications" className={link}>Outbox</Link>: every reminder and notice the app sends
             </li>
+            <li>
+              <Link href="/admin/import" className={link}>Import</Link>: set up people, programs and schedules from a spreadsheet, without inviting anyone
+            </li>
           </ul>
         </>
       )}
