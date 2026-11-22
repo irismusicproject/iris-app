@@ -17,23 +17,21 @@ export default async function EditPersonPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ merged?: string }>;
+  searchParams: Promise<{ merged?: string; note?: string }>;
 }) {
   const viewer = await requireAdmin();
   const { id } = await params;
-  const { merged } = await searchParams;
+  const { merged, note } = await searchParams;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
 
   const supabase = await createClient();
   const { data: person } = await supabase.from("person").select("*").eq("id", id).maybeSingle<Person>();
   if (!person) notFound();
-  // v0.32: the email can be changed only before they've ever signed in.
+  // v0.32: admins change the email anytime; the screen says what happens if they've signed in.
   const { data: account } = await createAdminClient().auth.admin.getUserById(person.id);
-  const neverSignedIn = !!account?.user && !account.user.last_sign_in_at;
-  // v0.33: a duplicate who has never signed in can be merged into someone else.
-  const { data: others } = neverSignedIn
-    ? await supabase.from("person").select("id, name, email").eq("active", true).neq("id", person.id).order("name")
-    : { data: [] };
+  const signedIn = !!account?.user?.last_sign_in_at;
+  // v0.33: any two people can be merged into one.
+  const { data: others } = await supabase.from("person").select("id, name, email").neq("id", person.id).order("name");
 
   return (
     <AppShell isAdmin={viewer.isAdmin}>
@@ -43,21 +41,21 @@ export default async function EditPersonPage({
         {!person.active && <span className="ml-3 align-middle text-sm font-normal text-muted">Deactivated</span>}
       </h1>
       {merged && (
-        <p role="status" className="mt-4 rounded-lg bg-iris-soft p-3 text-sm">Merged. Everything from the duplicate is now with {person.name}.</p>
+        <p role="status" className="mt-4 rounded-lg bg-iris-soft p-3 text-sm">Merged. Everything from the other record is now with {person.name}.{note ? ` Still to do: ${note}.` : ""}</p>
       )}
       {person.active && (
         <div className="mt-4">
           <InviteButton id={person.id} email={person.email} invitedAt={person.invited_at} />
         </div>
       )}
-      {person.active && neverSignedIn && (
+      {person.active && (
         <div className="mt-3">
-          <ChangeEmail id={person.id} email={person.email} />
+          <ChangeEmail id={person.id} email={person.email} signedIn={signedIn} />
         </div>
       )}
-      {neverSignedIn && person.id !== viewer.person.id && (
+      {person.active && (
         <div className="mt-3">
-          <MergePerson id={person.id} name={person.name} others={others ?? []} />
+          <MergePerson id={person.id} name={person.name} email={person.email} others={(others ?? []).filter((o) => o.id !== viewer.person.id)} isSelf={person.id === viewer.person.id} />
         </div>
       )}
       <div className="mt-6">

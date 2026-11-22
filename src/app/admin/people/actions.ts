@@ -6,7 +6,9 @@ import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendWelcomeEmail } from "@/lib/welcome-email";
 import { createClient } from "@/lib/supabase/server";
-import { confirmUrl } from "@/lib/site-url";
+import { confirmUrl, siteUrl } from "@/lib/site-url";
+import { canSendEmail, sendEmail } from "@/lib/notify";
+import { isEmail, normalizeEmail } from "@/shared/domain/email";
 import { validateAdminEdit, validateNewPerson } from "@/shared/domain/person";
 
 export type PersonFormState = {
@@ -149,29 +151,28 @@ export async function setActive(
 }
 
 /**
- * Change the sign-in email of someone who has never signed in (v0.32), e.g. a
- * typo before the invite goes out. The database refuses it once they've
- * signed in (person_guard_update). If an invite already went to the old
- * address, that link stops working and the person shows "Not invited yet".
+ * Change someone's sign-in email (v0.32): a typo from the import, or a new
+ * address they asked for. The new address is typed twice. If they've already
+ * signed in, their password stays and a notice goes to the old and new
+ * address. A link already sent to the old address stops working.
  */
-export async function changeEmail(id: string, rawEmail: string): Promise<PersonFormState> {
+export async function changeEmail(id: string, rawEmail: string, rawConfirm: string): Promise<PersonFormState> {
   await requireAdmin();
-  const email = rawEmail.trim().toLowerCase();
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { status: "error", message: "That isn't an email address." };
+  const email = normalizeEmail(rawEmail);
+  if (!isEmail(email)) return { status: "error", message: "That isn't an email address." };
+  if (normalizeEmail(rawConfirm) !== email) return { status: "error", message: "The two emails don't match. Type it again in both boxes." };
 
   const supabase = await createClient();
-  const { data: person } = await supabase.from("person").select("email, invited_at").eq("id", id).maybeSingle();
+  const { data: person } = await supabase.from("person").select("email, name, invited_at").eq("id", id).maybeSingle();
   if (!person) return { status: "error", message: "That person wasn't found." };
   if (person.email === email) return { status: "idle", message: "That's already their email." };
   const { data: taken } = await supabase.from("person").select("id").eq("email", email).maybeSingle();
-  if (taken) return { status: "error", message: "Someone else in the app already uses that email." };
+  if (taken) return { status: "error", message: "Someone else in the app already uses that email. If it's the same person, use Merge instead." };
 
   const admin = createAdminClient();
   const { data: account } = await admin.auth.admin.getUserById(id);
   if (!account?.user) return { status: "error", message: "Their sign-in account wasn't found. Ask Ryan." };
-  if (account.user.last_sign_in_at) {
-    return { status: "error", message: "They've already signed in, so their email can't be changed here. They can ask Ryan." };
-  }
+  const signedInBefore = !!account.user.last_sign_in_at;
 
   // 1. The sign-in account.
   const { error: authError } = await admin.auth.admin.updateUserById(id, { email, email_confirm: true });
@@ -182,40 +183,122 @@ export async function changeEmail(id: string, rawEmail: string): Promise<PersonF
       message: authError.code === "email_exists" ? "That email already has a sign-in account. Ask Ryan." : "We couldn't change it. Please try again.",
     };
   }
-  // 2. The person record (server key; the database checks they've never signed in).
-  const { error } = await admin.from("person").update({ email, invited_at: null }).eq("id", id);
+  // 2. The person record (server key; the database refuses email changes from the browser).
+  //    Someone not yet signed in shows "Not invited yet" again, so the invite goes to the new address.
+  const { error } = await admin.from("person").update(signedInBefore ? { email } : { email, invited_at: null }).eq("id", id);
   if (error) {
     await admin.auth.admin.updateUserById(id, { email: person.email, email_confirm: true }); // undo step 1
     console.error("change email (person) failed:", error.code, error.message);
-    return { status: "error", message: error.code === "42501" ? "They've already signed in, so their email can't be changed here." : dbMessage(error) };
+    return { status: "error", message: dbMessage(error) };
   }
   // 3. A link already sent to the old address stops working: making a new
   //    one (not sent anywhere) replaces the old one.
-  if (person.invited_at) await admin.auth.admin.generateLink({ type: "recovery", email });
+  await admin.auth.admin.generateLink({ type: "recovery", email });
+  // 4. Someone who already uses the app hears about it at both addresses.
+  if (signedInBefore && canSendEmail()) {
+    const first = person.name.trim().split(/\s+/)[0] || "there";
+    const text =
+      `Hi ${first},\n\nThe email you use to sign in to the Iris Music Project app was changed by an Iris admin ` +
+      `from ${person.email} to ${email}. Your password hasn't changed.\n\n` +
+      `If you didn't ask for this, please reply to Iris staff right away.\n`;
+    for (const to of [person.email, email]) {
+      try {
+        await sendEmail({ to, subject: "Your Iris app sign-in email was changed", text });
+      } catch (e) {
+        console.error("email change notice failed:", e instanceof Error ? e.message : e);
+      }
+    }
+  }
 
   revalidatePath("/admin/people");
   revalidatePath(`/admin/people/${id}`);
-  return { status: "idle", message: `Email changed to ${email}.${person.invited_at ? " The earlier invite no longer works; send a new one." : ""}` };
+  return {
+    status: "idle",
+    message: signedInBefore
+      ? `Email changed to ${email}. They sign in with it from now on, with the same password${canSendEmail() ? "; a notice went to both addresses" : ""}.`
+      : `Email changed to ${email}.${person.invited_at ? " The earlier invite no longer works; send a new one." : ""}`,
+  };
 }
 
 /**
- * Merge a duplicate (someone who has never signed in) into another person
- * (v0.33). The database moves their roster places, roles, usual programs and
- * dates, then deletes the record; here we delete their sign-in account.
+ * Merge two people into one (v0.33): everything from `fromId` moves to
+ * `intoId` (the database checks and moves it all), then `fromId`'s sign-in
+ * account is deleted. The kept person signs in with the email the admin picks.
+ * If either had signed in, both old passwords stop working and the kept person
+ * is emailed a link to set a new one.
  */
-export async function mergePerson(fromId: string, intoId: string): Promise<PersonFormState> {
-  await requireAdmin();
+export async function mergePerson(fromId: string, intoId: string, keepEmailOf: "from" | "into"): Promise<PersonFormState> {
+  const viewer = await requireAdmin();
   const supabase = await createClient();
-  const { data: into } = await supabase.from("person").select("name").eq("id", intoId).maybeSingle();
-  if (!into) return { status: "error", message: "Choose the person to keep." };
-  const { error } = await supabase.rpc("merge_person", { p_from: fromId, p_into: intoId });
+  const { data: people } = await supabase.from("person").select("id, name, email").in("id", [fromId, intoId]);
+  const from = people?.find((p) => p.id === fromId);
+  const into = people?.find((p) => p.id === intoId);
+  if (!from || !into) return { status: "error", message: "Choose the person to merge in." };
+
+  const admin = createAdminClient();
+  const [{ data: fromAcct }, { data: intoAcct }] = await Promise.all([admin.auth.admin.getUserById(fromId), admin.auth.admin.getUserById(intoId)]);
+  const email = keepEmailOf === "from" ? from.email : into.email;
+  const eitherSignedIn = !!fromAcct?.user?.last_sign_in_at || !!intoAcct?.user?.last_sign_in_at;
+
+  // 1. The data (all or nothing, in the database).
+  const { error } = await supabase.rpc("merge_person", { p_from: fromId, p_into: intoId, p_end_sessions: eitherSignedIn });
   if (error) {
     console.error("merge_person failed:", error.code, error.message);
     const friendly = ["42501", "22023", "23514"].includes(error.code ?? "");
     return { status: "error", message: friendly ? `${error.message.charAt(0).toUpperCase()}${error.message.slice(1)}.` : "We couldn't merge them. Please try again." };
   }
-  const { error: authError } = await createAdminClient().auth.admin.deleteUser(fromId);
-  if (authError) console.error("merge: delete sign-in account failed:", authError.code, authError.message);
+  // 2. The merged-away sign-in account (frees its email).
+  const { error: delError } = await admin.auth.admin.deleteUser(fromId);
+  if (delError) console.error("merge: delete sign-in account failed:", delError.code, delError.message);
+
+  const problems: string[] = [];
+  // 3. The email to keep.
+  if (email !== into.email) {
+    const { error: e1 } = await admin.auth.admin.updateUserById(intoId, { email, email_confirm: true });
+    const { error: e2 } = e1 ? { error: e1 } : await admin.from("person").update({ email }).eq("id", intoId);
+    if (e1 || e2) {
+      console.error("merge: set email failed:", (e1 ?? e2)?.message);
+      problems.push(`their email is still ${into.email}; use Change email to set ${email}`);
+    }
+  }
+  // 4. If either had signed in: new password for the kept account, and a link to set it.
+  if (eitherSignedIn) {
+    const { error: pwError } = await admin.auth.admin.updateUserById(intoId, { password: crypto.randomUUID() + crypto.randomUUID() });
+    if (pwError) console.error("merge: password reset failed:", pwError.message);
+    try {
+      await sendPasswordAfterMerge({ email, name: into.name });
+      await admin.from("person").update({ invited_at: new Date().toISOString() }).eq("id", intoId);
+    } catch (e) {
+      console.error("merge: new-password email failed:", e instanceof Error ? e.message : e);
+      problems.push("the email to set a new password didn't go out; use Send the invite again");
+    }
+  }
+
   revalidatePath("/admin/people");
-  redirect(`/admin/people/${intoId}?merged=1`);
+  if (intoId === viewer.person.id && eitherSignedIn) redirect("/login?merged=1");
+  redirect(`/admin/people/${intoId}?merged=1${problems.length ? `&note=${encodeURIComponent(problems.join("; "))}` : ""}`);
+}
+
+/** "Set a new password" after a merge: welcome-style link, or Supabase's reset email without an email service. */
+async function sendPasswordAfterMerge(person: { email: string; name: string }) {
+  const admin = createAdminClient();
+  const next = "/account/password";
+  if (!canSendEmail()) {
+    const { error } = await admin.auth.resetPasswordForEmail(person.email, { redirectTo: confirmUrl(next) });
+    if (error) throw new Error(error.message);
+    return;
+  }
+  const { data, error } = await admin.auth.admin.generateLink({ type: "recovery", email: person.email });
+  const token = data?.properties?.hashed_token;
+  if (error || !token) throw new Error(error?.message ?? "no link returned");
+  const link = `${siteUrl()}/auth/confirm?token_hash=${encodeURIComponent(token)}&type=recovery&next=${encodeURIComponent(next)}`;
+  const first = person.name.trim().split(/\s+/)[0] || "there";
+  await sendEmail({
+    to: person.email,
+    subject: "Set a new password for the Iris app",
+    text:
+      `Hi ${first},\n\nAn Iris admin combined your two Iris app accounts into one. You now sign in with ${person.email}.\n\n` +
+      `Please choose a new password here (the link works once):\n${link}\n\n` +
+      `If you didn't expect this, please reply to Iris staff right away.\n`,
+  });
 }

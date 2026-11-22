@@ -1,11 +1,11 @@
--- v0.32 (Lauren, Nov 22, 2026): admins may change the email of someone who
--- has never signed in, e.g. a typo in the import, before the invite goes out.
--- Once a person has signed in, their email stays locked here.
+-- v0.32 (Lauren, Nov 22, 2026): admins may change anyone's email (a typo in
+-- the import, or someone asking for a new address), before or after they've
+-- signed in. If they've signed in, a notice goes to the old and new address.
 --
 -- The change goes through the server (Admin → People → Change email), which
 -- updates the sign-in account first and then this row with the service key.
 -- So the rule here is: email changes only without a signed-in caller (the
--- server's admin task), and only while auth.users shows no sign-in yet.
+-- server's admin task); nobody changes an email straight from the browser.
 
 create or replace function public.person_guard_update()
 returns trigger
@@ -21,10 +21,6 @@ begin
   if new.email is distinct from old.email then
     if (select auth.uid()) is not null then
       raise exception 'change an email with Change email on the person''s page'
-        using errcode = '42501';
-    end if;
-    if exists (select 1 from auth.users u where u.id = old.id and u.last_sign_in_at is not null) then
-      raise exception 'this person has already signed in, so their email can''t be changed here'
         using errcode = '42501';
     end if;
   end if;

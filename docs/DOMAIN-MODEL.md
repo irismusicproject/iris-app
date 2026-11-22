@@ -1,6 +1,6 @@
 # Iris App — Domain Model (Language 1: the code)
 
-_Draft v0.33, November 22, 2026 (v0.33: admins merge a duplicate person who has never signed in into another. v0.32: admins change the email of someone who has never signed in. v0.31: a point person who also plays in their program may approve their own hours. v0.30: admins add people without inviting them, and set up people, buildings, programs, rosters and weekly programs from one spreadsheet. v0.29: approved weeks are final; approval waits until the week's programs are documented. v0.28: answers to Ryan's nine scheduling questions; permissions table brought up to date. v0.27: roster musicians' phone and instruments shown to the program's people. v0.26: community contacts per building built; staff phone and email on program pages and a staff directory on Home; links on Home. v0.25: answers to the schema review: subs, leaders, locked after review, history after a season. v0.24: shared relationship-building logs; the documented building; pay only for documented hours; deadline reminders and No Program emails through one outbox; Follow-up page with missing work and metrics; staff roles. v0.23: overhead switched on or off on the contract; stipend lines can be left off each month; custom invoices typed by hand. v0.22: community invoices built; billable hours are now per musician and count once the point person approves the week (revises D9); drafts live, sent invoices frozen; admins only. v0.21: less double entry for musicians: usual type per program, usual relationship-building lengths, "Same as last time", one "Submit my week"; detailed one-to-one notes and a daily Word document per site. v0.20: program length set once by the point person or an admin; leaders change it only if a session ran longer or shorter. v0.19: musician hours and invoices built: hours entered on My week, the point person approves, admins set rates and stipends, invoices per two-week pay period; "Collab?" is Yes/No and every Yes counts as co-led; the collaboration target is set per season by the point person or an admin. v0.18: roles narrowed: the point person plans, the Admin Lead publishes and updates published dates, musicians edit drafts they play in and pick leaders; monthly programs. v0.17: "No Program" dates can be restored. v0.16: season view for the point person. v0.15: usual leaders, season reminders, private calendar links. v0.14: documentation from the CESLC workbook sample, weekly; musicians write draft notes; schedule laid out like the workbook tab. v0.13: people in a program can see each other's names, nothing else. v0.12: every roster musician edits draft titles, rooms and musicians; the point person assigns leaders. v0.11: `Partner`, `Site`, `Location` built; see section 1. v0.10: scheduled relationship building (e.g. Lessons) and the partner calendar layout; v0.9: partner permission for resident names confirmed; v0.8: decisions D14 and D15 settled: residents and attendance; v0.7: decisions D10, D11 and D16 settled: events, extras, absences, substitutes and the roster; v0.6: both D9 billing details confirmed; v0.5: decisions D9 and D13 settled: partner billing and version 1 scope; v0.4: decisions D2, D4, D6, D7 and D8 settled; v0.3: decisions D1, D3 and D5 settled, including how a month's schedule is reviewed, published and sent; v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
+_Draft v0.33, November 22, 2026 (v0.33: admins merge two people into one. v0.32: admins change anyone's email, with safeguards against typos. v0.31: a point person who also plays in their program may approve their own hours. v0.30: admins add people without inviting them, and set up people, buildings, programs, rosters and weekly programs from one spreadsheet. v0.29: approved weeks are final; approval waits until the week's programs are documented. v0.28: answers to Ryan's nine scheduling questions; permissions table brought up to date. v0.27: roster musicians' phone and instruments shown to the program's people. v0.26: community contacts per building built; staff phone and email on program pages and a staff directory on Home; links on Home. v0.25: answers to the schema review: subs, leaders, locked after review, history after a season. v0.24: shared relationship-building logs; the documented building; pay only for documented hours; deadline reminders and No Program emails through one outbox; Follow-up page with missing work and metrics; staff roles. v0.23: overhead switched on or off on the contract; stipend lines can be left off each month; custom invoices typed by hand. v0.22: community invoices built; billable hours are now per musician and count once the point person approves the week (revises D9); drafts live, sent invoices frozen; admins only. v0.21: less double entry for musicians: usual type per program, usual relationship-building lengths, "Same as last time", one "Submit my week"; detailed one-to-one notes and a daily Word document per site. v0.20: program length set once by the point person or an admin; leaders change it only if a session ran longer or shorter. v0.19: musician hours and invoices built: hours entered on My week, the point person approves, admins set rates and stipends, invoices per two-week pay period; "Collab?" is Yes/No and every Yes counts as co-led; the collaboration target is set per season by the point person or an admin. v0.18: roles narrowed: the point person plans, the Admin Lead publishes and updates published dates, musicians edit drafts they play in and pick leaders; monthly programs. v0.17: "No Program" dates can be restored. v0.16: season view for the point person. v0.15: usual leaders, season reminders, private calendar links. v0.14: documentation from the CESLC workbook sample, weekly; musicians write draft notes; schedule laid out like the workbook tab. v0.13: people in a program can see each other's names, nothing else. v0.12: every roster musician edits draft titles, rooms and musicians; the point person assigns leaders. v0.11: `Partner`, `Site`, `Location` built; see section 1. v0.10: scheduled relationship building (e.g. Lessons) and the partner calendar layout; v0.9: partner permission for resident names confirmed; v0.8: decisions D14 and D15 settled: residents and attendance; v0.7: decisions D10, D11 and D16 settled: events, extras, absences, substitutes and the roster; v0.6: both D9 billing details confirmed; v0.5: decisions D9 and D13 settled: partner billing and version 1 scope; v0.4: decisions D2, D4, D6, D7 and D8 settled; v0.3: decisions D1, D3 and D5 settled, including how a month's schedule is reviewed, published and sent; v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
 app's objects. GLOSSARY.md translates the team's language (Language 2) and
 our partner-facing language (Language 3) into these objects._
 
@@ -222,22 +222,31 @@ Anyone who signs in: musicians, staff, volunteers. One record per human.
 - People are **deactivated, never deleted**. Deactivating blocks sign-in and hides all data from that person at once (R9.5).
 - A person may change only their own `phone` and `instruments`. Everything else is admin-only.
 - `email` is the sign-in identity. **v0.32 (Lauren, Nov 22, 2026):** an admin
-  can change it only while the person has **never signed in** (e.g. a typo in
-  the import, before the invite). It changes the sign-in account and the
-  record together; an invite already sent to the old address stops working
-  and `invited_at` is cleared. After their first sign-in it's locked in the
-  app (the database refuses it).
-- **Merging duplicates (v0.33, Lauren, Nov 22, 2026):** an admin can merge a
-  person who has **never signed in** (e.g. a duplicate from the import) into
-  another active person. Their roster places, staff roles (point person),
-  usual leader and usual musicians, and date assignments move to the kept
-  person; if both are on the same roster or date, the kept person's entry
-  stays (Admin Lead and leader carry over). If the duplicate has any pay
-  rate, hours, documentation, relationship-building logs, reflections,
-  residents they added or published calendars, the merge stops and says so.
-  Afterwards the duplicate's record and sign-in account are **deleted**
-  (Lauren's choice; an exception to "retired, never deleted", since nothing
-  else refers to them). All or nothing.
+  can change it at any time (a typo in the import, or someone asking for a new
+  address), with **Change email** on the person's page. Safeguards against
+  typos: the new address is typed twice (no pasting into the second box),
+  likely domain typos are flagged ("did you mean …@gmail.com?"), and the
+  change is confirmed with the old and new address side by side. It changes
+  the sign-in account and the record together; any link already sent to the
+  old address stops working. Not signed in yet: `invited_at` is cleared so the
+  invite goes to the new address. Already signed in: same password, and a
+  notice goes to both addresses. Nobody changes an email straight from the
+  browser; the database refuses it.
+- **Merging two people (v0.33, Lauren, Nov 22, 2026):** for when the same
+  person has two records (a wrong email in the import, or a new address set up
+  as a new person). Admins only, on the kept person's page. Everything from
+  the other record moves to the kept one: roster places, staff roles (point
+  person), usual programs, dates, documentation, relationship building,
+  residents they added, hours, pay rates, reflections and calendars. Empty
+  details are filled from the other record; instruments and roles are
+  combined. The admin picks which **email** the person signs in with. If
+  either had signed in before, both old passwords stop working, they're
+  signed out, and a link to set a new password goes to the kept email. Both
+  having hours for the same week, a pay rate for the same season or a
+  reflection for the same month should never happen; if it does, the merge
+  stops and says where. The other record and its sign-in account are
+  **deleted** (Lauren's choice; an exception to "retired, never deleted").
+  An admin can't merge themselves away. All or nothing.
 - An admin can't remove their own `admin` role or deactivate themselves, so Iris can't be locked out by accident.
 
 ### `RosterMember`

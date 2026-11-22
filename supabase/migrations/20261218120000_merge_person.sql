@@ -1,24 +1,29 @@
--- v0.33 (Lauren, Nov 22, 2026): merge a duplicate person into another.
+-- v0.33 (Lauren, Nov 22, 2026): merge two people into one.
 --
--- Rules (Lauren): admins only; the person merged away must never have
--- signed in (e.g. a duplicate from the import); if they have any pay, hours,
--- documentation or resident records the merge stops and says what's in the
--- way; afterwards their record is deleted (the server then deletes their
--- sign-in account).
+-- For when the same person ended up with two records, e.g. a wrong email in
+-- the import, or a new address set up as a new person. Admins only. The kept
+-- record ends up with everything from both: roster places, staff roles
+-- (point person), usual programs, dates, documentation, relationship
+-- building, hours, pay rates, reflections and calendars. The other record is
+-- deleted (the server then deletes its sign-in account and, if needed, sets
+-- the email and sends a "set a new password" email).
 --
--- Moves: roster places, point person / staff roles, usual leader and usual
--- musicians, assignments on dates (incl. "substitute for"). Removes their
--- calendar feed and notifications. All or nothing (one transaction).
+-- It should never happen that both have hours for the same week, a pay rate
+-- for the same season or a reflection for the same month; if it does, the
+-- merge stops and says where, so an admin can sort it out first.
+-- All or nothing (one transaction).
 
-create function public.merge_person(p_from uuid, p_into uuid)
+create function public.merge_person(p_from uuid, p_into uuid, p_end_sessions boolean default false)
 returns void
 language plpgsql security definer set search_path = ''
 as $$
 declare
+  f public.person;
   rm record;
   a record;
+  t public.time_entry;
   kept uuid;
-  blockers text[] := '{}';
+  clash text;
 begin
   if not public.is_admin() then
     raise exception 'only admins can merge people' using errcode = '42501';
@@ -27,32 +32,39 @@ begin
     raise exception 'choose two different people' using errcode = '22023';
   end if;
   if p_from = (select auth.uid()) then
-    raise exception 'you can''t merge yourself away' using errcode = '42501';
+    raise exception 'you can''t merge yourself away; open your own page and merge the other record into it' using errcode = '42501';
   end if;
-  if not exists (select 1 from public.person where id = p_into and active) then
-    raise exception 'the person to keep must be active' using errcode = '22023';
-  end if;
-  if not exists (select 1 from public.person where id = p_from) then
+  select * into f from public.person where id = p_from;
+  if f.id is null or not exists (select 1 from public.person where id = p_into) then
     raise exception 'that person wasn''t found' using errcode = '22023';
   end if;
-  if exists (select 1 from auth.users where id = p_from and last_sign_in_at is not null) then
-    raise exception 'they''ve already signed in, so they can''t be merged away' using errcode = '42501';
+
+  -- Overlaps that would mean double pay or two answers: stop and say where.
+  select string_agg(distinct r.name || ' (' || s.name || ')', ', ') into clash
+    from public.contract c1 join public.contract c2 on c2.season_id = c1.season_id and c2.person_id = p_into
+    join public.season s on s.id = c1.season_id join public.residency r on r.id = s.residency_id
+    where c1.person_id = p_from;
+  if clash is not null then
+    raise exception 'both have a pay rate for %; remove one first', clash using errcode = '23514';
+  end if;
+  select string_agg(distinct r.name || ', week of ' || to_char(t1.week_starting, 'Mon FMDD'), '; ') into clash
+    from public.time_entry t1 join public.time_entry t2 on t2.person_id = p_into and t2.residency_id = t1.residency_id
+      and t2.week_starting = t1.week_starting and t2.time_category_id = t1.time_category_id
+    join public.residency r on r.id = t1.residency_id
+    where t1.person_id = p_from;
+  if clash is not null then
+    raise exception 'both have hours for %; sort those weeks out first', clash using errcode = '23514';
+  end if;
+  select string_agg(distinct r.name || ', ' || to_char(m1.month, 'Mon YYYY'), '; ') into clash
+    from public.monthly_reflection m1 join public.monthly_reflection m2 on m2.person_id = p_into
+      and m2.residency_id = m1.residency_id and m2.month = m1.month
+    join public.residency r on r.id = m1.residency_id
+    where m1.person_id = p_from;
+  if clash is not null then
+    raise exception 'both have a monthly reflection for %; remove one first', clash using errcode = '23514';
   end if;
 
-  -- Stop if they have pay, hours, documentation or resident records.
-  if exists (select 1 from public.contract where person_id = p_from) then blockers := blockers || 'a pay rate (contract)'; end if;
-  if exists (select 1 from public.time_entry where person_id = p_from or approved_by = p_from) then blockers := blockers || 'hours'; end if;
-  if exists (select 1 from public.session_report where author_id = p_from) then blockers := blockers || 'documentation'; end if;
-  if exists (select 1 from public.relationship_activity where person_id = p_from)
-     or exists (select 1 from public.relationship_activity_musician where person_id = p_from) then blockers := blockers || 'relationship-building logs'; end if;
-  if exists (select 1 from public.monthly_reflection where person_id = p_from) then blockers := blockers || 'monthly reflections'; end if;
-  if exists (select 1 from public.resident where created_by = p_from) then blockers := blockers || 'residents they added'; end if;
-  if exists (select 1 from public.calendar_export where generated_by = p_from or reviewed_by = p_from) then blockers := blockers || 'published calendars'; end if;
-  if array_length(blockers, 1) > 0 then
-    raise exception 'they have % in the app, so they can''t be merged', array_to_string(blockers, ', ') using errcode = '23514';
-  end if;
-
-  -- 1. Roster places: add the kept person where missing (same dates and flags).
+  -- 1. Roster places (the guard forbids changing person_id, so add rows).
   for rm in select * from public.roster_member where person_id = p_from loop
     select id into kept from public.roster_member where season_id = rm.season_id and person_id = p_into;
     if kept is null then
@@ -100,13 +112,57 @@ begin
     end if;
   end loop;
 
-  -- 5. What's left of them, then the record itself.
+  -- 5. Documentation and relationship building.
+  update public.session_report set author_id = p_into where author_id = p_from;
+  -- A log one of them wrote that credits the other: the writer is credited already.
+  delete from public.relationship_activity_musician m using public.relationship_activity r
+    where m.activity_id = r.id and ((m.person_id = p_into and r.person_id = p_from) or (m.person_id = p_from and r.person_id = p_into));
+  update public.relationship_activity set person_id = p_into where person_id = p_from;
+  delete from public.relationship_activity_musician m
+    where m.person_id = p_from and exists (select 1 from public.relationship_activity_musician x where x.activity_id = m.activity_id and x.person_id = p_into);
+  update public.relationship_activity_musician set person_id = p_into where person_id = p_from;
+  update public.resident set created_by = p_into where created_by = p_from;
+  update public.monthly_reflection set person_id = p_into where person_id = p_from;
+
+  -- 6. Hours (the guard forbids changing person_id, so re-add each entry) and pay.
+  update public.time_entry set approved_by = p_into where approved_by = p_from;
+  for t in select * from public.time_entry where person_id = p_from loop
+    delete from public.time_entry where id = t.id;
+    t.person_id := p_into;
+    insert into public.time_entry select t.*;
+  end loop;
+  update public.contract set person_id = p_into where person_id = p_from;
+
+  -- 7. Calendars and notifications.
+  update public.calendar_export set generated_by = p_into where generated_by = p_from;
+  update public.calendar_export set reviewed_by = p_into where reviewed_by = p_from;
+  if exists (select 1 from public.calendar_feed where person_id = p_into) then
+    delete from public.calendar_feed where person_id = p_from;
+  else
+    update public.calendar_feed set person_id = p_into where person_id = p_from;
+  end if;
+  update public.notification set person_id = p_into where person_id = p_from;
+
+  -- 8. The kept record: fill its empty details from the other, combine
+  --    instruments and roles, then delete the other record.
   delete from public.roster_member where person_id = p_from;
-  delete from public.calendar_feed where person_id = p_from;
-  delete from public.notification where person_id = p_from;
   delete from public.person where id = p_from;
+  update public.person p set
+    phone = coalesce(p.phone, f.phone),
+    job_title = coalesce(p.job_title, f.job_title),
+    certified_on = coalesce(p.certified_on, f.certified_on),
+    instruments = array(select distinct unnest(p.instruments || f.instruments)),
+    system_roles = array(select distinct unnest(p.system_roles || f.system_roles)),
+    invited_at = greatest(p.invited_at, f.invited_at),
+    active = p.active or f.active
+  where p.id = p_into;
+
+  -- 9. Sign everyone out of the kept account when its password is being reset.
+  if p_end_sessions then
+    delete from auth.sessions where user_id = p_into;
+  end if;
 end;
 $$;
 
-revoke all on function public.merge_person(uuid, uuid) from public, anon;
-grant execute on function public.merge_person(uuid, uuid) to authenticated;
+revoke all on function public.merge_person(uuid, uuid, boolean) from public, anon;
+grant execute on function public.merge_person(uuid, uuid, boolean) to authenticated;

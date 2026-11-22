@@ -1,43 +1,80 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { ConfirmButton } from "@/components/confirm-button";
 import { inputClass } from "@/components/auth-card";
 import { mergePerson } from "./actions";
 
-/** Merge a duplicate who has never signed in into another person (v0.33). */
-export function MergePerson({ id, name, others }: { id: string; name: string; others: { id: string; name: string; email: string }[] }) {
-  const [into, setInto] = useState("");
+type Other = { id: string; name: string; email: string };
+
+/**
+ * Merge another record of the same person into this one (v0.33). Everything
+ * from both ends up here; the admin picks which email they sign in with.
+ */
+export function MergePerson({ id, name, email, others, isSelf }: { id: string; name: string; email: string; others: Other[]; isSelf: boolean }) {
+  const [fromId, setFromId] = useState("");
+  const [keep, setKeep] = useState<"into" | "from">("into");
+  const [confirming, setConfirming] = useState(false);
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
-  const keep = others.find((o) => o.id === into);
+  const from = others.find((o) => o.id === fromId);
+  const keptEmail = keep === "from" && from ? from.email : email;
+
   return (
     <details className="rounded-lg border border-border p-3 text-sm">
-      <summary className="cursor-pointer font-medium">Merge into another person</summary>
-      <div className="mt-3 flex flex-col gap-2">
+      <summary className="cursor-pointer font-medium">Merge another record into {name}</summary>
+      <div className="mt-3 flex flex-col gap-3">
         <p className="text-xs text-muted">
-          For duplicates, e.g. from the import. Their roster places, point-person roles, usual programs and dates move to the person you keep. Then {name} is deleted, with their sign-in. Only for people who have never signed in, with no hours, pay or documentation.
+          For when the same person has two records, e.g. a wrong email in the import, or a new address set up as a new person.
+          Everything from the other record moves here: programs and roles, dates, documentation, relationship building, hours and pay.
+          Then the other record is deleted.
         </p>
         <label className="flex flex-col gap-1">
-          <span>Keep</span>
-          <select value={into} onChange={(e) => { setInto(e.target.value); setMsg(null); }} aria-label="Person to keep" className={inputClass}>
+          <span>Other record</span>
+          <select value={fromId} onChange={(e) => { setFromId(e.target.value); setKeep("into"); setConfirming(false); setMsg(null); }} aria-label="Other record" className={inputClass}>
             <option value="">Choose a person...</option>
             {others.map((o) => <option key={o.id} value={o.id}>{o.name} ({o.email})</option>)}
           </select>
         </label>
-        <ConfirmButton
-          disabled={pending || !keep}
-          className="self-start rounded-full border border-border px-3 py-1 text-xs hover:bg-iris-soft disabled:opacity-60"
-          label={pending ? "Merging..." : "Merge"}
-          question={keep ? `Move everything of ${name} to ${keep.name}, then delete ${name}? This can't be undone.` : ""}
-          confirmLabel="Yes, merge"
-          onConfirm={() =>
-            start(async () => {
-              const r = await mergePerson(id, into);
-              if (r?.message) setMsg(r.message);
-            })
-          }
-        />
+        {from && (
+          <fieldset className="flex flex-col gap-1">
+            <legend className="mb-1">Sign-in email to keep</legend>
+            <label className="flex items-center gap-2"><input type="radio" name="keep" checked={keep === "into"} onChange={() => setKeep("into")} /> {email}</label>
+            <label className="flex items-center gap-2"><input type="radio" name="keep" checked={keep === "from"} onChange={() => setKeep("from")} /> {from.email}</label>
+          </fieldset>
+        )}
+        {from && !confirming && (
+          <button type="button" onClick={() => setConfirming(true)} className="self-start rounded-full border border-border px-3 py-1 text-xs hover:bg-iris-soft">
+            Continue
+          </button>
+        )}
+        {from && confirming && (
+          <div className="flex flex-col gap-2 rounded-lg bg-iris-soft p-3">
+            <p>
+              Move everything from <span className="font-medium">{from.name} ({from.email})</span> to <span className="font-medium">{name}</span>,
+              then delete that record? They&apos;ll sign in with <span className="font-medium">{keptEmail}</span>.
+            </p>
+            <p className="text-xs">
+              If either has signed in before, both old passwords stop working and a link to set a new one goes to {keptEmail}.
+              {isSelf && " That includes you: you'll be signed out and get that email."} This can&apos;t be undone.
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() =>
+                  start(async () => {
+                    const r = await mergePerson(from.id, id, keep);
+                    if (r?.message) { setMsg(r.message); setConfirming(false); }
+                  })
+                }
+                className="rounded-full border border-border bg-surface px-3 py-1 text-xs disabled:opacity-60"
+              >
+                {pending ? "Merging..." : "Yes, merge"}
+              </button>
+              <button type="button" disabled={pending} onClick={() => setConfirming(false)} className="rounded-full px-3 py-1 text-xs text-muted hover:text-foreground">Back</button>
+            </div>
+          </div>
+        )}
         {msg && <p role="alert" className="text-xs text-red-700 dark:text-red-400">{msg}</p>}
       </div>
     </details>
