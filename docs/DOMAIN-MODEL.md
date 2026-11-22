@@ -635,7 +635,7 @@ hours are locked. Admins can also approve.
 A two-week, Monday–Sunday period. Attributes: `starts_on`, `ends_on`,
 `pay_date`.
 
-**Assumption (v0.19):** periods are counted every 14 days from the
+**Decided (v0.19, Lauren, Nov 22, 2026):** periods are counted every 14 days from the
 `Setting` `pay_period_anchor` (Monday, November 2, 2026), not stored as rows.
 `pay_date` is not built yet.
 
