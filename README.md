@@ -180,6 +180,22 @@ GitHub applies migrations. **Don't paste migrations into the SQL Editor.** While
 3. **Build staging's tables.** Open **Actions → Database migrations → Run workflow**, choose **build-staging**, and run it. It applies every migration plus the fake data to staging only.
 4. **Tell the tool what production already has.** Production's first migrations were run by hand. Open **Actions → Database migrations → Run workflow**, choose **mark-applied**, and enter the versions already run on production, for example `20261121120000 20261122120000`. Approve the run. Its last step should show nothing pending.
 
+## Overnight testing
+
+Every night at 12:15 am Eastern, **Actions → Overnight test** (`.github/workflows/nightly.yml`) opens every page of the **staging** site as each test persona (signed out, admin, point person, Admin Lead, musician, substitute, deactivated), on desktop and phone. It records where each persona lands, screenshots, an accessibility scan (axe-core), browser console errors, failed requests and load times. It only opens pages; it has no database keys. Pages are found from `src/app/**/page.tsx`. The specs are in `e2e/overnight/` with their own config, `playwright.overnight.config.ts`.
+
+**The report** is a new issue, "Overnight test report <date>": a permission matrix (✅ allowed, ↪ redirected, 🚫 not found, ❌ error; ⚠ marks a non-admin on an `/admin` page or a signed-out visitor on a private page), then errors, accessibility, console and network problems, and the slowest pages. Screenshots are in the run's **overnight-results** artifact (14 days; real emails and phone numbers blacked out). An optional AI tester adds findings as a comment: see `docs/overnight-ai-tester.md`.
+
+**One-time setup (Ryan):**
+1. **Repository secrets** (Settings → Secrets and variables → Actions):
+   - `STAGING_TEST_PASSWORD`: a new password of 12+ characters for the test personas.
+   - `VERCEL_AUTOMATION_BYPASS_SECRET`: from Vercel → Settings → Deployment Protection → **Protection Bypass for Automation**.
+   - Optional `STAGING_URL`, if staging moves from https://iris-app-git-main-rhearty1-5601s-projects.vercel.app.
+2. **`staging` environment secrets:** `SUPABASE_URL` (staging's project URL) and `SUPABASE_SECRET_KEY` (a new staging secret key, e.g. `github-staging-accounts`).
+3. Run **Actions → Staging test accounts** (`scripts/staging-accounts.mjs`). It creates the `persona+<role>@example.com` accounts and links them to the first residency. Run it again after **reset-staging** or when new scheduling tables reach staging.
+
+Until the secrets exist, both workflows skip with a warning.
+
 ## Automated PR review
 
 Every pull request gets one advisory comment from Claude (`.github/workflows/claude-review.yml`). It checks the change against `CLAUDE.md` and `docs/DOMAIN-MODEL.md`: permissions on new tables, forbidden names, privacy, edited migrations, missing tests and docs. Each push updates the same comment.
