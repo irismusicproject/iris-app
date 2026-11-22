@@ -114,7 +114,7 @@ export async function setSessionTitle(residencyId: string, sessionId: string, ti
   return ok;
 }
 
-/** Internal notes ("Jiyoung off"); never print. Any roster musician on drafts (v0.14). */
+/** Internal notes ("Ben off"); never print. Any roster musician on drafts (v0.14). */
 export async function setSessionNote(residencyId: string, sessionId: string, note: string): Promise<ScheduleResult> {
   await requirePerson();
   const n = note.trim();

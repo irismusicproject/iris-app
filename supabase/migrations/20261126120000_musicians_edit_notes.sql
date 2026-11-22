@@ -1,5 +1,5 @@
 -- Every roster musician can write a draft session's internal notes, like the
--- Notes column on the workbook scheduling tabs ("Jiyoung off", "Post
+-- Notes column on the workbook scheduling tabs ("Ben off", "Post
 -- Ovation"). Notes never print. Decided by Lauren, Nov 22, 2026
 -- (DOMAIN-MODEL v0.14). Replaces session_guard() from the scheduling
 -- migration; only the internal_note check is removed.
