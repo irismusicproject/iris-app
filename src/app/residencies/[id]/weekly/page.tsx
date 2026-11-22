@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { requirePerson } from "@/lib/auth";
-import { getResidencyAccess } from "@/lib/residency-access";
+import { getResidencyAccess, getResidencyNames } from "@/lib/residency-access";
 import { createClient } from "@/lib/supabase/server";
 import { SESSION_KIND_LABELS, WEEKDAYS, type Series } from "@/shared/domain/scheduling";
 import { SeriesForm } from "./series-form";
@@ -26,7 +26,7 @@ export default async function WeeklyPage({ params }: { params: Promise<{ id: str
   const supabase = await createClient();
   const { data: residency } = await supabase.from("residency").select("id, name").eq("id", id).maybeSingle();
   if (!residency) notFound();
-  const access = await getResidencyAccess(id, isAdmin);
+  const [access, names] = await Promise.all([getResidencyAccess(id, isAdmin), getResidencyNames(id)]);
 
   const today = new Date().toISOString().slice(0, 10);
   const [{ data: seriesRows }, { data: siteRows }, { data: seasonRows }] = await Promise.all([
@@ -36,19 +36,19 @@ export default async function WeeklyPage({ params }: { params: Promise<{ id: str
       .eq("residency_id", id)
       .order("active_from"),
     supabase.from("residency_site").select("site(display_name, location(id, display_name, active))").eq("residency_id", id),
-    supabase.from("season").select("roster_member(person_id, left_on, person:person_id(name))").eq("residency_id", id).gte("ends_on", today),
+    supabase.from("season").select("roster_member(person_id, left_on)").eq("residency_id", id).gte("ends_on", today),
   ]);
   const series = (seriesRows ?? []) as SeriesRow[];
   type SiteRow = { site: { display_name: string; location: { id: string; display_name: string; active: boolean }[] } | null };
   const rooms = ((siteRows ?? []) as unknown as SiteRow[]).flatMap((r) =>
     (r.site?.location ?? []).filter((l) => l.active).map((l) => ({ id: l.id, label: `${r.site!.display_name} · ${l.display_name}` })),
   );
-  type RosterRow = { roster_member: { person_id: string; left_on: string | null; person: { name: string } | null }[] };
+  type RosterRow = { roster_member: { person_id: string; left_on: string | null }[] };
   const musicianMap = new Map<string, string>();
   for (const s of (seasonRows ?? []) as unknown as RosterRow[])
-    for (const m of s.roster_member) if (!m.left_on || m.left_on > today) musicianMap.set(m.person_id, m.person?.name ?? "Someone");
+    for (const m of s.roster_member) if (!m.left_on || m.left_on > today) musicianMap.set(m.person_id, names.get(m.person_id) ?? "Someone");
   const musicians = [...musicianMap].map(([pid, label]) => ({ id: pid, label })).sort((a, b) => a.label.localeCompare(b.label));
-  const nameOf = (pid: string) => musicianMap.get(pid) ?? "Former roster member";
+  const nameOf = (pid: string) => names.get(pid) ?? "Someone";
 
   const card = "mt-6 rounded-xl border border-border bg-surface p-5 sm:p-6";
   return (

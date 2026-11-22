@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { requirePerson } from "@/lib/auth";
+import { getResidencyNames } from "@/lib/residency-access";
 import { createClient } from "@/lib/supabase/server";
 import {
   RESIDENCY_STATUS_LABELS,
@@ -24,9 +25,8 @@ import {
 
 export const metadata = { title: "Program · Iris Music Project" };
 
-type PersonRef = { id: string; name: string } | null;
-type SeasonRow = Season & { roster_member: (RosterMember & { person: PersonRef })[] };
-type StaffRow = StaffAssignment & { person: PersonRef };
+type SeasonRow = Season & { roster_member: RosterMember[] };
+type StaffRow = StaffAssignment;
 
 const fmt = (d: string) =>
   new Date(`${d}T12:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
@@ -45,16 +45,18 @@ export default async function ResidencyPage({ params }: { params: Promise<{ id: 
   if (!residency) notFound();
 
   const today = new Date().toISOString().slice(0, 10);
+  const names = await getResidencyNames(id);
+  const nameOf = (pid: string) => names.get(pid) ?? "Someone";
   const [{ data: siteRows }, { data: seasonRows }, { data: staffRows }] = await Promise.all([
     supabase.from("residency_site").select("site(id, display_name, city)").eq("residency_id", id),
     supabase
       .from("season")
-      .select("*, roster_member(*, person:person_id(id, name))")
+      .select("*, roster_member(*)")
       .eq("residency_id", id)
       .order("starts_on", { ascending: false }),
     supabase
       .from("staff_assignment")
-      .select("*, person:person_id(id, name)")
+      .select("*")
       .eq("residency_id", id)
       .order("starts_on", { ascending: false }),
   ]);
@@ -106,10 +108,10 @@ export default async function ResidencyPage({ params }: { params: Promise<{ id: 
           {staff.map((s) => (
             <li key={s.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
               <span>
-                {s.person?.name ?? "Someone"}
+                {nameOf(s.person_id)}
                 <span className={badge}>{STAFF_ROLE_LABELS[s.role]}</span>
               </span>
-              {isAdmin && <EndStaffButton residencyId={id} assignmentId={s.id} name={s.person?.name ?? "this person"} />}
+              {isAdmin && <EndStaffButton residencyId={id} assignmentId={s.id} name={nameOf(s.person_id)} />}
             </li>
           ))}
           {staff.length === 0 && <li className="py-2 text-muted">No point person yet.</li>}
@@ -131,7 +133,7 @@ export default async function ResidencyPage({ params }: { params: Promise<{ id: 
           const ended = s.ends_on < today;
           const members = s.roster_member
             .filter((m) => !m.left_on || m.left_on > today)
-            .sort((a, b) => Number(b.is_admin_lead) - Number(a.is_admin_lead) || Number(b.is_core) - Number(a.is_core) || (a.person?.name ?? "").localeCompare(b.person?.name ?? ""));
+            .sort((a, b) => Number(b.is_admin_lead) - Number(a.is_admin_lead) || Number(b.is_core) - Number(a.is_core) || (nameOf(a.person_id)).localeCompare(nameOf(b.person_id)));
           return (
             <div key={s.id} className={`mt-5 ${ended ? "opacity-60" : ""}`}>
               <h3 className="font-medium">
@@ -143,7 +145,7 @@ export default async function ResidencyPage({ params }: { params: Promise<{ id: 
                 {members.map((m) => (
                   <li key={m.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
                     <span>
-                      {m.person?.name ?? "Someone"}
+                      {nameOf(m.person_id)}
                       {m.is_admin_lead && <span className={badge}>Admin lead</span>}
                       {!m.is_core && <span className={badge}>Occasional / sub</span>}
                     </span>
@@ -151,7 +153,7 @@ export default async function ResidencyPage({ params }: { params: Promise<{ id: 
                       <RosterMemberActions
                         residencyId={id}
                         memberId={m.id}
-                        name={m.person?.name ?? "this musician"}
+                        name={nameOf(m.person_id)}
                         isCore={m.is_core}
                         isAdminLead={m.is_admin_lead}
                       />

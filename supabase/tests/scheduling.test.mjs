@@ -25,9 +25,9 @@ for (const f of migrations) await db.exec(fs.readFileSync(path.join(dir, f), "ut
 // M1, M2 roster musicians; O and S active musicians not on the roster;
 // X deactivated.
 const id = (n) => `00000000-0000-0000-0000-0000000000${n}`;
-const A = id("a1"), L = id("b1"), P = id("c1"), M1 = id("d1"), M2 = id("d2"), O = id("e1"), S = id("e2"), X = id("f1");
+const A = id("a1"), L = id("b1"), P = id("c1"), M1 = id("d1"), M2 = id("d2"), O = id("e1"), S = id("e2"), X = id("f1"), Z = id("f2");
 const people = [[A,"Ada Admin","{admin}"],[L,"Lee Lead","{}"],[P,"Pat Point","{}"],[M1,"Mia One","{}"],
-  [M2,"Mo Two","{}"],[O,"Oli Outside","{}"],[S,"Sam Sub","{}"],[X,"Xan Former","{}"]];
+  [M2,"Mo Two","{}"],[O,"Oli Outside","{}"],[S,"Sam Sub","{}"],[X,"Xan Former","{}"],[Z,"Zed Elsewhere","{}"]];
 await db.exec(`insert into auth.users values ${people.map(([u,n])=>`('${u}','${n.split(" ")[0].toLowerCase()}@example.org')`).join(",")};
 insert into public.person (id,name,email,employment_type,system_roles) values
 ${people.map(([u,n,r])=>`('${u}','${n}','${n.split(" ")[0].toLowerCase()}@example.org','contractor_1099','${r}')`).join(",\n")};
@@ -186,6 +186,16 @@ r = await as(L, `select public.new_calendar_version('${RES}','${SITE}','2027-02-
 check("admin lead downloads updated calendar (v2)", r.ok, r);
 r = await as(L, `select schedule_state from public.session where id='${LATE}'`); check("new draft session published with v2", r.ok && r.rows[0]?.schedule_state === "published", r);
 r = await as(L, `select max(version)::int as v from public.calendar_export`); check("calendar now at version 2", r.ok && r.rows[0].v === 2, r);
+
+// ---- Names of the program's people (v0.13): names only, for those who can see it
+r = await as(M1, `select name from public.residency_people('${RES}')`);
+check("roster musician sees names of roster and staff", r.ok && ["Lee Lead", "Mo Two", "Pat Point", "Oli Outside"].every((n) => r.rows.some((x) => x.name === n)), r);
+r = await as(M1, `select name from public.residency_people('${RES}')`);
+check("…but not people outside the program", r.ok && !r.rows.some((x) => x.name === "Zed Elsewhere" || x.name === "Ada Admin"), r);
+r = await as(P, `select count(*)::int as n from public.residency_people('${RES}')`); check("point person sees the names too", r.ok && r.rows[0].n >= 5, r);
+r = await as(Z, `select count(*)::int as n from public.residency_people('${RES}')`); check("someone outside the program sees no names", r.ok && r.rows[0].n === 0, r);
+r = await as(M1, `select email from public.person where id='${M2}'`); check("names lookup doesn't open the person table (no email)", r.ok && r.rows.length === 0, r);
+r = await as(null, `select * from public.residency_people('${RES}')`); check("anon can't look up names", !r.ok, r);
 
 // ---- Audit and no deletes
 r = await as(A, `select count(*)::int as n from public.audit_log where table_name='session'`); check("session changes are logged", r.ok && r.rows[0].n > 0, r);

@@ -28,3 +28,14 @@ export async function getResidencyAccess(residencyId: string, isAdmin: boolean):
     isPointPerson: isAdmin || point.data === true,
   };
 }
+
+/**
+ * Names of a program's roster and staff (names only; DOMAIN-MODEL v0.13).
+ * Non-admins can't read other people's records, so pages use this instead
+ * of joining the person table.
+ */
+export async function getResidencyNames(residencyId: string): Promise<Map<string, string>> {
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("residency_people", { p_residency: residencyId });
+  return new Map(((data ?? []) as { id: string; name: string }[]).map((p) => [p.id, p.name]));
+}

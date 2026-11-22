@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { requirePerson } from "@/lib/auth";
-import { getResidencyAccess } from "@/lib/residency-access";
+import { getResidencyAccess, getResidencyNames } from "@/lib/residency-access";
 import { createClient } from "@/lib/supabase/server";
 import type { CancellationReason, SessionKind } from "@/shared/domain/scheduling";
 import { formatDay, formatMonth, formatTime, isMonth, localDateTime, monthWindow, shiftMonth } from "@/shared/domain/time";
@@ -36,7 +36,6 @@ type SessionRow = {
     person_id: string;
     role: "leader" | "participant";
     status: "assigned" | "absent" | "substitute";
-    person: { name: string } | null;
   }[];
 };
 
@@ -57,7 +56,8 @@ export default async function MonthPage({
   const supabase = await createClient();
   const { data: residency } = await supabase.from("residency").select("id, name").eq("id", id).maybeSingle();
   if (!residency) notFound();
-  const access = await getResidencyAccess(id, isAdmin);
+  const [access, names] = await Promise.all([getResidencyAccess(id, isAdmin), getResidencyNames(id)]);
+  const nameOf = (pid: string) => names.get(pid) ?? "Someone";
 
   const { data: siteRows } = await supabase
     .from("residency_site")
@@ -88,7 +88,7 @@ export default async function MonthPage({
     supabase
       .from("session")
       .select(
-        "id, series_id, kind, title, location_id, starts_at, has_set_time, is_special_event, schedule_state, cancellation_reason, public_note, location(site_id, display_name), series(title, weekdays, start_time), session_assignment(id, person_id, role, status, person:person_id(name))",
+        "id, series_id, kind, title, location_id, starts_at, has_set_time, is_special_event, schedule_state, cancellation_reason, public_note, location(site_id, display_name), series(title, weekdays, start_time), session_assignment(id, person_id, role, status)",
       )
       .eq("residency_id", id)
       .gte("starts_at", w.from)
@@ -96,7 +96,7 @@ export default async function MonthPage({
       .order("starts_at"),
     supabase
       .from("season")
-      .select("starts_on, ends_on, roster_member(person_id, left_on, person:person_id(name))")
+      .select("starts_on, ends_on, roster_member(person_id, left_on)")
       .eq("residency_id", id)
       .lte("starts_on", `${shiftMonth(month, 1)}-01`)
       .gte("ends_on", `${month}-01`),
@@ -106,10 +106,10 @@ export default async function MonthPage({
     (s) => s.location?.site_id === site.id && localDateTime(s.starts_at, tz).date.startsWith(month),
   );
 
-  type RosterRow = { roster_member: { person_id: string; left_on: string | null; person: { name: string } | null }[] };
+  type RosterRow = { roster_member: { person_id: string; left_on: string | null }[] };
   const rosterMap = new Map<string, string>();
   for (const s of (rosterRows ?? []) as unknown as RosterRow[])
-    for (const m of s.roster_member) if (!m.left_on || m.left_on >= `${month}-01`) rosterMap.set(m.person_id, m.person?.name ?? "Someone");
+    for (const m of s.roster_member) if (!m.left_on || m.left_on >= `${month}-01`) rosterMap.set(m.person_id, nameOf(m.person_id));
   const roster = [...rosterMap].map(([pid, label]) => ({ id: pid, label })).sort((a, b) => a.label.localeCompare(b.label));
 
   const toCard = (s: SessionRow, withWeekday: boolean): CardSession => {
@@ -129,7 +129,7 @@ export default async function MonthPage({
       cancellationReason: s.cancellation_reason,
       publicNote: s.public_note,
       assignments: s.session_assignment
-        .map((a) => ({ id: a.id, personId: a.person_id, name: firstName(a.person?.name ?? "Someone"), role: a.role, status: a.status }))
+        .map((a) => ({ id: a.id, personId: a.person_id, name: firstName(nameOf(a.person_id)), role: a.role, status: a.status }))
         .sort((a, b) => Number(b.role === "leader") - Number(a.role === "leader") || a.name.localeCompare(b.name)),
     };
   };
