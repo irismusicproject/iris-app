@@ -1,6 +1,6 @@
 # Iris App — Domain Model (Language 1: the code)
 
-_Draft v0.12, November 22, 2026 (v0.12: every roster musician edits draft titles, rooms and musicians; the point person assigns leaders. v0.11: `Partner`, `Site`, `Location` built; see section 1. v0.10: scheduled relationship building (e.g. Lessons) and the partner calendar layout; v0.9: partner permission for resident names confirmed; v0.8: decisions D14 and D15 settled: residents and attendance; v0.7: decisions D10, D11 and D16 settled: events, extras, absences, substitutes and the roster; v0.6: both D9 billing details confirmed; v0.5: decisions D9 and D13 settled: partner billing and version 1 scope; v0.4: decisions D2, D4, D6, D7 and D8 settled; v0.3: decisions D1, D3 and D5 settled, including how a month's schedule is reviewed, published and sent; v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
+_Draft v0.23, November 22, 2026 (v0.23: overhead switched on or off on the contract; stipend lines can be left off each month; custom invoices typed by hand. v0.22: community invoices built; billable hours are now per musician and count once the point person approves the week (revises D9); drafts live, sent invoices frozen; admins only. v0.21: less double entry for musicians: usual type per program, usual relationship-building lengths, "Same as last time", one "Submit my week"; detailed one-to-one notes and a daily Word document per site. v0.20: program length set once by the point person or an admin; leaders change it only if a session ran longer or shorter. v0.19: musician hours and invoices built: hours entered on My week, the point person approves, admins set rates and stipends, invoices per two-week pay period; "Collab?" is Yes/No and every Yes counts as co-led; the collaboration target is set per season by the point person or an admin. v0.18: roles narrowed: the point person plans, the Admin Lead publishes and updates published dates, musicians edit drafts they play in and pick leaders; monthly programs. v0.17: "No Program" dates can be restored. v0.16: season view for the point person. v0.15: usual leaders, season reminders, private calendar links. v0.14: documentation from the CESLC workbook sample, weekly; musicians write draft notes; schedule laid out like the workbook tab. v0.13: people in a program can see each other's names, nothing else. v0.12: every roster musician edits draft titles, rooms and musicians; the point person assigns leaders. v0.11: `Partner`, `Site`, `Location` built; see section 1. v0.10: scheduled relationship building (e.g. Lessons) and the partner calendar layout; v0.9: partner permission for resident names confirmed; v0.8: decisions D14 and D15 settled: residents and attendance; v0.7: decisions D10, D11 and D16 settled: events, extras, absences, substitutes and the roster; v0.6: both D9 billing details confirmed; v0.5: decisions D9 and D13 settled: partner billing and version 1 scope; v0.4: decisions D2, D4, D6, D7 and D8 settled; v0.3: decisions D1, D3 and D5 settled, including how a month's schedule is reviewed, published and sent; v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
 app's objects. GLOSSARY.md translates the team's language (Language 2) and
 our partner-facing language (Language 3) into these objects._
 
@@ -97,6 +97,7 @@ Manors, Mather Tysons, Winter Growth Olney). Belongs to exactly one `Partner`.
 | `care_levels` | set of enum | `independent`, `assisted`, `memory_care`, `skilled_nursing`, `adult_day`, `affordable_housing`, `other` |
 | `address`, `city`, `state`, `timezone` | text | Timezone matters: sites span ET, CT and MST (Tucson) |
 | `active` | bool | |
+| `detailed_relationship_notes` | bool | **v0.21 (Lauren, Nov 22, 2026):** the partner wants a written note on each one-to-one. Admins switch it on per site. There, a `RelationshipActivity.note` can be a paragraph (up to 3,000 characters), and a **daily Word document** of that site's relationship building can be downloaded: musicians get their own visits, the point person and admins get everyone's. Still no health information |
 
 **Multi-building partners (decided by Ryan, Nov 2026).** There is no object between `Partner` and `Site`. A partner with several buildings, such as CESLC, is one `Partner` with one `Site` per building that has its own care level or calendar (independent living, assisted living, memory care…). How near the buildings are to each other (walking distance, a short drive, farther) is not stored; each `Site` has an address and time zone, and distance can be derived later if pay or scheduling needs it. A `Residency` may span several `Site`s.
 
@@ -257,11 +258,16 @@ contract, so a musician working in two regions can have two rates.
 | `person_id`, `season_id` | → | Unique together |
 | `hourly_rate` | money | Flat rate, prep time included |
 | `estimated_weekly_hours` | number | |
-| `stipends` | list of `{kind, amount, installments: [{due_on, amount}]}` | `kind`: `project_support`, `admin_lead`, `training`, `other` |
+| `stipends` | list of `StipendInstallment {kind, due_on, amount}` | `kind`: `project_support`, `admin_lead`, `training`, `other`. Built v0.19 as one row per payment |
 | `signed_on` | date | |
 | `status` | enum | `draft`, `sent`, `signed`, `ended` |
 
 W-2 employees have no `Contract`. They are paid through payroll.
+
+**Built (v0.19, decided by Lauren Nov 22, 2026):** admins set each
+contractor's hourly rate and stipend payments on the program page, per
+season. Only the musician and admins can see a contract; **the point person
+never sees pay.** `signed_on` and `status` are not built yet.
 
 ---
 
@@ -276,7 +282,7 @@ pages' list, kept for organization-wide stats and evaluation:
 
 | Starting value | `model_type` |
 |---|---|
-| Music Instructional Programs | `small_group` |
+| Music Instructional Program | `small_group` |
 | Lecture/Discussion | `small_group` |
 | Interdisciplinary Program | `small_group` |
 | Open Rehearsal | `performance` |
@@ -307,8 +313,10 @@ it doesn't happen. Its `Session`s happen.
 | `kind` | enum `SessionKind` | `group_session` (default) or `relationship_building` (e.g. "Lessons"). See below |
 | `title` | text | **Title only.** Never personnel or location (D12) |
 | `default_location_id` | → Location | Must be at one of the residency's sites |
-| `recurrence` | rule | Weekly on chosen weekdays, e.g. Wednesdays 11:00, 120 minutes. Time and length are **optional** for `relationship_building` |
+| `recurrence` | rule | **Weekly** on chosen weekdays (e.g. Wednesdays 11:00, 120 minutes), or **monthly** on the 1st–4th of one weekday (`week_of_month`, e.g. the 4th Monday at 1:30; v0.18). Monthly programs print under Regular programming. Time and length are **optional** for `relationship_building` |
 | `default_personnel` | → Person (many) | Must be on the current roster |
+| `default_leader_id` | → Person | Optional **usual leader** (v0.15): made leader on every date when a month is filled in. Weekly programs without one are left for the point person |
+| `default_interaction_type_id` | → InteractionType | Optional **usual type** (v0.21, Lauren, Nov 22, 2026), set by the point person or an admin. Pre-selected when the leader documents; the leader can change it, so the type is still chosen when documenting (D2) |
 | `active_from`, `active_until` | date | |
 
 ### `Session`
@@ -326,7 +334,7 @@ an extra program).
 | `location_id` | → Location | |
 | `starts_at` | datetime (site timezone) | The date, and the time when there is one |
 | `has_set_time` | bool | False for a `relationship_building` session with no set time: it prints with a blank time |
-| `scheduled_minutes` | int | Optional for `relationship_building` |
+| `scheduled_minutes` | int | Optional for `relationship_building`. Copied from `Series.minutes`; **v0.20:** changing the series length updates every date not yet documented (past or future, not canceled) |
 | `call_time` | time | Optional (concerts) |
 | `is_special_event` | bool | Shown in the "Special events" section of partner calendars. Concerts are special events (D10) |
 | `is_extra` | bool | An "extra program": outside contracted hours, separately negotiated pay, and musicians may decline. **Billed to the partner like any session (D10)** |
@@ -361,6 +369,13 @@ building (one-to-ones that happen organically) never prints (D2).
   assigned to the session can mark themselves absent and name their sub (D11).
 - A canceled session stays in the record. Musicians aren't paid for it
   (handbook). Partner billing follows `PartnerAgreement.bill_canceled`.
+- **Restoring a "No Program" date (v0.17, decided by Lauren Nov 22, 2026).**
+  Calendars take back-and-forth (e.g. a musician marks a date "No Program",
+  then the point person asks for a sub instead). The Admin Lead, point person
+  or an admin can restore it: it comes back as a **draft** with its
+  musicians and leader, its cancellation reason cleared, and the change
+  logged. It's published with its month, or with the next calendar version
+  if the month was already sent.
 - **Planned absences (D11).** When a musician's absence is known before the
   10th (`Setting.schedule_internal_due_day`) and no sub is arranged, the
   Admin Lead cancels that session in the draft with `cancellation_reason =
@@ -416,6 +431,35 @@ dates). Musicians' blackout dates (`scope = person`) are **in version 1
 | `starts_on`, `ends_on` | date | |
 | `reason` | text | |
 
+### `CalendarFeed`
+A musician's **private calendar link** (v0.15, decided by Lauren Nov 22,
+2026). Google, Apple and Outlook calendars subscribe to it and refresh on
+their own.
+
+| Attribute | Type | Notes |
+|---|---|---|
+| `person_id` | → Person | One link per person |
+| `token` | text | Secret. The person can replace it ("Make a new link"), which stops the old one |
+
+**Shows:** published (and canceled, as "No Program") sessions the person
+plays in (not absent), plus special events of programs they're on; from 60
+days ago to a year ahead. Drafts never appear. **Security review pending
+(Ryan's side):** the feed is readable by anyone holding the link.
+
+**Season view (v0.16, decided by Lauren Nov 22, 2026).** The point person
+(and Admin Lead, admins) sees a whole `Season` at once: each weekly
+program's **leader for the whole season** (setting it makes them the usual
+leader and the leader of every draft date from today on; published months
+don't change), month-by-month status (published, drafts, "No Program",
+dates still needing a leader), and **Fill the whole season**. Some weekly
+programs have one leader all season (e.g. Orchestra); others are picked per
+date.
+
+**Season reminders (v0.15).** Each month's schedule shows a "Coming up this
+season" box: the program's special events in later months (often planned
+at the start of a season), so musicians see them every month until they
+happen.
+
 ### `CalendarExport`
 One version of a monthly partner calendar for one site (Language 3
 document). A month can have several versions as the partner gives feedback.
@@ -435,6 +479,15 @@ document). A month can have several versions as the partner gives feedback.
 
 Built only from `published` sessions.
 
+**Who does what (v0.18, decided by Lauren Nov 22, 2026; supersedes the
+drafting rules below where they differ)**
+
+| Who | Can do |
+|---|---|
+| **Point person, admins** | Everything: set up weekly and monthly programs (in the season view), fill months and the season, add events, set leaders, "No Program" and restore, mark a month reviewed |
+| **Admin Lead** | Publish and download; update **published** dates after the partner's staff asks (time, room, title, notes, "No Program" or restore) and download the updated calendar; add one-time events. Not: fill months or the season, set up programs |
+| **Every roster musician** (Admin Lead included) | On **draft dates they play in**: title, notes, room, who plays, and **pick or swap the leader** (after the point person has set it); date and time of special events they play in. **A draft date's leader can make it "No Program"** (restoring stays with the point person and Admin Lead) |
+
 **Publishing a month (decided, D5, Nov 21, 2026; drafting updated Nov 22)**
 
 Roles: the **point person** is Iris staff (`StaffAssignment`); the **Admin
@@ -447,9 +500,14 @@ contractor (`RosterMember.is_admin_lead`).
    The Admin Lead (or point person, or an admin) adds one-time sessions
    and special events.
 2. **Musicians edit the draft.** Every musician on the residency's current
-   roster can edit any draft session in that residency: its **title**,
-   **room**, and **who plays** (adding or removing roster musicians as
-   participants). For **special events** they can also change the **date
+   roster can edit any draft session in that residency: its **title**
+   (each date has its own, e.g. this week's theme), **internal notes**
+   (e.g. "Ben off", never printed; v0.14), **room**, and **who plays**
+   (adding or removing roster musicians as participants). Titles are typed
+   without musicians' names; the calendar adds "with [first names]" (D12).
+   The schedule screen is laid out like the workbook scheduling tab: Day,
+   Time, Program Title, Program Leader, Notes. Titles lock when the month is
+   published (decided Nov 22, 2026). For **special events** they can also change the **date
    and time**. They can't set leaders, cancel, or change anything else.
    **Assumption:** creating new special events stays with the Admin Lead,
    point person and admins.
@@ -481,13 +539,20 @@ The documentation of one `Session`, written by its **leader**. **Decided (D3):**
 |---|---|---|
 | `session_id` | → Session | One report per session |
 | `author_id` | → Person | The session leader (or an admin) |
-| `actual_start`, `actual_end` | datetime | From the in-app timer or entered by hand |
+| `actual_minutes` | int | Length; used for billable session hours (D9). **v0.20 (Lauren, Nov 22, 2026):** the leader doesn't type it; it is `scheduled_minutes` unless they choose "Ran longer or shorter?". An in-app timer may come later |
 | `attendance` | int | **Everyone present**: residents, staff, family and guests, counted together (D15) |
 | `interaction_type_id` | → InteractionType | Chosen by the leader when documenting (D2) |
-| `resident_involvement` | enum `ResidentInvolvement` | `none`, `co_facilitated`, `co_led`. What actually happened. **Decided (D6):** a "collaborative event" is a session documented as `co_facilitated` or `co_led`; `co_led` also counts toward the handbook's per-semester target |
+| `resident_involvement` | enum `ResidentInvolvement` | `none`, `co_facilitated`, `co_led`. What actually happened. **Revised v0.19 (Lauren, Nov 22, 2026):** the leader answers "Collab?" Yes or No only; **Yes is stored as `co_led`** and every Yes counts as collaborative and toward the season's target. `co_facilitated` is kept for older records but no longer offered |
 | `notes` | text | No health information |
-| `state` | enum | `due`, `submitted`, `approved` |
-| `submitted_at`, `approved_by`, `approved_at` | | |
+| `submitted_at` | datetime | |
+
+Approval (`state`, `approved_by`, `approved_at`) comes later.
+
+**Documented weekly (decided Nov 22, 2026).** Each musician has a **"My
+week"** page (Monday–Sunday) showing the programs they led, their
+relationship-building activities, and the month's reflection, due Tuesday
+5 pm the following week (D7). The workbook's "Collab?" column is
+`resident_involvement`: No / Yes (v0.19).
 
 **Invariants:** exists only for sessions that are not canceled and are in
 the past. Locked once `approved`; corrections go through an admin and are
@@ -511,18 +576,30 @@ One logged instance of relationship building with one or more residents
 | `site_id` | → Site | Required. One of the residency's sites; needed because relationship-building time is billed per site (D9) |
 | `occurred_on` | date | |
 | `location_id` | → Location | Optional; must be at `site_id` |
-| `kind` | enum | `one_to_one`, `mini_group` (2–8 residents), `co_facilitation_prep`, `other` |
-| `engagement_type_id` | → EngagementType | Admin-managed list (e.g. conversation, lesson, rehearsal, music for comfort, planning) |
-| `minutes` | int | |
-| `resident_ids` | → Resident (many, ≥1) | All at `site_id` |
-| `session_id` | → Session | Optional: the scheduled `relationship_building` session it happened in (e.g. that Tuesday's Lessons) |
+| `kind` | enum | `one_to_one`, `mini_group` (2–8 residents), `hallway_concert` (decided Nov 22, 2026) |
+| `minutes` | int | **Required** (decided Nov 22, 2026): billed per site (D9) and pre-fills weekly hours |
+| `collaborative` | bool | The workbook's "Collab?" (decided Nov 22, 2026) |
+| `resident_ids` | → Resident (many) | All at `site_id`. At least one, except **Assumption:** a hallway concert may have none (played for whoever is there) |
+| `session_id` | → Session | Optional: the scheduled `relationship_building` session it happened in. **Not asked on the form (v0.19, Lauren removed "part of a scheduled lesson")** |
 | `prepares_session_id` | → Session | Optional: planning a co-led session (handbook: ≥5 meetings) |
-| `note` | text | One sentence. **No health information** |
+| `note` | text | One sentence (500 characters), or a paragraph at a `Site` with `detailed_relationship_notes` (v0.21). **No health information** |
 | `state` | enum | `submitted`, `approved` |
 
+**Faster logging (v0.21):** Minutes are filled from the program's usual
+length for the type (`ActivityLength`); after logging, the date, site and
+type stay for the next visit; **Same as last time** copies the musician's
+last activity (site, type, length, collaboration, residents).
+
+### `ActivityLength`
+The usual minutes for one kind of relationship building in one `Residency`
+(v0.21, Lauren, Nov 22, 2026). Set by the point person or an admin on the
+Season page; fills Minutes on the log form. Attributes: `residency_id`,
+`kind` (`one_to_one`, `mini_group`, `hallway_concert`), `minutes`. Unique per
+residency and kind.
+
 ### `EngagementType`
-Admin-managed, versioned list used by `RelationshipActivity.engagement_type_id`.
-Attributes: `name`, `description`, `active`.
+**Not in version 1** (decided Nov 22, 2026): the activity's `kind` is
+enough for now. May return later as an admin-managed list.
 
 ### `MonthlyReflection`
 A musician's monthly narrative for one `Residency`. **In version 1 (D13).**
@@ -559,11 +636,27 @@ Hours a musician worked in one week, for one `Residency`, in one category.
 
 **Invariant:** unique per person × residency × week × category. The app
 flags a week when submitted hours differ sharply from documented sessions
-and activities.
+and activities (not built yet).
+
+**Built (v0.19, decided by Lauren Nov 22, 2026):** musicians enter hours on
+**My week**, pre-filled from the programs they played (Programs), special
+events (Concerts) and logged relationship building, and submit them with
+their documentation. The **point person approves** each musician's week for
+their program, or sends it back with a note (`returned_note`). Approved
+hours are locked. Admins can also approve.
+
+**Submit my week (v0.21, Lauren, Nov 22, 2026):** one button submits the
+week's hours for every program at once. The database refuses while a
+program the musician led that week (and that has happened) has no
+`SessionReport`.
 
 ### `PayPeriod`
 A two-week, Monday–Sunday period. Attributes: `starts_on`, `ends_on`,
 `pay_date`.
+
+**Decided (v0.19, Lauren, Nov 22, 2026):** periods are counted every 14 days from the
+`Setting` `pay_period_anchor` (Monday, November 2, 2026), not stored as rows.
+`pay_date` is not built yet.
 
 ### `PayAdjustment`
 A one-off payment outside hourly pay and stipends: special pay, an extra
@@ -592,6 +685,10 @@ invoice to Iris).
 (per residency), + stipend installments due in the period, + approved
 `PayAdjustment`s. Only `employment_type = contractor_1099`.
 
+**Built (v0.19):** "My invoices" shows each pay period's invoice, computed
+live (not stored yet, so `state` isn't built), with a PDF billed to Iris
+Music Project. `PayAdjustment`s are not included yet.
+
 ### `PartnerAgreement`
 A contract under which Iris charges a `Partner` for services at one or more
 `Site`s of a `Residency` in a `Season`. Usually one per residency season;
@@ -607,18 +704,24 @@ services).
 | `hourly_rate` | money | For `per_hour`. Admin-editable |
 | `contracted_hours` | number | Hours the contract commits to for the season. Shown on every invoice as progress |
 | `installments` | list of `{due_on, amount}` | For `installments`, e.g. four quarterly payments |
-| `bill_stipends` | bool | Also bill the musicians' stipend installments due that month (from their `Contract`s for this residency season) |
-| `overhead_percent` | decimal | Optional, e.g. 15. **Decided (D9):** applied to billable hours plus billed stipends |
+| `bill_stipends` | bool | Also bill the musicians' stipend installments due that month (from their `Contract`s for this residency season). **v0.23 (Lauren, Nov 22, 2026):** each month, before sending, an admin can leave individual stipend lines off (`PartnerInvoiceChoice`) |
+| `overhead_percent` | decimal | Optional, e.g. 15. **Decided (D9):** applied to billable hours plus billed stipends. **Assumption (v0.22):** on an `installments` contract, applied to the installment due plus billed stipends. **v0.23 (Lauren, Nov 22, 2026):** a "Charge overhead" checkbox on the contract switches it on or off (off = empty) |
 | `overhead_billing` | enum | `same_invoice` or `separate_invoice` (e.g. billed to a corporate office) |
 | `overhead_bill_to_id` | → PartnerContact | Required when `overhead_billing = separate_invoice`: the corporate office's billing contact |
-| `site_bill_to_id` | → PartnerContact | Who receives the site invoices; defaults to the partner's billing contact |
-| `bill_canceled` | rule | Default: bill a session's scheduled hours only when `cancellation_reason = partner` and it was canceled after `Setting.cancellation_notice_time` that day. Weather, musician and on-time partner cancellations aren't billed. Admins can override per contract |
+| `site_bill_to_id` | → PartnerContact | Who receives the site invoices; defaults to the partner's billing contact. **Not built yet (v0.22):** invoices go to `Partner.legal_name`, `billing_address` and `billing_email` |
+| `bill_canceled` | rule | Default: bill a session's scheduled hours only when `cancellation_reason = partner` and it was canceled after `Setting.cancellation_notice_time` that day. Weather, musician and on-time partner cancellations aren't billed. Admins can override per contract. **Built v0.22** as `bill_late_cancellations` (on/off), billing the scheduled length per assigned musician |
 
-**Decided (D9, Nov 21, 2026): billable hours.** Every site tracks the same
-billable hours: **documented session hours** (`SessionReport` actual length,
-group sessions only) plus **relationship-building minutes** logged at that
-site, including those logged against scheduled relationship building
-(`RelationshipActivity.site_id`). What each partner pays for those hours
+**Decided (D9, Nov 21, 2026; revised by Lauren Nov 22, 2026): billable
+hours.** Every site tracks the same billable hours, **per musician**:
+each musician present (not `absent`) × the session's documented length
+(`SessionReport.actual_minutes`, group sessions only, `billable`), plus
+each musician's **relationship-building minutes** logged at that site
+(`RelationshipActivity.site_id`). A musician's time counts only once the
+**point person has approved** that musician's week (`TimeEntry.state =
+approved`) for the residency. Prep and set-up time on timesheets is not
+billed. A late partner cancellation bills the scheduled length per
+assigned musician. Draft invoices show the hours still waiting for
+approval and the programs not yet documented. What each partner pays for those hours
 varies, so it's set per contract above. Admins can change the rate, turn
 on overhead (e.g. 15%), and send overhead to a separate corporate invoice
 from the admin view. Changes apply to invoices generated afterwards; past
@@ -636,7 +739,7 @@ also gets one `overhead` invoice per month, to `overhead_bill_to_id`.
 
 | Attribute | Type | Notes |
 |---|---|---|
-| `kind` | enum | `site` (the usual invoice), `overhead` (separate corporate invoice) |
+| `kind` | enum | `site` (the usual invoice), `overhead` (separate corporate invoice), `contract` (v0.22: stipends and same-invoice overhead for a contract that covers several sites) |
 | `partner_id`, `partner_agreement_id` | → | |
 | `site_id` | → Site | Required for `kind = site`; empty for `overhead` |
 | `bill_to_id` | → PartnerContact | Copied from the contract when generated |
@@ -644,6 +747,12 @@ also gets one `overhead` invoice per month, to `overhead_bill_to_id`.
 | `lines` | → InvoiceLine (many) | |
 | `total` | money | |
 | `state` | enum | `draft`, `sent`, `paid` |
+
+**Built (v0.22, decided by Lauren Nov 22, 2026):** admins only, on a
+program's **Community invoices** page. A draft is calculated live and is
+not stored; **Mark as sent** stores its lines, totals and bill-to and
+freezes them (the database refuses later changes); then **Mark as paid**.
+Each invoice has a PDF; drafts print "DRAFT".
 
 **What a `site` invoice contains (D9)**
 - **`per_hour`:** billable hours for the month × `hourly_rate`; billed
@@ -658,6 +767,25 @@ also gets one `overhead` invoice per month, to `overhead_bill_to_id`.
 - **Decided (D9):** when a contract covers several sites, billed
   stipends and overhead go on one separate invoice to `site_bill_to_id`
   rather than being split across site invoices.
+
+### `PartnerInvoiceChoice`
+One contract's choices for one month before its invoices are sent (v0.23):
+`agreement_id`, `month`, `excluded_stipend_ids` (stipend installments not to
+bill this month). Can't change once an invoice for that month is sent.
+
+### `CustomInvoice`
+An invoice typed by hand for work outside a `PartnerAgreement`: a concert
+for an organization that isn't a regular partner, a corporate office's
+overhead, anything else (v0.23, Lauren, Nov 22, 2026). Admins only.
+
+| Attribute | Type | Notes |
+|---|---|---|
+| `residency_id` | → Residency | Optional; when set, the invoice also shows on that program's Community invoices page |
+| `title`, `invoice_date`, `number` | text, date, text | Number e.g. `IMP-202611-C1` |
+| `bill_to` | text | Typed: name, address, email |
+| `lines` | list of `{description, quantity, unit_amount, amount}` | Quantity × rate, or a fixed amount |
+| `total` | money | Sum of lines |
+| `state` | enum | `draft` (editable, deletable), `sent` (frozen), `paid` |
 
 ### `InvoiceLine`
 One line on either kind of invoice: `description`, `quantity`, `unit`,
@@ -676,8 +804,8 @@ A goal set by an admin.
 |---|---|---|
 | `scope` | enum + id | `residency`, `roster_member` (per musician) |
 | `season_id` | → Season | |
-| `metric` | enum | `avg_attendance` (default 7, handbook; counts everyone present, D15), `co_led_sessions_per_musician` (default 2 per semester, handbook), `relationship_minutes_per_week`, `sessions_by_model_type`, `other` |
-| `value` | number | Admins can change targets at any time from the admin view; changes are logged in `AuditLog` |
+| `metric` | enum | `avg_attendance` (default 7, handbook; counts everyone present, D15), `co_led_sessions_per_musician` (default 2 per semester, handbook; built v0.19 as `collaborative_programs_per_musician`, per season), `relationship_minutes_per_week`, `sessions_by_model_type`, `other` |
+| `value` | number | Admins can change targets at any time from the admin view; changes are logged in `AuditLog`. **v0.19 (Lauren, Nov 22, 2026):** the collaboration target is also set by the **point person**, on the season view, because it varies by project |
 
 ### `SpecialProject`
 A one-time, mission-aligned initiative proposed and funded outside regular
@@ -706,6 +834,7 @@ Admin-editable rules from the handbook, so compliance is data.
 | `documentation_and_time_due` | **One deadline** for `SessionReport`s, `RelationshipActivity` logs and `TimeEntry` hours: **Tuesday 17:00 of the following week** |
 | `cancellation_notice_time` | 09:00 the same day, for illness or emergency |
 | `max_musician_absences_per_season` | Set by admins; **no default yet**. Passing it warns the Admin Lead and point person (D11) |
+| `pay_period_anchor` | A Monday that starts a pay period; **2026-11-02** (decided by Lauren, Nov 22, 2026) |
 
 **Assumption (D7):** a `MonthlyReflection` is due by the same Tuesday
 17:00 deadline in the week after the month ends.
@@ -727,7 +856,9 @@ Permissions come from **relationships**, not job titles.
 | Approve a residency's reports, activities and time | Current `StaffAssignment.role = point_person` |
 | Edit draft and published sessions; publish a month and download its partner calendar (after review) | `RosterMember.is_admin_lead` (current season); the current point person; admins |
 | Mark a month's draft schedule reviewed | Current `StaffAssignment.role = point_person`; admins |
-| Edit a draft session's title, room and who plays (participants); for special events also date and time | Any current `RosterMember` of the residency |
+| Edit a draft session's title, internal notes, room and who plays (participants); for special events also date and time | Any current `RosterMember` of the residency |
+| See the **names** (only) of the people on a program's rosters and staff | Anyone who can see that residency: its current roster, its Iris staff, admins (decided by Lauren, Nov 22, 2026). Email, phone and the rest of `Person` stay private |
+| Create, see and replace their own calendar link | The person (while `active`) |
 | Assign session leaders | The current point person and admins; the Admin Lead may swap leaders afterwards |
 | See a residency's sessions and community info | Any current `RosterMember` |
 | See and edit `Partner`, `Site`, `Location` | `Person.system_roles ∋ admin`. **For now admins only;** roster members get read access to their residency's sites once `RosterMember` exists |
