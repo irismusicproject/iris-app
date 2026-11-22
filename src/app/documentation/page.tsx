@@ -5,15 +5,16 @@ import { requirePerson } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { ACTIVITY_KIND_LABELS, addDays, dueLabel, formatWeek, weekStart, type ActivityKind, type ResidentInvolvement } from "@/shared/domain/documentation";
 import { formatDay, formatMonth, formatTime, localDateTime } from "@/shared/domain/time";
-import { ActivityForm, CalendarLinkCard, DeleteActivityButton, ReflectionForm, ReportRow } from "./forms";
+import { ActivityForm, CalendarLinkCard, DeleteActivityButton, ReflectionForm, ReportRow, WeekHours, type LastActivity } from "./forms";
 
 // "My week": a musician's documentation for one week (Monday–Sunday), due
 // Tuesday 5 pm the following week (D7). Programs they led (session reports),
 // relationship-building activities, and the month's reflection.
 export const metadata = { title: "My week · Iris Music Project" };
 
-type SiteRef = { id: string; display_name: string; timezone: string };
+type SiteRef = { id: string; display_name: string; timezone: string; detailed_relationship_notes: boolean };
 type SessionRow = {
+  is_special_event: boolean;
   id: string;
   residency_id: string;
   kind: "group_session" | "relationship_building";
@@ -24,6 +25,7 @@ type SessionRow = {
   schedule_state: "draft" | "published" | "canceled";
   location: { site_id: string; display_name: string } | null;
   session_assignment: { person_id: string; role: "leader" | "participant"; status: "assigned" | "absent" | "substitute" }[];
+  series: { default_interaction_type_id: string | null } | null;
   session_report: { attendance: number; interaction_type_id: string; resident_involvement: ResidentInvolvement; actual_minutes: number; notes: string | null } | null;
 };
 type ActivityRow = {
@@ -54,14 +56,14 @@ export default async function MyWeek({ searchParams }: { searchParams: Promise<{
   // Programs the musician is on (current or covering this week).
   const { data: rosterRows } = await supabase
     .from("roster_member")
-    .select("season(residency_id, starts_on, ends_on, residency(id, name, residency_site(site(id, display_name, timezone))))")
+    .select("season(id, residency_id, starts_on, ends_on, residency(id, name, residency_site(site(id, display_name, timezone, detailed_relationship_notes))))")
     .eq("person_id", person.id);
-  type RosterRow = { season: { residency_id: string; starts_on: string; ends_on: string; residency: { id: string; name: string; residency_site: { site: SiteRef | null }[] } | null } | null };
-  const programMap = new Map<string, { id: string; name: string; sites: SiteRef[] }>();
+  type RosterRow = { season: { id: string; residency_id: string; starts_on: string; ends_on: string; residency: { id: string; name: string; residency_site: { site: SiteRef | null }[] } | null } | null };
+  const programMap = new Map<string, { id: string; name: string; sites: SiteRef[]; season: { id: string; starts_on: string; ends_on: string } }>();
   for (const r of (rosterRows ?? []) as unknown as RosterRow[]) {
     const res = r.season?.residency;
     if (!res || r.season!.ends_on < monday || r.season!.starts_on > sunday) continue;
-    programMap.set(res.id, { id: res.id, name: res.name, sites: res.residency_site.map((x) => x.site!).filter(Boolean) });
+    programMap.set(res.id, { id: res.id, name: res.name, sites: res.residency_site.map((x) => x.site!).filter(Boolean), season: { id: r.season!.id, starts_on: r.season!.starts_on, ends_on: r.season!.ends_on } });
   }
   const programs = [...programMap.values()].sort((a, b) => a.name.localeCompare(b.name));
   const ids = programs.map((p) => p.id);
@@ -73,7 +75,7 @@ export default async function MyWeek({ searchParams }: { searchParams: Promise<{
     ids.length
       ? supabase
           .from("session")
-          .select("id, residency_id, kind, title, starts_at, has_set_time, scheduled_minutes, schedule_state, location(site_id, display_name), session_assignment(person_id, role, status), session_report(attendance, interaction_type_id, resident_involvement, actual_minutes, notes)")
+          .select("id, residency_id, kind, title, starts_at, has_set_time, scheduled_minutes, schedule_state, is_special_event, location(site_id, display_name), session_assignment(person_id, role, status), session_report(attendance, interaction_type_id, resident_involvement, actual_minutes, notes), series(default_interaction_type_id)")
           .in("residency_id", ids)
           .gte("starts_at", from)
           .lt("starts_at", to)
@@ -105,12 +107,6 @@ export default async function MyWeek({ searchParams }: { searchParams: Promise<{
   const ledPast = led.filter((s) => s.starts_at <= now);
   const ledFuture = led.filter((s) => s.starts_at > now);
   const playedNotLed = sessions.filter((s) => s.kind === "group_session" && mine(s) && !led.includes(s));
-  const lessons = sessions
-    .filter((s) => s.kind === "relationship_building" && mine(s))
-    .map((s) => {
-      const tz = siteById.get(s.location!.site_id)!.timezone;
-      return { id: s.id, residencyId: s.residency_id, siteId: s.location!.site_id, label: `${s.title}, ${formatDay(s.starts_at, tz)}`, date: localDateTime(s.starts_at, tz).date };
-    });
   const types = (typeRows ?? []).map((t) => ({ id: t.id as string, label: t.name as string }));
   const residents = ((residentRows ?? []) as { id: string; site_id: string; display_name: string; disambiguator: string }[]).map((r) => ({
     id: r.id,
@@ -118,6 +114,73 @@ export default async function MyWeek({ searchParams }: { searchParams: Promise<{
     name: r.disambiguator ? `${r.display_name} (${r.disambiguator})` : r.display_name,
   }));
   const activities = (activityRows ?? []) as unknown as ActivityRow[];
+
+  // Faster logging (v0.21): usual lengths per type, and the last activity.
+  const [{ data: lengthRows }, { data: lastRows }] = await Promise.all([
+    ids.length ? supabase.from("activity_length").select("residency_id, kind, minutes").in("residency_id", ids) : Promise.resolve({ data: [] }),
+    supabase
+      .from("relationship_activity")
+      .select("residency_id, site_id, kind, minutes, collaborative, relationship_activity_resident(resident_id)")
+      .eq("person_id", person.id)
+      .order("occurred_on", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(1),
+  ]);
+  const lengths: Record<string, Partial<Record<ActivityKind, number>>> = {};
+  for (const l of (lengthRows ?? []) as { residency_id: string; kind: ActivityKind; minutes: number }[]) (lengths[l.residency_id] ??= {})[l.kind] = l.minutes;
+  const lastRow = (lastRows ?? [])[0] as
+    | { residency_id: string; site_id: string; kind: ActivityKind; minutes: number; collaborative: boolean; relationship_activity_resident: { resident_id: string }[] }
+    | undefined;
+  const last: LastActivity | null = lastRow
+    ? { residencyId: lastRow.residency_id, siteId: lastRow.site_id, kind: lastRow.kind, minutes: lastRow.minutes, collaborative: lastRow.collaborative, residentIds: lastRow.relationship_activity_resident.map((x) => x.resident_id) }
+    : null;
+
+  // ---- Collaboration progress this season (v0.19)
+  const progress = await Promise.all(
+    programs.map(async (p) => {
+      const [{ data: t }, { data: collab }] = await Promise.all([
+        supabase.from("target").select("value").eq("season_id", p.season.id).eq("metric", "collaborative_programs_per_musician").maybeSingle(),
+        supabase
+          .from("session")
+          .select("id, session_assignment!inner(person_id, status), session_report!inner(resident_involvement)")
+          .eq("residency_id", p.id)
+          .neq("schedule_state", "canceled")
+          .neq("session_report.resident_involvement", "none")
+          .eq("session_assignment.person_id", person.id)
+          .neq("session_assignment.status", "absent")
+          .gte("starts_at", `${p.season.starts_on}T00:00:00Z`)
+          .lte("starts_at", `${p.season.ends_on}T23:59:59Z`),
+      ]);
+      return { id: p.id, name: p.name, done: (collab ?? []).length, target: t?.value ?? 2 };
+    }),
+  );
+
+  // ---- Weekly hours (v0.19): saved entries, or pre-filled from the schedule and logs.
+  const [{ data: categoryRows }, { data: entryRows }] = await Promise.all([
+    supabase.from("time_category").select("id, name, description").eq("active", true).order("sort_order"),
+    supabase.from("time_entry").select("residency_id, time_category_id, hours, state, returned_note").eq("person_id", person.id).eq("week_starting", monday),
+  ]);
+  const categories = (categoryRows ?? []) as { id: string; name: string; description: string | null }[];
+  const catId = (name: string) => categories.find((c) => c.name === name)?.id;
+  type EntryRow = { residency_id: string; time_category_id: string; hours: number; state: "draft" | "submitted" | "approved"; returned_note: string | null };
+  const entries = (entryRows ?? []) as EntryRow[];
+  const hoursFor = (residencyId: string) => {
+    const mineHere = sessions.filter((s) => s.residency_id === residencyId && s.kind === "group_session" && mine(s) && s.starts_at <= now);
+    const minutes = (list: SessionRow[]) => list.reduce((n, s) => n + (s.session_report?.actual_minutes ?? s.scheduled_minutes ?? 0), 0);
+    const prefill: Record<string, number> = {};
+    const add = (name: string, mins: number) => { const id = catId(name); if (id) prefill[id] = Math.round((mins / 60) * 4) / 4; };
+    add("Programs", minutes(mineHere.filter((s) => !s.is_special_event)));
+    add("Concerts", minutes(mineHere.filter((s) => s.is_special_event)));
+    add("Relationship Building", activities.filter((a) => a.residency_id === residencyId).reduce((n, a) => n + a.minutes, 0));
+    const saved = entries.filter((e) => e.residency_id === residencyId);
+    const states = saved.map((e) => e.state);
+    return {
+      prefill,
+      initial: Object.fromEntries(saved.map((e) => [e.time_category_id, Number(e.hours)])),
+      state: states.includes("approved") ? ("approved" as const) : states.includes("submitted") ? ("submitted" as const) : saved.length ? ("draft" as const) : null,
+      returnedNote: saved.find((e) => e.returned_note)?.returned_note ?? null,
+    };
+  };
   const activityMinutes = activities.reduce((n, a) => n + a.minutes, 0);
   const reflections = new Map(((reflectionRows ?? []) as { residency_id: string; highlights: string; challenges: string }[]).map((r) => [r.residency_id, r]));
   const toDo = ledPast.filter((s) => !s.session_report).length;
@@ -155,6 +218,13 @@ export default async function MyWeek({ searchParams }: { searchParams: Promise<{
         <>
           <section className={card}>
             <h2 className="text-lg font-semibold">Programs you led</h2>
+            <p className="mt-2 flex flex-wrap gap-2 text-sm">
+              {progress.map((pr) => (
+                <span key={pr.id} className={`rounded-full border px-3 py-1 ${pr.done >= pr.target ? "border-iris bg-iris-soft" : "border-border"}`}>
+                  Collaborative programs this season{programs.length > 1 ? ` (${pr.name})` : ""}: <strong>{pr.done} of {pr.target}</strong>
+                </span>
+              ))}
+            </p>
             <p className="mt-1 text-sm text-muted">As leader, you document each one: attendance (everyone present), type and collaboration.</p>
             {ledPast.length === 0 && <p className="mt-3 text-sm text-muted">None this week{ledFuture.length ? " yet" : ""}.</p>}
             <ul className="divide-y divide-border">
@@ -171,6 +241,7 @@ export default async function MyWeek({ searchParams }: { searchParams: Promise<{
                       title: s.title,
                       place: `${programName(s.residency_id)} · ${s.location!.display_name}`,
                       scheduledMinutes: s.scheduled_minutes ?? 45,
+                      usualTypeId: s.series?.default_interaction_type_id ?? "",
                       report: s.session_report
                         ? {
                             attendance: s.session_report.attendance,
@@ -218,13 +289,31 @@ export default async function MyWeek({ searchParams }: { searchParams: Promise<{
               })}
               {activities.length === 0 && <li className="py-2 text-muted">Nothing logged this week yet.</li>}
             </ul>
+            {(() => {
+              // Sites that want a written note per one-to-one get a daily Word document (v0.21).
+              const days = [...new Set(activities.filter((a) => siteById.get(a.site_id)?.detailed_relationship_notes).map((a) => `${a.site_id}|${a.occurred_on}`))].sort();
+              if (!days.length) return null;
+              return (
+                <div className="mt-3 flex flex-wrap gap-2 text-sm">
+                  {days.map((k) => {
+                    const [siteId, date] = k.split("|");
+                    return (
+                      <a key={k} href={`/relationship-notes/${siteId}?date=${date}`} className="rounded-full border border-border px-3 py-1 hover:bg-iris-soft">
+                        Word document: {siteById.get(siteId)?.display_name}, {new Date(`${date}T12:00:00Z`).toLocaleDateString("en-US", { timeZone: "UTC", weekday: "short", month: "short", day: "numeric" })}
+                      </a>
+                    );
+                  })}
+                </div>
+              );
+            })()}
             <div className="mt-5 border-t border-border pt-5">
               <h3 className="font-medium">Log an activity</h3>
               <div className="mt-3">
                 <ActivityForm
-                  programs={programs.map((p) => ({ id: p.id, name: p.name, sites: p.sites.map((s) => ({ id: s.id, label: s.display_name })) }))}
+                  programs={programs.map((p) => ({ id: p.id, name: p.name, sites: p.sites.map((s) => ({ id: s.id, label: s.display_name, detailedNotes: s.detailed_relationship_notes })) }))}
                   residents={residents}
-                  lessons={lessons}
+                  lengths={lengths}
+                  last={last}
                   defaultDate={today < monday ? monday : today > sunday ? sunday : today}
                   minDate={monday}
                   maxDate={sunday < today ? sunday : today}
@@ -232,6 +321,32 @@ export default async function MyWeek({ searchParams }: { searchParams: Promise<{
               </div>
             </div>
           </section>
+
+          <section className={card}>
+            <h2 className="text-lg font-semibold">Hours and submit</h2>
+            <p className="mt-1 text-sm text-muted">
+              Your timesheet for this week. Numbers are pre-filled from the programs you played and the relationship building you
+              logged; adjust them (prep, set-up, the 15 minutes before and after programs), then submit your week in one step.
+            </p>
+            <div className="mt-4">
+              {(() => {
+                const weekPrograms = programs.map((p) => {
+                  const h = hoursFor(p.id);
+                  return { residencyId: p.id, programName: p.name, initial: h.initial, prefill: h.prefill, state: h.state, returnedNote: h.returnedNote };
+                });
+                return (
+                  <WeekHours
+                    key={`${monday}-${weekPrograms.map((w) => w.state).join(",")}`}
+                    week={monday}
+                    categories={categories}
+                    programs={weekPrograms}
+                    toDocument={ledPast.filter((s) => !s.session_report).map((s) => `${s.title} (${formatDay(s.starts_at, siteById.get(s.location!.site_id)!.timezone)})`)}
+                  />
+                );
+              })()}
+            </div>
+          </section>
+
 
           {programs.map((p) => {
             const r = reflections.get(p.id);

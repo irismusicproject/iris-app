@@ -1,6 +1,6 @@
 # Iris App — Glossary (Languages 2 and 3)
 
-_Draft v0.11, November 22, 2026 (v0.11: monthly programs; v0.10: usual leader, calendar link; v0.9: documentation words from the CESLC workbook; v0.8: partner calendar layout from the Dec 2026 sample; "Lessons"; v0.7: D14, D15 settled; v0.6: D10, D11, D16 settled; "No Program" and roster words added; v0.5: D9, D13 settled: partner billing words added; v0.4: D2, D4, D6, D7, D8 settled; v0.3: D1, D3, D5 settled; schedule review and sending words added). Translates the words people use into the objects
+_Draft v0.15, November 22, 2026 (v0.15: custom invoices; v0.14: community invoices built, billable hours per musician; v0.13: usual type and lengths, Submit my week, daily one-to-one notes document; v0.12: Collab? Yes/No, hours approval and musician invoices; v0.11: monthly programs; v0.10: usual leader, calendar link; v0.9: documentation words from the CESLC workbook; v0.8: partner calendar layout from the Dec 2026 sample; "Lessons"; v0.7: D14, D15 settled; v0.6: D10, D11, D16 settled; "No Program" and roster words added; v0.5: D9, D13 settled: partner billing words added; v0.4: D2, D4, D6, D7, D8 settled; v0.3: D1, D3, D5 settled; schedule review and sending words added). Translates the words people use into the objects
 defined in DOMAIN-MODEL.md (Language 1), which is authoritative._
 
 - **Part A: Team language.** How Iris staff and musicians talk, and which object each word means.
@@ -85,6 +85,10 @@ enough context to tell which object it is.
 | "mini-group session" (2–8 residents) [WB] | `RelationshipActivity(kind = mini_group)` | |
 | "hallway concert" | `RelationshipActivity(kind = hallway_concert)` | Relationship building, not a program type (decided Nov 22, 2026) |
 | "Collab?" on a relationship-building log [WB] | `RelationshipActivity.collaborative` | Yes/No |
+| "usual type" (of a program) | `Series.default_interaction_type_id` | Pre-selected when documenting (v0.13) |
+| "usual length" (one-to-one, mini-group, hallway concert) | `ActivityLength.minutes` | Fills Minutes on the log form (v0.13) |
+| "Submit my week" | Submitting the week's `TimeEntry` rows for every program | Only once every program the musician led is documented (v0.13) |
+| "one-to-one notes", "daily notes for the partner" | `RelationshipActivity.note` at a `Site` with `detailed_relationship_notes`; the daily Word document | One day, one site (v0.13) |
 | "monthly program", "4th Monday concert" | `Series` with monthly recurrence (`week_of_month` 1–4) | Prints under Regular programming (v0.18) |
 | "usual leader" | `Series.default_leader_id` | Auto-fills each date's leader; otherwise the point person assigns |
 | "calendar link", "add Iris to my calendar" | `CalendarFeed` | Private; on "My week" |
@@ -92,8 +96,10 @@ enough context to tell which object it is.
 | "Notes" (scheduling tab) [WB] | `Session.internal_note` | Any roster musician, on drafts; never prints |
 | "My week" | The weekly documentation page | Due Tuesday 5 pm (D7) |
 | "resident co-facilitation" [WB] | `SessionReport.resident_involvement = co_facilitated` | Not an interaction type (D2) |
-| "Collab? = Yes" [WB], "collaborative" | `SessionReport.resident_involvement` ∈ {`co_facilitated`, `co_led`} | **Decided (D6)**. Recorded when documenting, not when scheduling |
-| "collaborative event" | A `Session` whose `SessionReport.resident_involvement` is `co_facilitated` or `co_led` | **Decided (D6)** |
+| "Collab? = Yes" [WB], "collaborative" | `SessionReport.resident_involvement = co_led` | **Decided (D6, revised v0.12):** Yes/No only; every Yes is stored and counted as co-led. Recorded when documenting, not when scheduling |
+| "collaborative event" | A `Session` whose `SessionReport.resident_involvement` is not `none` | **Decided (D6)** |
+| "collaborative target", "collab goal" | `Target(metric = collaborative_programs_per_musician)` for a `Season` | Default 2; the point person or an admin sets it per season (v0.12) |
+| "approve hours", "send hours back" | `TimeEntry.state` → `approved`, or back to `draft` with `returned_note` | Done by the point person (or an admin), per musician per week (v0.12) |
 | "interaction type", "program type" (in documentation) [WB] | `InteractionType` on `SessionReport` | The 2026 documentation list (D2). Chosen only when documenting |
 | "type of engagement" | `EngagementType` | For relationship-building activities |
 | "attendance" | `SessionReport.attendance` | Everyone present together: residents, staff, family, guests (**Decided, D15**). The target of 7 uses this |
@@ -128,7 +134,8 @@ enough context to tell which object it is.
 | "special project" [CH] | `SpecialProject` | |
 | "musician invoice" | `MusicianInvoice` | |
 | "community invoice" | `PartnerInvoice(kind = site)` | One per contract, per site, per month (D4) |
-| "billable hours", "contract hours delivered" | Documented session hours + relationship-building minutes at a site | Same for every site (D9) |
+| "custom invoice", "one-off invoice" (e.g. a concert for a non-partner, corporate overhead) | `CustomInvoice` | Typed by hand; optional program link (v0.15) |
+| "billable hours", "contract hours delivered" | Per musician: documented session length × musicians present + each musician's relationship-building minutes at a site, once the point person approves their week | Same for every site (D9, revised v0.14) |
 | "rate" (partner) | `PartnerAgreement.hourly_rate` | Admin-editable |
 | "overhead", "15% overhead" | `PartnerAgreement.overhead_percent` | Optional per contract |
 | "corporate office" (billing) | `PartnerContact` used as `overhead_bill_to_id` | Receives the separate overhead invoice |
@@ -177,10 +184,11 @@ internal notes, cancellation reasons or rates.
 
 | Printed | Source |
 |---|---|
-| Bill to | `Partner.legal_name` and the invoice's `bill_to_id` contact (the site's billing contact, or the corporate office for an overhead invoice) |
+| Bill to | `Partner.legal_name` and the invoice's `bill_to_id` contact (the site's billing contact, or the corporate office for an overhead invoice). Until `PartnerContact` is built (v0.14): `Partner.legal_name`, `billing_address`, `billing_email` |
 | Period | `PartnerInvoice.month` (one invoice per contract, per site, per month; D4) |
 | Lines (e.g. "Programming, Ring House, [month]") | `InvoiceLine`s built from billable hours (`SessionReport`s and `RelationshipActivity`s at the site), billed stipends, overhead and installments per the `PartnerAgreement` |
-| Hours this month / to date / contracted | Billable hours; `PartnerAgreement.contracted_hours` |
+| Invoice number, e.g. "IMP-202611-MH" | Month + site initials (`OH` overhead, `CT` contract) (v0.14) |
+| Hours this month / to date / contracted | Billable hours, **per musician**, approved by the point person (v0.14); `PartnerAgreement.contracted_hours` |
 | Total | `PartnerInvoice.total` |
 
 ### Musician invoice (contractor to Iris)
@@ -188,6 +196,8 @@ internal notes, cancellation reasons or rates.
 | Printed | Source |
 |---|---|
 | "Bill To: Iris Music Project" + address | Fixed |
+| "From" | The musician's `Person.name` and email |
+| Invoice number, e.g. "AR-20261102" | Initials + `PayPeriod.starts_on` (v0.12) |
 | "For services from [start]–[end] (2-week period, Monday–Sunday)" | `PayPeriod` |
 | Lines by residency and category, stipends, adjustments | `InvoiceLine`s |
 | "TOTAL DUE" | `MusicianInvoice.total` |

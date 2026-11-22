@@ -50,7 +50,7 @@ function seriesFromForm(form: FormData) {
   const kind = (String(form.get("kind") ?? "group_session") as SessionKind);
   const start = String(form.get("start_time") ?? "").trim();
   const minutesText = String(form.get("minutes") ?? "").trim();
-  const recurrence = form.get("recurrence") === "monthly" ? "monthly" : "weekly";
+  const recurrence: "weekly" | "monthly" = form.get("recurrence") === "monthly" ? "monthly" : "weekly";
   return {
     recurrence,
     week_of_month: recurrence === "monthly" ? Number(form.get("week_of_month")) || null : null,
@@ -63,6 +63,7 @@ function seriesFromForm(form: FormData) {
     active_from: String(form.get("active_from") ?? ""),
     active_until: String(form.get("active_until") ?? "") || null,
     default_leader_id: isId(String(form.get("default_leader_id") ?? "")) ? String(form.get("default_leader_id")) : null,
+    default_interaction_type_id: isId(String(form.get("default_interaction_type_id") ?? "")) ? String(form.get("default_interaction_type_id")) : null,
   };
 }
 
@@ -325,4 +326,54 @@ export async function fillSeason(residencyId: string, seasonId: string): Promise
   if (error) return fail(error);
   refresh(residencyId);
   return { status: "saved", created: data as number };
+}
+
+// ---- Collaboration target (v0.19) ----
+
+export async function setCollaborationTarget(residencyId: string, seasonId: string, value: number): Promise<ScheduleResult> {
+  await requirePerson();
+  if (!Number.isInteger(value) || value < 0 || value > 100) return { status: "error", message: "Enter a number from 0 to 100." };
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("target")
+    .upsert({ season_id: seasonId, metric: "collaborative_programs_per_musician", value }, { onConflict: "season_id,metric" });
+  if (error) return fail(error);
+  refresh(residencyId);
+  return ok;
+}
+
+// ---- Usual relationship-building lengths (point person or admin; v0.21) ----
+
+export async function setActivityLengths(residencyId: string, lengths: { kind: string; minutes: number }[]): Promise<ScheduleResult> {
+  await requirePerson();
+  const rows = lengths.filter((l) => ["one_to_one", "mini_group", "hallway_concert"].includes(l.kind) && l.minutes);
+  if (rows.some((l) => !Number.isInteger(l.minutes) || l.minutes < 1 || l.minutes > 600)) return { status: "error", message: "Enter minutes from 1 to 600." };
+  if (!rows.length) return ok;
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("activity_length")
+    .upsert(rows.map((l) => ({ residency_id: residencyId, kind: l.kind, minutes: l.minutes })), { onConflict: "residency_id,kind" });
+  if (error) return fail(error);
+  refresh(residencyId);
+  return ok;
+}
+
+// ---- Approving hours (point person or admin; v0.19) ----
+
+export async function approveWeek(residencyId: string, personId: string, week: string): Promise<ScheduleResult> {
+  await requirePerson();
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("approve_week", { p_person: personId, p_residency: residencyId, p_week: week });
+  if (error) return fail(error);
+  refresh(residencyId);
+  return ok;
+}
+
+export async function returnWeek(residencyId: string, personId: string, week: string, note: string): Promise<ScheduleResult> {
+  await requirePerson();
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("return_week", { p_person: personId, p_residency: residencyId, p_week: week, p_note: note });
+  if (error) return fail(error);
+  refresh(residencyId);
+  return ok;
 }

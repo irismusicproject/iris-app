@@ -7,13 +7,11 @@ import { ConfirmButton } from "@/components/confirm-button";
 import {
   ACTIVITY_KIND_LABELS,
   ACTIVITY_KINDS,
-  RESIDENT_INVOLVEMENT_LABELS,
-  RESIDENT_INVOLVEMENTS,
   residentsRequired,
   type ActivityKind,
   type ResidentInvolvement,
 } from "@/shared/domain/documentation";
-import { createCalendarLink, deleteActivity, logActivity, resetCalendarLink, saveReflection, saveSessionReport, type DocResult } from "./actions";
+import { createCalendarLink, deleteActivity, logActivity, resetCalendarLink, saveReflection, saveWeek, saveSessionReport, type DocResult } from "./actions";
 
 const small = "rounded-full border border-border px-3 py-1 text-xs hover:bg-iris-soft disabled:opacity-60";
 type Option = { id: string; label: string };
@@ -31,19 +29,24 @@ export function ReportRow({
     title: string;
     place: string;
     scheduledMinutes: number;
+    /** The program's usual type, pre-selected (v0.21). */
+    usualTypeId?: string;
     report: { attendance: number; interactionTypeId: string; involvement: ResidentInvolvement; minutes: number; notes: string } | null;
   };
   types: Option[];
 }) {
   const r = session.report;
   const [attendance, setAttendance] = useState(r ? String(r.attendance) : "");
-  const [typeId, setTypeId] = useState(r?.interactionTypeId ?? "");
+  const [typeId, setTypeId] = useState(r?.interactionTypeId ?? session.usualTypeId ?? "");
   const [involvement, setInvolvement] = useState<ResidentInvolvement>(r?.involvement ?? "none");
   const [minutes, setMinutes] = useState(String(r?.minutes ?? session.scheduledMinutes));
   const [notes, setNotes] = useState(r?.notes ?? "");
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
   const [done, setDone] = useState(!!r);
+  // The length comes from the program (set by the point person or an admin,
+  // v0.20). The leader only changes it when the session ran longer or shorter.
+  const [editLength, setEditLength] = useState(!!r && r.minutes !== session.scheduledMinutes);
 
   return (
     <li className="py-4">
@@ -55,7 +58,7 @@ export function ReportRow({
       </div>
       <p className="text-sm text-muted">{session.day}{session.time ? ` · ${session.time}` : ""} · {session.place}</p>
       <form
-        className="mt-3 grid gap-3 sm:grid-cols-[6rem_1fr_1fr_6rem]"
+        className="mt-3 grid gap-3 sm:grid-cols-[6rem_1fr_8rem]"
         onSubmit={(ev) => {
           ev.preventDefault();
           start(async () => {
@@ -63,7 +66,7 @@ export function ReportRow({
               attendance: Number(attendance),
               interactionTypeId: typeId,
               involvement,
-              minutes: Number(minutes),
+              minutes: editLength ? Number(minutes) : session.scheduledMinutes,
               notes,
             });
             if (res.status === "saved") { setDone(true); setMsg("Saved."); } else setMsg(res.message ?? "Something went wrong.");
@@ -80,19 +83,44 @@ export function ReportRow({
           </select>
         </Field>
         <Field label="Collab?">
-          <select value={involvement} onChange={(e) => setInvolvement(e.target.value as ResidentInvolvement)} className={inputClass}>
-            {RESIDENT_INVOLVEMENTS.map((v) => <option key={v} value={v}>{RESIDENT_INVOLVEMENT_LABELS[v]}</option>)}
+          {/* Yes/No (v0.19): every "Yes" counts toward the collaboration target, stored as co_led. */}
+          <select value={involvement === "none" ? "none" : "co_led"} onChange={(e) => setInvolvement(e.target.value as ResidentInvolvement)} className={inputClass}>
+            <option value="none">No</option>
+            <option value="co_led">Yes</option>
           </select>
         </Field>
-        <Field label="Minutes">
-          <input inputMode="numeric" value={minutes} onChange={(e) => setMinutes(e.target.value)} required className={inputClass} />
-        </Field>
-        <div className="sm:col-span-4">
+        <div className="text-sm sm:col-span-3">
+          {editLength ? (
+            <div className="flex flex-wrap items-end gap-3">
+              <Field label="How long it actually ran (minutes)">
+                <input inputMode="numeric" value={minutes} onChange={(e) => setMinutes(e.target.value)} required className={`${inputClass} w-28`} />
+              </Field>
+              <button
+                type="button"
+                className="pb-2 text-xs text-muted underline"
+                onClick={() => {
+                  setEditLength(false);
+                  setMinutes(String(session.scheduledMinutes));
+                }}
+              >
+                Use the usual {session.scheduledMinutes} min
+              </button>
+            </div>
+          ) : (
+            <p>
+              Length: <strong>{session.scheduledMinutes} min</strong>{" "}
+              <button type="button" className="ml-1 text-xs text-iris underline" onClick={() => setEditLength(true)}>
+                Ran longer or shorter?
+              </button>
+            </p>
+          )}
+        </div>
+        <div className="sm:col-span-3">
           <Field label="Notes (optional)" hint="Music and group engagement only. No health information.">
             <input value={notes} onChange={(e) => setNotes(e.target.value)} className={inputClass} />
           </Field>
         </div>
-        <div className="flex items-center gap-3 sm:col-span-4">
+        <div className="flex items-center gap-3 sm:col-span-3">
           <button disabled={pending} className={small}>{pending ? "Saving..." : done ? "Update" : "Save"}</button>
           {msg && <span role="status" className="text-xs text-iris">{msg}</span>}
         </div>
@@ -102,41 +130,74 @@ export function ReportRow({
 }
 
 // ---- Log a relationship-building activity ----
+// v0.21: the usual length per type (set by the point person) fills Minutes;
+// the date and site stay after each log so several one-to-ones in a day are
+// quick; "Same as last time" copies the last activity. Sites with detailed
+// notes get a paragraph note for the partner's daily document.
 
-type Program = { id: string; name: string; sites: Option[] };
-type Lesson = { id: string; residencyId: string; siteId: string; label: string; date: string };
+type Program = { id: string; name: string; sites: (Option & { detailedNotes?: boolean })[] };
+export type LastActivity = { residencyId: string; siteId: string; kind: ActivityKind; minutes: number; collaborative: boolean; residentIds: string[] };
 
 const initial: DocResult = { status: "idle" };
 
 export function ActivityForm({
   programs,
   residents,
-  lessons,
   defaultDate,
   minDate,
   maxDate,
+  lengths = {},
+  last = null,
 }: {
   programs: Program[];
   residents: { id: string; siteId: string; name: string }[];
-  lessons: Lesson[];
   defaultDate: string;
   minDate: string;
   maxDate: string;
+  /** Usual minutes per type, per program (residency id). */
+  lengths?: Record<string, Partial<Record<ActivityKind, number>>>;
+  last?: LastActivity | null;
 }) {
   const [state, action, pending] = useActionState(logActivity, initial);
   const [residencyId, setResidencyId] = useState(programs[0]?.id ?? "");
   const program = programs.find((p) => p.id === residencyId);
   const [siteId, setSiteId] = useState(program?.sites[0]?.id ?? "");
   const [kind, setKind] = useState<ActivityKind>("one_to_one");
+  const usual = (rid: string, k: ActivityKind) => (lengths[rid]?.[k] ? String(lengths[rid]![k]) : "");
+  const [minutes, setMinutes] = useState(usual(residencyId, "one_to_one"));
+  const [date, setDate] = useState(defaultDate);
+  const [collab, setCollab] = useState("no");
+  const [picked, setPicked] = useState<string[]>([]);
+  const [seen, setSeen] = useState(state.savedAt);
+  if (state.savedAt !== seen) {
+    // Logged: clear who and how long, keep program, site, type and date.
+    setSeen(state.savedAt);
+    setPicked([]);
+    setCollab("no");
+    setMinutes(usual(residencyId, kind));
+  }
   const siteResidents = useMemo(() => residents.filter((r) => r.siteId === siteId), [residents, siteId]);
-  const siteLessons = lessons.filter((l) => l.residencyId === residencyId && l.siteId === siteId);
+  const detailed = !!program?.sites.find((x) => x.id === siteId)?.detailedNotes;
+  const lastUsable = last && programs.some((p) => p.id === last.residencyId && p.sites.some((x) => x.id === last.siteId));
   const e = state.errors;
   return (
-    <form
-      action={action}
-      key={state.savedAt ?? 0}
-      className="flex flex-col gap-4"
-    >
+    <form action={action} key={state.savedAt ?? 0} className="flex flex-col gap-4">
+      {lastUsable && (
+        <button
+          type="button"
+          className={`${small} self-start`}
+          onClick={() => {
+            setResidencyId(last!.residencyId);
+            setSiteId(last!.siteId);
+            setKind(last!.kind);
+            setMinutes(String(last!.minutes));
+            setCollab(last!.collaborative ? "yes" : "no");
+            setPicked(last!.residentIds);
+          }}
+        >
+          Same as last time
+        </button>
+      )}
       <div className="grid gap-4 sm:grid-cols-2">
         {programs.length > 1 && (
           <Field label="Program">
@@ -146,6 +207,8 @@ export function ActivityForm({
               onChange={(ev) => {
                 setResidencyId(ev.target.value);
                 setSiteId(programs.find((p) => p.id === ev.target.value)?.sites[0]?.id ?? "");
+                setMinutes(usual(ev.target.value, kind));
+                setPicked([]);
               }}
               className={inputClass}
             >
@@ -155,37 +218,38 @@ export function ActivityForm({
         )}
         {programs.length === 1 && <input type="hidden" name="residency_id" value={residencyId} />}
         <Field label="Site" error={e?.site_id}>
-          <select name="site_id" value={siteId} onChange={(ev) => setSiteId(ev.target.value)} className={inputClass}>
-            {program?.sites.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+          <select name="site_id" value={siteId} onChange={(ev) => { setSiteId(ev.target.value); setPicked([]); }} className={inputClass}>
+            {program?.sites.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
           </select>
         </Field>
         <Field label="Date" error={e?.occurred_on}>
-          <input name="occurred_on" type="date" defaultValue={defaultDate} min={minDate} max={maxDate} required className={inputClass} />
+          <input name="occurred_on" type="date" value={date} onChange={(ev) => setDate(ev.target.value)} min={minDate} max={maxDate} required className={inputClass} />
         </Field>
         <Field label="Type" error={e?.kind}>
-          <select name="kind" value={kind} onChange={(ev) => setKind(ev.target.value as ActivityKind)} className={inputClass}>
+          <select
+            name="kind"
+            value={kind}
+            onChange={(ev) => {
+              const k = ev.target.value as ActivityKind;
+              setKind(k);
+              if (usual(residencyId, k)) setMinutes(usual(residencyId, k));
+            }}
+            className={inputClass}
+          >
             {ACTIVITY_KINDS.map((k) => <option key={k} value={k}>{ACTIVITY_KIND_LABELS[k]}</option>)}
           </select>
         </Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Minutes" error={e?.minutes}>
-            <input name="minutes" inputMode="numeric" required className={inputClass} />
+            <input name="minutes" inputMode="numeric" value={minutes} onChange={(ev) => setMinutes(ev.target.value)} required className={inputClass} />
           </Field>
           <Field label="Collab?">
-            <select name="collaborative" defaultValue="no" className={inputClass}>
+            <select name="collaborative" value={collab} onChange={(ev) => setCollab(ev.target.value)} className={inputClass}>
               <option value="no">No</option>
               <option value="yes">Yes</option>
             </select>
           </Field>
         </div>
-        {siteLessons.length > 0 && (
-          <Field label="Part of a scheduled lesson? (optional)">
-            <select name="session_id" defaultValue="" className={inputClass}>
-              <option value="">No</option>
-              {siteLessons.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}
-            </select>
-          </Field>
-        )}
       </div>
       <fieldset>
         <legend className="text-sm font-medium">
@@ -196,7 +260,14 @@ export function ActivityForm({
           <div className="mt-2 flex flex-wrap gap-2">
             {siteResidents.map((r) => (
               <label key={r.id} className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-sm">
-                <input type="checkbox" name="resident_id" value={r.id} /> {r.name}
+                <input
+                  type="checkbox"
+                  name="resident_id"
+                  value={r.id}
+                  checked={picked.includes(r.id)}
+                  onChange={(ev) => setPicked((cur) => (ev.target.checked ? [...cur, r.id] : cur.filter((x) => x !== r.id)))}
+                />{" "}
+                {r.name}
               </label>
             ))}
           </div>
@@ -211,10 +282,16 @@ export function ActivityForm({
           </Field>
         </div>
       </fieldset>
-      <Field label="One-sentence note (optional)" hint="No health information.">
-        <input name="note" maxLength={500} className={inputClass} />
-      </Field>
-      {state.status === "saved" && !pending && <p role="status" className="text-sm text-iris">Logged.</p>}
+      {detailed ? (
+        <Field label="Note for the partner (optional)" hint="A few sentences on what you did together; goes in the day's document for this site. No health information.">
+          <textarea name="note" maxLength={3000} rows={4} className={inputClass} />
+        </Field>
+      ) : (
+        <Field label="One-sentence note (optional)" hint="No health information.">
+          <input name="note" maxLength={500} className={inputClass} />
+        </Field>
+      )}
+      {state.status === "saved" && !pending && <p role="status" className="text-sm text-iris">Logged. Date and site are kept for the next one.</p>}
       {!pending && <FormError message={state.message} />}
       <button type="submit" disabled={pending} className={`${buttonClass} self-start`}>
         {pending ? "Saving..." : "Log activity"}
@@ -320,6 +397,103 @@ export function CalendarLinkCard({ feedUrl }: { feedUrl: string | null }) {
           </p>
         </>
       )}
+    </div>
+  );
+}
+
+// ---- The week's hours, every program, one submit (v0.21) ----
+
+export type WeekHoursProgram = {
+  residencyId: string;
+  programName: string;
+  initial: Record<string, number>;
+  prefill: Record<string, number>;
+  state: "draft" | "submitted" | "approved" | null;
+  returnedNote: string | null;
+};
+
+export function WeekHours({
+  week,
+  categories,
+  programs,
+  toDocument,
+}: {
+  week: string;
+  categories: { id: string; name: string; description: string | null }[];
+  programs: WeekHoursProgram[];
+  /** Programs this musician led this week that still need documenting. */
+  toDocument: string[];
+}) {
+  const startValue = (p: WeekHoursProgram, id: string) => String(p.initial[id] ?? p.prefill[id] ?? 0);
+  const [values, setValues] = useState<Record<string, Record<string, string>>>(() =>
+    Object.fromEntries(programs.map((p) => [p.residencyId, Object.fromEntries(categories.map((c) => [c.id, startValue(p, c.id)]))])),
+  );
+  const [pending, startTransition] = useTransition();
+  const [msg, setMsg] = useState<string | null>(null);
+  const open = programs.filter((p) => p.state !== "submitted" && p.state !== "approved");
+  const sum = (rid: string) => categories.reduce((n, c) => n + (Number(values[rid]?.[c.id]) || 0), 0);
+  const total = open.reduce((n, p) => n + sum(p.residencyId), 0);
+  const save = (submit: boolean) =>
+    startTransition(async () => {
+      const r = await saveWeek(
+        week,
+        open.map((p) => ({ residencyId: p.residencyId, hours: categories.map((c) => ({ categoryId: c.id, hours: Number(values[p.residencyId]?.[c.id]) || 0 })) })),
+        submit,
+      );
+      setMsg(r.status === "error" ? r.message ?? "Something went wrong." : submit ? "Your week is submitted to the point person." : "Saved.");
+    });
+  return (
+    <div className="flex flex-col gap-6">
+      {programs.map((p) => {
+        const locked = p.state === "submitted" || p.state === "approved";
+        return (
+          <div key={p.residencyId} className="flex flex-col gap-3">
+            {programs.length > 1 && <h3 className="font-medium">{p.programName}</h3>}
+            {p.returnedNote && p.state === "draft" && (
+              <p className="rounded-lg border border-brand-orange/60 p-2 text-sm"><strong>Sent back by the point person:</strong> {p.returnedNote}</p>
+            )}
+            <div className="grid gap-3 sm:grid-cols-3">
+              {categories.map((c) => (
+                <Field key={c.id} label={c.name} hint={p.prefill[c.id] !== undefined && p.initial[c.id] === undefined ? "Pre-filled from your schedule and logs" : undefined}>
+                  <input
+                    inputMode="decimal"
+                    value={values[p.residencyId]?.[c.id] ?? ""}
+                    disabled={locked}
+                    onChange={(e) => setValues((v) => ({ ...v, [p.residencyId]: { ...v[p.residencyId], [c.id]: e.target.value } }))}
+                    aria-label={`${programs.length > 1 ? `${p.programName} ` : ""}${c.name} hours`}
+                    className={inputClass}
+                  />
+                </Field>
+              ))}
+            </div>
+            <p className="text-sm">
+              Total: <strong>{sum(p.residencyId).toFixed(2)} hours</strong>
+              <span className="ml-2 rounded-full bg-iris-soft px-2 py-0.5 text-xs">
+                {p.state === "approved" ? "Approved" : p.state === "submitted" ? "Submitted, waiting for approval" : "Not submitted yet"}
+              </span>
+            </p>
+          </div>
+        );
+      })}
+      {open.length > 0 && (
+        <div className="flex flex-col gap-2 border-t border-border pt-4">
+          {toDocument.length > 0 && (
+            <p className="text-sm text-brand-orange">Before you submit, document: {toDocument.join(", ")}.</p>
+          )}
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" disabled={pending} className={small} onClick={() => save(false)}>Save draft</button>
+            <ConfirmButton
+              disabled={pending || toDocument.length > 0}
+              className={buttonClass}
+              label="Submit my week"
+              question={`Submit your documentation and ${total.toFixed(2)} hours for this week?`}
+              confirmLabel="Yes, submit"
+              onConfirm={() => save(true)}
+            />
+          </div>
+        </div>
+      )}
+      {msg && <p role="status" className="text-sm text-iris">{msg}</p>}
     </div>
   );
 }

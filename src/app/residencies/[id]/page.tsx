@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { requirePerson } from "@/lib/auth";
-import { getResidencyNames } from "@/lib/residency-access";
+import { getResidencyAccess, getResidencyNames } from "@/lib/residency-access";
 import { createClient } from "@/lib/supabase/server";
 import {
   RESIDENCY_STATUS_LABELS,
@@ -18,9 +18,13 @@ import {
   AddSeasonForm,
   AddSiteForm,
   AddStaffForm,
+  DailyNotesDownload,
   EndStaffButton,
+  PayEditor,
+  type PayContract,
   ResidencyForm,
   RosterMemberActions,
+  SiteDetailedNotesToggle,
 } from "../forms";
 
 export const metadata = { title: "Program · Iris Music Project" };
@@ -45,10 +49,10 @@ export default async function ResidencyPage({ params }: { params: Promise<{ id: 
   if (!residency) notFound();
 
   const today = new Date().toISOString().slice(0, 10);
-  const names = await getResidencyNames(id);
+  const [names, access] = await Promise.all([getResidencyNames(id), getResidencyAccess(id, isAdmin)]);
   const nameOf = (pid: string) => names.get(pid) ?? "Someone";
   const [{ data: siteRows }, { data: seasonRows }, { data: staffRows }] = await Promise.all([
-    supabase.from("residency_site").select("site(id, display_name, city)").eq("residency_id", id),
+    supabase.from("residency_site").select("site(id, display_name, city, detailed_relationship_notes)").eq("residency_id", id),
     supabase
       .from("season")
       .select("*, roster_member(*)")
@@ -60,20 +64,29 @@ export default async function ResidencyPage({ params }: { params: Promise<{ id: 
       .eq("residency_id", id)
       .order("starts_on", { ascending: false }),
   ]);
-  const sites = (siteRows ?? []).map((r) => r.site as unknown as { id: string; display_name: string; city: string | null }).filter(Boolean);
+  const sites = (siteRows ?? []).map((r) => r.site as unknown as { id: string; display_name: string; city: string | null; detailed_relationship_notes: boolean }).filter(Boolean);
   const seasons = (seasonRows ?? []) as SeasonRow[];
   const staff = ((staffRows ?? []) as StaffRow[]).filter((s) => !s.ends_on || s.ends_on > today);
 
   // Admin-only pick lists.
   let otherSites: { id: string; label: string }[] = [];
-  let people: { id: string; name: string; isAdmin: boolean }[] = [];
+  let people: { id: string; name: string; isAdmin: boolean; contractor: boolean }[] = [];
   if (isAdmin) {
     const [{ data: ps }, { data: pp }] = await Promise.all([
       supabase.from("site").select("id, display_name").eq("partner_id", residency.partner_id).eq("active", true).order("display_name"),
-      supabase.from("person").select("id, name, system_roles").eq("active", true).order("name"),
+      supabase.from("person").select("id, name, system_roles, employment_type").eq("active", true).order("name"),
     ]);
     otherSites = (ps ?? []).filter((s) => !sites.some((x) => x.id === s.id)).map((s) => ({ id: s.id, label: s.display_name }));
-    people = (pp ?? []).map((p) => ({ id: p.id, name: p.name, isAdmin: (p.system_roles as string[]).includes("admin") }));
+    people = (pp ?? []).map((p) => ({ id: p.id, name: p.name, isAdmin: (p.system_roles as string[]).includes("admin"), contractor: p.employment_type === "contractor_1099" }));
+  }
+  // Pay (admins only; RLS also hides other people's contracts).
+  const contracts = new Map<string, PayContract>();
+  if (isAdmin && seasons.length) {
+    const { data: cs } = await supabase
+      .from("contract")
+      .select("id, person_id, season_id, hourly_rate, stipend_installment(id, kind, due_on, amount)")
+      .in("season_id", seasons.map((s) => s.id));
+    for (const c of cs ?? []) contracts.set(`${c.season_id}:${c.person_id}`, c as unknown as PayContract);
   }
 
   const card = "mt-8 rounded-xl border border-border bg-surface p-5 sm:p-6";
@@ -89,13 +102,25 @@ export default async function ResidencyPage({ params }: { params: Promise<{ id: 
       <div className="mt-4 flex flex-wrap gap-2 text-sm">
         <Link href={`/residencies/${id}/month`} className="rounded-full bg-iris px-4 py-2 font-medium text-white hover:bg-iris-strong dark:text-background">Schedule</Link>
         <Link href={`/residencies/${id}/season`} className="rounded-full border border-border px-4 py-2 hover:bg-iris-soft">Season</Link>
+        {access.isPointPerson && (
+          <Link href={`/residencies/${id}/hours`} className="rounded-full border border-border px-4 py-2 hover:bg-iris-soft">Hours to approve</Link>
+        )}
+        {isAdmin && (
+          <Link href={`/residencies/${id}/billing`} className="rounded-full border border-border px-4 py-2 hover:bg-iris-soft">Community invoices</Link>
+        )}
       </div>
 
       <section className={card}>
         <h2 className="text-lg font-semibold">Sites</h2>
         <ul className="mt-3 space-y-1 text-sm">
           {sites.map((s) => (
-            <li key={s.id}>{s.display_name}{s.city ? <span className="text-muted"> · {s.city}</span> : null}</li>
+            <li key={s.id} className="flex flex-col gap-1.5 py-1">
+              <span>{s.display_name}{s.city ? <span className="text-muted"> · {s.city}</span> : null}</span>
+              {isAdmin && <SiteDetailedNotesToggle residencyId={id} siteId={s.id} on={s.detailed_relationship_notes} />}
+              {s.detailed_relationship_notes && (isAdmin || access.isPointPerson) && (
+                <DailyNotesDownload siteId={s.id} siteName={s.display_name} defaultDate={today} />
+              )}
+            </li>
           ))}
           {sites.length === 0 && <li className="text-muted">No sites yet.</li>}
         </ul>
@@ -156,6 +181,15 @@ export default async function ResidencyPage({ params }: { params: Promise<{ id: 
                         name={nameOf(m.person_id)}
                         isCore={m.is_core}
                         isAdminLead={m.is_admin_lead}
+                      />
+                    )}
+                    {isAdmin && people.find((p) => p.id === m.person_id)?.contractor && (
+                      <PayEditor
+                        residencyId={id}
+                        seasonId={s.id}
+                        personId={m.person_id}
+                        name={nameOf(m.person_id)}
+                        contract={contracts.get(`${s.id}:${m.person_id}`) ?? null}
                       />
                     )}
                   </li>

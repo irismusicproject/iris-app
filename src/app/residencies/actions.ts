@@ -138,3 +138,53 @@ export async function endStaffAssignment(residencyId: string, assignmentId: stri
   revalidatePath(`/residencies/${residencyId}`);
   return { status: "saved" };
 }
+
+// ---- Pay: contract rate and stipend payments (admins only; v0.19) ----
+
+const STIPEND_KINDS = ["project_support", "admin_lead", "training", "other"];
+
+export async function setContractRate(residencyId: string, seasonId: string, personId: string, rate: number): Promise<SetupFormState> {
+  await requireAdmin();
+  if (!Number.isFinite(rate) || rate < 0 || rate > 1000) return { status: "error", message: "Enter an hourly rate." };
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("contract")
+    .upsert({ season_id: seasonId, person_id: personId, hourly_rate: Math.round(rate * 100) / 100 }, { onConflict: "person_id,season_id" });
+  if (error) return { status: "error", message: dbMessage(error, "contract") };
+  revalidatePath(`/residencies/${residencyId}`);
+  return { status: "saved" };
+}
+
+export async function addStipend(residencyId: string, contractId: string, kind: string, dueOn: string, amount: number): Promise<SetupFormState> {
+  await requireAdmin();
+  if (!STIPEND_KINDS.includes(kind)) return { status: "error", message: "Pick a kind." };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dueOn)) return { status: "error", message: "Enter the date it's due." };
+  if (!Number.isFinite(amount) || amount <= 0) return { status: "error", message: "Enter an amount." };
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("stipend_installment")
+    .insert({ contract_id: contractId, kind, due_on: dueOn, amount: Math.round(amount * 100) / 100 });
+  if (error) return { status: "error", message: dbMessage(error, "stipend") };
+  revalidatePath(`/residencies/${residencyId}`);
+  return { status: "saved" };
+}
+
+export async function removeStipend(residencyId: string, stipendId: string): Promise<SetupFormState> {
+  await requireAdmin();
+  const supabase = await createClient();
+  const { error } = await supabase.from("stipend_installment").delete().eq("id", stipendId);
+  if (error) return { status: "error", message: dbMessage(error, "stipend") };
+  revalidatePath(`/residencies/${residencyId}`);
+  return { status: "saved" };
+}
+
+// ---- Detailed one-to-one notes per site (admins; v0.21) ----
+
+export async function setSiteDetailedNotes(residencyId: string, siteId: string, on: boolean): Promise<SetupFormState> {
+  await requireAdmin();
+  const supabase = await createClient();
+  const { error } = await supabase.from("site").update({ detailed_relationship_notes: on }).eq("id", siteId);
+  if (error) return { status: "error", message: dbMessage(error, "site") };
+  revalidatePath(`/residencies/${residencyId}`);
+  return { status: "saved" };
+}

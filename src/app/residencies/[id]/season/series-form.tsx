@@ -18,12 +18,14 @@ export function SeriesForm({
   defaultPeople = [],
   rooms,
   musicians,
+  types = [],
 }: {
   residencyId: string;
   series?: Series;
   defaultPeople?: string[];
   rooms: Option[];
   musicians: Option[];
+  types?: Option[];
 }) {
   const [state, action, pending] = useActionState(saveSeries.bind(null, residencyId, series?.id ?? null), initial);
   const [kind, setKind] = useState<SessionKind>(series?.kind ?? "group_session");
@@ -57,7 +59,11 @@ export function SeriesForm({
           <Field label={timeOptional ? "Time (optional)" : "Time"} error={e?.start_time}>
             <input name="start_time" type="time" required={!timeOptional} defaultValue={series?.start_time?.slice(0, 5) ?? ""} className={inputClass} />
           </Field>
-          <Field label={timeOptional ? "Minutes (optional)" : "Minutes"} error={e?.minutes}>
+          <Field
+            label={timeOptional ? "Minutes (optional)" : "Length (minutes)"}
+            error={e?.minutes}
+            hint={timeOptional ? undefined : "Musicians won't retype it when documenting. Changing it updates every date not yet documented."}
+          >
             <input name="minutes" type="number" min={5} max={600} step={5} required={!timeOptional} defaultValue={series?.minutes ?? (timeOptional ? "" : 45)} className={inputClass} />
           </Field>
         </div>
@@ -98,6 +104,14 @@ export function SeriesForm({
           <select name="default_leader_id" defaultValue={series?.default_leader_id ?? ""} className={inputClass}>
             <option value="">No usual leader</option>
             {musicians.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+          </select>
+        </Field>
+      )}
+      {kind === "group_session" && types.length > 0 && (
+        <Field label="Usual type (optional)" hint="Already picked when the leader documents; they change it only when it was different.">
+          <select name="default_interaction_type_id" defaultValue={series?.default_interaction_type_id ?? ""} className={inputClass}>
+            <option value="">Leader picks each time</option>
+            {types.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
           </select>
         </Field>
       )}
