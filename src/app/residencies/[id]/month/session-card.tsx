@@ -100,7 +100,9 @@ export function SessionCard({
   const canEdit = isDraft && (canSchedule || (onRoster && playingMe));
   const canEditPublished = isAdminLead && session.state === "published";
   const canEditDetails = canEdit || canEditPublished;
-  const canCancel = canSchedule || canEditPublished;
+  const iLead = session.assignments.some((a) => a.personId === myId && a.role === "leader" && a.status !== "absent");
+  // The point person/admins; the Admin Lead on published dates; a draft date's own leader.
+  const canCancel = canSchedule || canEditPublished || (isDraft && iLead);
   const canRestore = canSchedule || isAdminLead;
   const playing = session.assignments.filter((a) => a.status !== "absent");
   const leader = playing.find((a) => a.role === "leader");

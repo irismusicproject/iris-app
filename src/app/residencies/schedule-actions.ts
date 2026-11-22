@@ -26,7 +26,7 @@ const ok: ScheduleResult = { status: "saved" };
 function fail(error: { code?: string; message: string }): ScheduleResult {
   const m = error.message;
   if (error.code === "42501") {
-    if (m.includes("musicians can change")) return { status: "error", message: "Musicians can change a draft's title, room, notes and musicians (and a special event's date and time)." };
+    if (m.includes("musicians can change")) return { status: "error", message: "On drafts you play in, you can change the title, room, notes and musicians (and a special event's date and time). The date's leader can make it “No Program”." };
     return { status: "error", message: "You don't have permission to make that change." };
   }
   if (error.code === "23514") {
@@ -211,7 +211,7 @@ export async function cancelSession(residencyId: string, sessionId: string, reas
     .update({ schedule_state: "canceled", cancellation_reason: reason }, { count: "exact" })
     .eq("id", sessionId);
   if (error) return fail(error);
-  if (!count) return { status: "error", message: "Only the admin lead, point person or an admin can cancel a program." };
+  if (!count) return { status: "error", message: "Only the date's leader (on drafts), the admin lead (on published dates), the point person or an admin can make it “No Program”." };
   refresh(residencyId);
   return ok;
 }

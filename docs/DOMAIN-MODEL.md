@@ -479,7 +479,7 @@ drafting rules below where they differ)**
 |---|---|
 | **Point person, admins** | Everything: set up weekly and monthly programs (in the season view), fill months and the season, add events, set leaders, "No Program" and restore, mark a month reviewed |
 | **Admin Lead** | Publish and download; update **published** dates after the partner's staff asks (time, room, title, notes, "No Program" or restore) and download the updated calendar; add one-time events. Not: fill months or the season, set up programs |
-| **Every roster musician** (Admin Lead included) | On **draft dates they play in**: title, notes, room, who plays, and **pick or swap the leader** (after the point person has set it); date and time of special events they play in |
+| **Every roster musician** (Admin Lead included) | On **draft dates they play in**: title, notes, room, who plays, and **pick or swap the leader** (after the point person has set it); date and time of special events they play in. **A draft date's leader can make it "No Program"** (restoring stays with the point person and Admin Lead) |
 
 **Publishing a month (decided, D5, Nov 21, 2026; drafting updated Nov 22)**
 

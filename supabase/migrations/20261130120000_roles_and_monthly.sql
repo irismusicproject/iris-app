@@ -10,7 +10,8 @@
 --     download the updated version; add one-time events.
 --   * Every roster musician (Admin Lead included), on DRAFT dates they play
 --     in: title, notes, room, musicians, and pick or swap the leader;
---     date and time of special events they play in.
+--     date and time of special events they play in. A date's leader can
+--     also make it "No Program".
 -- Monthly programs: a Series can repeat monthly on the 1st-4th weekday.
 --
 -- Needs Ryan's review (permissions).
@@ -102,7 +103,7 @@ $$;
 drop policy "session: roster musicians edit drafts" on public.session;
 create policy "session: musicians edit drafts they play in" on public.session for update to authenticated
   using (schedule_state = 'draft' and (select public.is_on_current_roster(residency_id)) and (select public.is_playing(id)))
-  with check (schedule_state = 'draft' and (select public.is_on_current_roster(residency_id)));
+  with check (schedule_state in ('draft', 'canceled') and (select public.is_on_current_roster(residency_id)));
 create policy "session: admin lead updates published dates" on public.session for update to authenticated
   using (schedule_state in ('published', 'canceled') and (select public.is_current_admin_lead(residency_id)))
   with check ((select public.is_current_admin_lead(residency_id)));
@@ -140,21 +141,24 @@ begin
       end if;
     elsif not planner then
       -- Musicians on a draft they play in: title, room and notes; date and
-      -- time only for special events.
-      if new.schedule_state is distinct from old.schedule_state
+      -- time only for special events. The date's leader can also make it
+      -- "No Program" (draft -> canceled, with a reason).
+      if (new.schedule_state is distinct from old.schedule_state
+          and not (old.schedule_state = 'draft' and new.schedule_state = 'canceled'
+                   and public.is_session_leader(old.id)))
          or new.series_id is distinct from old.series_id
          or new.kind is distinct from old.kind
          or new.has_set_time is distinct from old.has_set_time
          or new.is_special_event is distinct from old.is_special_event
          or new.is_extra is distinct from old.is_extra
          or new.billable is distinct from old.billable
-         or new.cancellation_reason is distinct from old.cancellation_reason
+         or (new.cancellation_reason is distinct from old.cancellation_reason and new.schedule_state <> 'canceled')
          or new.public_note is distinct from old.public_note
          or (not old.is_special_event and (
                new.starts_at is distinct from old.starts_at
                or new.scheduled_minutes is distinct from old.scheduled_minutes
                or new.call_time is distinct from old.call_time)) then
-        raise exception 'musicians can change a draft''s title, room and notes (and a special event''s date and time)'
+        raise exception 'musicians can change a draft''s title, room and notes (and a special event''s date and time); its leader can make it No Program'
           using errcode = '42501';
       end if;
     end if;
