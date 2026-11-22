@@ -1,6 +1,6 @@
 # Iris App — Domain Model (Language 1: the code)
 
-_Draft v0.24, November 22, 2026 (v0.24: shared relationship-building logs; the documented building; pay only for documented hours; deadline reminders and No Program emails through one outbox; Follow-up page with missing work and metrics; staff roles. v0.23: overhead switched on or off on the contract; stipend lines can be left off each month; custom invoices typed by hand. v0.22: community invoices built; billable hours are now per musician and count once the point person approves the week (revises D9); drafts live, sent invoices frozen; admins only. v0.21: less double entry for musicians: usual type per program, usual relationship-building lengths, "Same as last time", one "Submit my week"; detailed one-to-one notes and a daily Word document per site. v0.20: program length set once by the point person or an admin; leaders change it only if a session ran longer or shorter. v0.19: musician hours and invoices built: hours entered on My week, the point person approves, admins set rates and stipends, invoices per two-week pay period; "Collab?" is Yes/No and every Yes counts as co-led; the collaboration target is set per season by the point person or an admin. v0.18: roles narrowed: the point person plans, the Admin Lead publishes and updates published dates, musicians edit drafts they play in and pick leaders; monthly programs. v0.17: "No Program" dates can be restored. v0.16: season view for the point person. v0.15: usual leaders, season reminders, private calendar links. v0.14: documentation from the CESLC workbook sample, weekly; musicians write draft notes; schedule laid out like the workbook tab. v0.13: people in a program can see each other's names, nothing else. v0.12: every roster musician edits draft titles, rooms and musicians; the point person assigns leaders. v0.11: `Partner`, `Site`, `Location` built; see section 1. v0.10: scheduled relationship building (e.g. Lessons) and the partner calendar layout; v0.9: partner permission for resident names confirmed; v0.8: decisions D14 and D15 settled: residents and attendance; v0.7: decisions D10, D11 and D16 settled: events, extras, absences, substitutes and the roster; v0.6: both D9 billing details confirmed; v0.5: decisions D9 and D13 settled: partner billing and version 1 scope; v0.4: decisions D2, D4, D6, D7 and D8 settled; v0.3: decisions D1, D3 and D5 settled, including how a month's schedule is reviewed, published and sent; v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
+_Draft v0.25, November 22, 2026 (v0.25: answers to the schema review: subs, leaders, locked after review, history after a season. v0.24: shared relationship-building logs; the documented building; pay only for documented hours; deadline reminders and No Program emails through one outbox; Follow-up page with missing work and metrics; staff roles. v0.23: overhead switched on or off on the contract; stipend lines can be left off each month; custom invoices typed by hand. v0.22: community invoices built; billable hours are now per musician and count once the point person approves the week (revises D9); drafts live, sent invoices frozen; admins only. v0.21: less double entry for musicians: usual type per program, usual relationship-building lengths, "Same as last time", one "Submit my week"; detailed one-to-one notes and a daily Word document per site. v0.20: program length set once by the point person or an admin; leaders change it only if a session ran longer or shorter. v0.19: musician hours and invoices built: hours entered on My week, the point person approves, admins set rates and stipends, invoices per two-week pay period; "Collab?" is Yes/No and every Yes counts as co-led; the collaboration target is set per season by the point person or an admin. v0.18: roles narrowed: the point person plans, the Admin Lead publishes and updates published dates, musicians edit drafts they play in and pick leaders; monthly programs. v0.17: "No Program" dates can be restored. v0.16: season view for the point person. v0.15: usual leaders, season reminders, private calendar links. v0.14: documentation from the CESLC workbook sample, weekly; musicians write draft notes; schedule laid out like the workbook tab. v0.13: people in a program can see each other's names, nothing else. v0.12: every roster musician edits draft titles, rooms and musicians; the point person assigns leaders. v0.11: `Partner`, `Site`, `Location` built; see section 1. v0.10: scheduled relationship building (e.g. Lessons) and the partner calendar layout; v0.9: partner permission for resident names confirmed; v0.8: decisions D14 and D15 settled: residents and attendance; v0.7: decisions D10, D11 and D16 settled: events, extras, absences, substitutes and the roster; v0.6: both D9 billing details confirmed; v0.5: decisions D9 and D13 settled: partner billing and version 1 scope; v0.4: decisions D2, D4, D6, D7 and D8 settled; v0.3: decisions D1, D3 and D5 settled, including how a month's schedule is reviewed, published and sent; v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
 app's objects. GLOSSARY.md translates the team's language (Language 2) and
 our partner-facing language (Language 3) into these objects._
 
@@ -233,6 +233,20 @@ and residents like other roster members.
 | `is_core` | bool | Part of the core ensemble ("the ensemble", "the Trio") vs. occasional players and substitutes (D16) |
 | `is_admin_lead` | bool | The handbook's "administrative project lead". **At most one per Season**, covering all of the residency's sites (D5) |
 | `joined_on`, `left_on` | date | |
+
+**Substitutes (v0.25, Lauren, Nov 22, 2026):** a sub is a roster musician
+like any other: they see the program's schedule and edit only the draft
+dates they play in. No extra limits.
+
+**After a season ends (v0.25, Lauren, Nov 22, 2026):** musicians keep
+**read-only** access to their own history for that season (schedule,
+documentation, relationship building, hours, invoices) for as long as they
+stay active, so returning musicians can look back. They see resident names
+only in records they wrote or shared, not the program's resident list or
+other musicians' logs. They can't change or submit anything for an ended
+season; the point person or an admin finishes any open week (including
+submitting it on the musician's behalf). Access ends when an admin
+deactivates the person (or removes them from the roster).
 
 ### `StaffAssignment`
 An Iris staff member responsible for a `Residency` (the handbook's
@@ -486,7 +500,12 @@ drafting rules below where they differ)**
 |---|---|
 | **Point person, admins** | Everything: set up weekly and monthly programs (in the season view), fill months and the season, add events, set leaders, "No Program" and restore, mark a month reviewed |
 | **Admin Lead** | Publish and download; update **published** dates after the partner's staff asks (time, room, title, notes, "No Program" or restore) and download the updated calendar; add one-time events. Not: fill months or the season, set up programs |
-| **Every roster musician** (Admin Lead included) | On **draft dates they play in**: title, notes, room, who plays, and **pick or swap the leader** (after the point person has set it); date and time of special events they play in. **A draft date's leader can make it "No Program"** (restoring stays with the point person and Admin Lead) |
+| **Every roster musician** (Admin Lead included) | On **draft dates they play in**, **until the point person marks the month reviewed**: title, notes, room, who plays, and **swap the leader** (only once the point person has set one; a date with no leader waits for the point person, v0.25); date and time of special events they play in. **A draft date's leader can make it "No Program"** (restoring stays with the point person and Admin Lead) |
+
+**Locked after review (v0.25, Lauren, Nov 22, 2026):** once the point person
+marks a month reviewed, its drafts are locked for musicians; only the
+point person and admins change them, and the Admin Lead publishes.
+Musicians ask the point person for changes.
 
 **Publishing a month (decided, D5, Nov 21, 2026; drafting updated Nov 22)**
 
