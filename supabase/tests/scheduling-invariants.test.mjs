@@ -33,6 +33,11 @@
 // Run:  node supabase/tests/scheduling-invariants.test.mjs
 //       PROP_SEED=7 PROP_STEPS=20000 node supabase/tests/scheduling-invariants.test.mjs
 //       PROP_SEED=1..5 PROP_STEPS=5000 node supabase/tests/scheduling-invariants.test.mjs   (each seed in a fresh database)
+//
+// Repeatable: the same seed on the same day gives the same run. Every list the
+// test picks from is sorted by fixed facts (date, series, room, person), never
+// by the random ids the database invents. Dates are counted from today, so a
+// run can differ from one day to the next.
 import { createDb, runner, checker, addMonths, addDays, lastDay, rng } from "./scheduling-harness.mjs";
 
 const seedArg = process.env.PROP_SEED ?? "1";
@@ -133,7 +138,7 @@ for (const SEED of seeds) {
     cal: new Map((await su(`select id, residency_id, site_id, month::text as month, version, state, reviewed_by, reviewed_at, to_jsonb(c)::text as j from public.calendar_export c`)).map((x) => [x.id, x])),
     auditMax: (await su(`select coalesce(max(id),0)::int as m from public.audit_log`))[0].m,
   });
-  const pickSession = async (res = R.chance(0.9) ? RES : RES2, filter = "true") => (await su(`select id from public.session where residency_id='${res}' and ${filter} order by id`)).map((x) => x.id);
+  const pickSession = async (res = R.chance(0.9) ? RES : RES2, filter = "true") => (await su(`select id from public.session where residency_id='${res}' and ${filter} order by starts_at, series_id nulls first, location_id, title, scheduled_minutes, is_special_event, id`)).map((x) => x.id);
 
   // ---------------------------------------------------------------------------
   // Personas and actions. Each action returns { label, sql, kind, forbid, tag }:
@@ -216,7 +221,7 @@ for (const SEED of seeds) {
     [5, async (p) => { // remove a musician
       const ss = await pickSession(); if (!ss.length) return null;
       const s = R.pick(ss), f = await facts(s);
-      const a = (await su(`select id, person_id, role from public.session_assignment where session_id='${s}' order by id`)); if (!a.length) return null;
+      const a = (await su(`select id, person_id, role from public.session_assignment where session_id='${s}' order by person_id`)); if (!a.length) return null;
       const t = R.pick(a);
       let forbid = true;
       if (f.st === "draft") forbid = !(isPlanner(p, f.residency_id) || ((await onRoster(p, f.residency_id)) && f.playing.includes(p) && t.role === "participant"));
@@ -226,7 +231,7 @@ for (const SEED of seeds) {
     [10, async (p) => { // promote / demote (pick or swap the leader)
       const ss = await pickSession(); if (!ss.length) return null;
       const s = R.pick(ss), f = await facts(s);
-      const a = (await su(`select id, person_id, role from public.session_assignment where session_id='${s}' and status<>'absent' order by id`)); if (!a.length) return null;
+      const a = (await su(`select id, person_id, role from public.session_assignment where session_id='${s}' and status<>'absent' order by person_id`)); if (!a.length) return null;
       const t = R.pick(a), to = t.role === "leader" ? "participant" : "leader";
       let forbid = true, tag;
       if (isPlanner(p, f.residency_id)) forbid = false;
@@ -238,7 +243,7 @@ for (const SEED of seeds) {
     [3, async (p) => { // change a status directly (subs go through the function)
       const ss = await pickSession(); if (!ss.length) return null;
       const s = R.pick(ss), f = await facts(s);
-      const a = (await su(`select id from public.session_assignment where session_id='${s}' and status='assigned' order by id`)); if (!a.length) return null;
+      const a = (await su(`select id from public.session_assignment where session_id='${s}' and status='assigned' order by person_id`)); if (!a.length) return null;
       return { label: `set status absent directly (${f.st})`, sql: `update public.session_assignment set status='absent' where id='${R.pick(a).id}'`, kind: "upd", forbid: !isPlanner(p, f.residency_id), res: f.residency_id, session: s, roleChange: true };
     }],
     [4, async (p) => { // one-time event
@@ -270,7 +275,7 @@ for (const SEED of seeds) {
       const inMonth = `se.residency_id='${res}' and se.kind='group_session' and se.schedule_state<>'canceled' and date_trunc('month', se.starts_at at time zone (select st.timezone from public.location l join public.site st on st.id=l.site_id where l.id=se.location_id))::date='${m}'
         and not exists (select 1 from public.session_assignment x where x.session_id=se.id and x.role='leader' and x.status<>'absent')`;
       return { label: "set missing leaders for a month", who, kind: "upd", forbid: false, res, roleChange: true, sql: [
-        `update public.session_assignment a set role='leader' where a.id in (select distinct on (se.id) y.id from public.session se join public.session_assignment y on y.session_id=se.id and y.status<>'absent' where ${inMonth} order by se.id, y.id)`,
+        `update public.session_assignment a set role='leader' where a.id in (select distinct on (se.id) y.id from public.session se join public.session_assignment y on y.session_id=se.id and y.status<>'absent' where ${inMonth} order by se.id, y.person_id)`,
         `insert into public.session_assignment (session_id,person_id,role) select se.id, '${res === RES ? M1 : N}', 'leader' from public.session se where ${inMonth} and not exists (select 1 from public.session_assignment z where z.session_id=se.id and z.person_id='${res === RES ? M1 : N}')`] };
     }],
     [3, async (p) => { // always forbidden
