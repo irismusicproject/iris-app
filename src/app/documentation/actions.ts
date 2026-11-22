@@ -20,7 +20,7 @@ function fail(error: { code?: string; message: string }): DocResult {
 
 export async function saveSessionReport(
   sessionId: string,
-  input: { attendance: number; interactionTypeId: string; involvement: ResidentInvolvement; minutes: number; notes: string },
+  input: { attendance: number; interactionTypeId: string; involvement: ResidentInvolvement; minutes: number; notes: string; siteId?: string | null },
 ): Promise<DocResult> {
   const { person } = await requirePerson();
   const e: Record<string, string> = {};
@@ -38,6 +38,8 @@ export async function saveSessionReport(
     resident_involvement: input.involvement,
     actual_minutes: input.minutes,
     notes: input.notes.trim() || null,
+    // The building it happened in (v0.24); the database checks it's one of the program's.
+    site_id: input.siteId && isId(input.siteId) ? input.siteId : null,
   };
   const { error } = await supabase.from("session_report").upsert(row, { onConflict: "session_id" });
   if (error) return fail(error);
@@ -93,6 +95,12 @@ export async function logActivity(_prev: DocResult, form: FormData): Promise<Doc
     .select("id")
     .single();
   if (error) return fail(error);
+  // Other musicians who shared it (v0.24): each is credited the minutes.
+  const others = [...new Set(form.getAll("other_musician_id").map(String).filter((id) => isId(id) && id !== person.id))];
+  if (others.length) {
+    const { error: shareError } = await supabase.from("relationship_activity_musician").insert(others.map((person_id) => ({ activity_id: activity.id, person_id })));
+    if (shareError) return fail(shareError);
+  }
   if (residentIds.length) {
     const { error: linkError } = await supabase
       .from("relationship_activity_resident")
@@ -156,65 +164,34 @@ export async function resetCalendarLink(): Promise<DocResult> {
 
 /** Save a week's hours for one program; with submit, send them to the point person. */
 /**
- * "Submit my week" (v0.21): saves every program's hours for the week and, when
- * submitting, sends them all to the point person at once. The database
- * refuses while a program the musician led that week is undocumented.
+ * "Submit my week" (v0.21; v0.24: hours are calculated from documentation,
+ * never typed). Submits every program's week at once. The database refuses
+ * while a program the musician led that week is undocumented.
  */
-export async function saveWeek(
-  week: string,
-  programs: { residencyId: string; hours: { categoryId: string; hours: number }[] }[],
-  submit: boolean,
-): Promise<DocResult> {
-  const { person } = await requirePerson();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(week) || programs.some((p) => !isId(p.residencyId))) return { status: "error", message: "Pick a week." };
-  if (submit) {
-    const supabase = await createClient();
-    const missing: string[] = [];
-    for (const p of programs) {
-      const { data } = await supabase.rpc("undocumented_led_sessions", { p_person: person.id, p_residency: p.residencyId, p_week: week });
-      for (const s of (data ?? []) as { title: string; starts_at: string }[])
-        missing.push(`${s.title} (${new Date(s.starts_at).toLocaleDateString("en-US", { timeZone: "America/New_York", weekday: "short", month: "short", day: "numeric" })})`);
-    }
-    if (missing.length) return { status: "error", message: `Document ${missing.join(", ")} first, then submit your week.` };
-  }
-  for (const p of programs) {
-    const r = await saveHours(p.residencyId, week, p.hours, submit);
-    if (r.status === "error") return r;
-  }
-  return { status: "saved" };
-}
-
-export async function saveHours(
-  residencyId: string,
-  week: string,
-  hours: { categoryId: string; hours: number }[],
-  submit: boolean,
-): Promise<DocResult> {
-  const { person } = await requirePerson();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(week)) return { status: "error", message: "Pick a week." };
-  if (hours.some((h) => !isId(h.categoryId) || !Number.isFinite(h.hours) || h.hours < 0 || h.hours > 80))
-    return { status: "error", message: "Hours must be between 0 and 80." };
+export async function submitWeek(week: string, residencyIds: string[]): Promise<DocResult> {
+  await requirePerson();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(week) || !residencyIds.every(isId)) return { status: "error", message: "Pick a week." };
   const supabase = await createClient();
-  const rows = hours.map((h) => ({
-    person_id: person.id,
-    residency_id: residencyId,
-    week_starting: week,
-    time_category_id: h.categoryId,
-    hours: Math.round(h.hours * 4) / 4,
-    source: "manual",
-    state: "draft" as const,
-  }));
-  const { error } = await supabase.from("time_entry").upsert(rows, { onConflict: "person_id,residency_id,week_starting,time_category_id" });
-  if (error) return fail(error);
-  if (submit) {
-    const { error: e2 } = await supabase
-      .from("time_entry")
-      .update({ state: "submitted", submitted_at: new Date().toISOString(), returned_note: null })
-      .eq("person_id", person.id)
-      .eq("residency_id", residencyId)
-      .eq("week_starting", week);
-    if (e2) return fail(e2);
+  for (const id of residencyIds) {
+    const { error } = await supabase.rpc("submit_week", { p_residency: id, p_week: week });
+    if (error) {
+      if (error.message.includes("document the programs")) return { status: "error", message: "Document the programs you led this week first, then submit your week." };
+      if (error.message.includes("already approved")) continue;
+      return fail(error);
+    }
   }
   revalidatePath("/documentation");
   return { status: "saved" };
 }
+
+/** Take yourself off a relationship-building log someone else shared with you (v0.24). */
+export async function leaveSharedActivity(activityId: string): Promise<DocResult> {
+  const { person } = await requirePerson();
+  if (!isId(activityId)) return { status: "error", message: "That log wasn't found." };
+  const supabase = await createClient();
+  const { error } = await supabase.from("relationship_activity_musician").delete().eq("activity_id", activityId).eq("person_id", person.id);
+  if (error) return fail(error);
+  revalidatePath("/documentation");
+  return { status: "saved" };
+}
+

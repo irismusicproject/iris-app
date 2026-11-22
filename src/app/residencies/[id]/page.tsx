@@ -24,7 +24,9 @@ import {
   type PayContract,
   ResidencyForm,
   RosterMemberActions,
+  SiteContacts,
   SiteDetailedNotesToggle,
+  type SiteContact,
 } from "../forms";
 
 export const metadata = { title: "Program · Iris Music Project" };
@@ -89,6 +91,24 @@ export default async function ResidencyPage({ params }: { params: Promise<{ id: 
     for (const c of cs ?? []) contracts.set(`${c.season_id}:${c.person_id}`, c as unknown as PayContract);
   }
 
+  // Community contacts per building, and Iris staff phone and email (v0.26).
+  const [{ data: contactRows }, { data: staffDir }, { data: rosterContactRows }] = await Promise.all([
+    sites.length
+      ? supabase.from("partner_contact_site").select("site_id, partner_contact(id, name, title, email, phone, active)").in("site_id", sites.map((x) => x.id))
+      : Promise.resolve({ data: [] }),
+    supabase.rpc("staff_directory"),
+    // Roster musicians' phone and instruments, for the program's people (v0.27).
+    supabase.rpc("residency_roster_contacts", { p_residency: id }),
+  ]);
+  const rosterInfo = new Map(((rosterContactRows ?? []) as { person_id: string; phone: string | null; instruments: string[] }[]).map((r) => [r.person_id, r]));
+  const contactsBySite = new Map<string, SiteContact[]>();
+  for (const r of (contactRows ?? []) as unknown as { site_id: string; partner_contact: (SiteContact & { active: boolean }) | null }[]) {
+    if (!r.partner_contact?.active) continue;
+    const c: SiteContact = { id: r.partner_contact.id, name: r.partner_contact.name, title: r.partner_contact.title, email: r.partner_contact.email, phone: r.partner_contact.phone };
+    contactsBySite.set(r.site_id, [...(contactsBySite.get(r.site_id) ?? []), c].sort((a, b) => a.name.localeCompare(b.name)));
+  }
+  const staffInfo = new Map(((staffDir ?? []) as { person_id: string; email: string; phone: string | null }[]).map((d) => [d.person_id, d]));
+
   const card = "mt-8 rounded-xl border border-border bg-surface p-5 sm:p-6";
   const badge = "ml-2 rounded-full border border-border px-2 py-0.5 text-xs";
 
@@ -105,6 +125,9 @@ export default async function ResidencyPage({ params }: { params: Promise<{ id: 
         {access.isPointPerson && (
           <Link href={`/residencies/${id}/hours`} className="rounded-full border border-border px-4 py-2 hover:bg-iris-soft">Hours to approve</Link>
         )}
+        {(access.isPointPerson || isAdmin) && (
+          <Link href={`/residencies/${id}/follow-up`} className="rounded-full border border-border px-4 py-2 hover:bg-iris-soft">Follow-up</Link>
+        )}
         {isAdmin && (
           <Link href={`/residencies/${id}/billing`} className="rounded-full border border-border px-4 py-2 hover:bg-iris-soft">Community invoices</Link>
         )}
@@ -115,7 +138,8 @@ export default async function ResidencyPage({ params }: { params: Promise<{ id: 
         <ul className="mt-3 space-y-1 text-sm">
           {sites.map((s) => (
             <li key={s.id} className="flex flex-col gap-1.5 py-1">
-              <span>{s.display_name}{s.city ? <span className="text-muted"> · {s.city}</span> : null}</span>
+              <span className="font-medium">{s.display_name}{s.city ? <span className="font-normal text-muted"> · {s.city}</span> : null}</span>
+              <SiteContacts residencyId={id} siteId={s.id} contacts={contactsBySite.get(s.id) ?? []} canEdit={access.canSchedule} />
               {isAdmin && <SiteDetailedNotesToggle residencyId={id} siteId={s.id} on={s.detailed_relationship_notes} />}
               {s.detailed_relationship_notes && (isAdmin || access.isPointPerson) && (
                 <DailyNotesDownload siteId={s.id} siteName={s.display_name} defaultDate={today} />
@@ -135,6 +159,12 @@ export default async function ResidencyPage({ params }: { params: Promise<{ id: 
               <span>
                 {nameOf(s.person_id)}
                 <span className={badge}>{STAFF_ROLE_LABELS[s.role]}</span>
+                {staffInfo.get(s.person_id)?.phone && (
+                  <a href={`tel:${staffInfo.get(s.person_id)!.phone!.replace(/[^\d+]/g, "")}`} className="ml-2 text-iris hover:underline">{staffInfo.get(s.person_id)!.phone}</a>
+                )}
+                {staffInfo.get(s.person_id)?.email && (
+                  <a href={`mailto:${staffInfo.get(s.person_id)!.email}`} className="ml-2 text-iris hover:underline">{staffInfo.get(s.person_id)!.email}</a>
+                )}
               </span>
               {isAdmin && <EndStaffButton residencyId={id} assignmentId={s.id} name={nameOf(s.person_id)} />}
             </li>
@@ -170,9 +200,20 @@ export default async function ResidencyPage({ params }: { params: Promise<{ id: 
                 {members.map((m) => (
                   <li key={m.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
                     <span>
-                      {nameOf(m.person_id)}
+                      <span className="font-medium">{nameOf(m.person_id)}</span>
                       {m.is_admin_lead && <span className={badge}>Admin lead</span>}
                       {!m.is_core && <span className={badge}>Occasional / sub</span>}
+                      {(rosterInfo.get(m.person_id)?.instruments.length || rosterInfo.get(m.person_id)?.phone) && (
+                        <span className="mt-0.5 block text-xs text-muted">
+                          {rosterInfo.get(m.person_id)!.instruments.join(", ")}
+                          {rosterInfo.get(m.person_id)!.instruments.length > 0 && rosterInfo.get(m.person_id)!.phone ? " · " : ""}
+                          {rosterInfo.get(m.person_id)!.phone && (
+                            <a href={`tel:${rosterInfo.get(m.person_id)!.phone!.replace(/[^\d+]/g, "")}`} className="text-iris hover:underline">
+                              {rosterInfo.get(m.person_id)!.phone}
+                            </a>
+                          )}
+                        </span>
+                      )}
                     </span>
                     {isAdmin && !ended && (
                       <RosterMemberActions

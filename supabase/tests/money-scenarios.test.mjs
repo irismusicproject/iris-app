@@ -222,45 +222,32 @@ r = await as(P, `select * from public.monthly_reflection`); check("point person 
 // ============================================================================
 // 5. Hours: "My week", Submit my week
 // ============================================================================
-const hrs = (who, res, week, cat, h) => as(who, `insert into public.time_entry (person_id,residency_id,week_starting,time_category_id,hours,source) values ('${who}','${res}','${week}','${cat}',${h},'prefilled') returning id`);
-const submit = (who, res, week) => as(who, `update public.time_entry set state='submitted', submitted_at=now() where person_id='${who}' and residency_id='${res}' and week_starting='${week}' and state='draft'`);
-const HOURS = [
-  [L, RES, W1, CAT_PROG, 2.0], [L, RES, W1, CAT_RB, 0.25], [L, RES, W2, CAT_PROG, 2.5], [L, RES, W2, CAT_RB, 0.25],
-  [M1, RES, W1, CAT_PROG, 2.0], [M1, RES, W1, CAT_RB, 0.5], [M1, RES, W2, CAT_PROG, 2.0], [M1, RES, W2, CAT_RB, 0.75],
-  [M2, RES, W1, CAT_PROG, 1.0], [M2, RES, W1, CAT_RB, 0.5], [M2, RES, W2, CAT_PROG, 1.0], [M2, RES2, W1, CAT_PROG, 1.0],
-  [X, RES, W1, CAT_PROG, 1.0], [X, RES, W1, CAT_RB, 0.5], [X, RES, W2, CAT_PROG, 1.0],
-  [W, RES, W1, CAT_PROG, 1.0], [W, RES, W2, CAT_PROG, 1.0],
-];
-let allIn = true;
-for (const [who, res, week, cat, h] of HOURS) { r = await hrs(who, res, week, cat, h); allIn &&= r.ok; if (!r.ok) console.log(r); }
-check("musicians enter their weeks' hours on My week", allIn);
-r = await hrs(M1, RES, W1, CAT_PROG, 1); check("one entry per person × program × week × category", !r.ok, r);
-r = await hrs(O, RES, W1, CAT_PROG, 3); check("outsider can't enter hours on a program", !r.ok, r);
-r = await as(M1, `insert into public.time_entry (person_id,residency_id,week_starting,time_category_id,hours) values ('${M2}','${RES}','${W1}','${(await su(`select id from public.time_category where name='Concerts'`))[0].id}',1)`);
-check("musician can't enter hours for someone else", !r.ok, r);
-r = await as(M1, `insert into public.time_entry (person_id,residency_id,week_starting,time_category_id,hours,state) values ('${M1}','${RES}','${W1}','${w.CAT_CONC}',1,'approved')`);
-check("musician can't enter hours already approved", !r.ok, r);
-r = await as(M1, `insert into public.time_entry (person_id,residency_id,week_starting,time_category_id,hours) values ('${M1}','${RES}','${addDays(W1, 2)}','${w.CAT_CONC}',1)`);
-check("week_starting must be a Monday", !r.ok, r);
-r = await as(M1, `insert into public.time_entry (person_id,residency_id,week_starting,time_category_id,hours) values ('${M1}','${RES}','${W1}','${w.CAT_CONC}',-1)`);
-check("negative hours rejected", !r.ok, r);
+// v0.24: hours are calculated from documentation, never typed. "Submit my week"
+// is submit_week(); approve_week() refreshes the hours first. Expected hours
+// below are worked out by hand from the story above (programs played and
+// documented, relationship building logged), not read from the database.
+const submit = (who, res, week) => as(who, `select public.submit_week('${res}','${week}')`);
+const hoursOf = async (who, res, week) => Object.fromEntries((await su(`select tc.name, te.hours, te.state from public.time_entry te join public.time_category tc on tc.id=te.time_category_id
+  where te.person_id='${who}' and te.residency_id='${res}' and te.week_starting='${week}'`)).map((x) => [x.name, { h: num(x.hours), state: x.state }]));
+r = await as(M1, `insert into public.time_entry (person_id,residency_id,week_starting,time_category_id,hours) values ('${M1}','${RES}','${W1}','${CAT_PROG}',2)`);
+check("musicians can't type hours (v0.24: calculated from documentation)", !r.ok, r);
+r = await as(M1, `insert into public.time_entry (person_id,residency_id,week_starting,time_category_id,hours) values ('${M2}','${RES}','${W1}','${CAT_PROG}',1)`);
+check("…nor for someone else", !r.ok, r);
+r = await as(M1, `select public.submit_week('${RES}','${addDays(W1, 2)}')`); check("a week starts on a Monday", !r.ok && /Monday/.test(r.err), r);
+r = await as(O, `select public.submit_week('${RES}','${W1}')`); check("outsider can't submit hours on a program", !r.ok, r);
 // Submit my week is refused while a program the musician led that week has no report (v0.21).
 r = await submit(L, RES, W1); check("L can't submit W1 while s1 (led by L) is undocumented", !r.ok && /document/.test(r.err), r);
 r = await submit(M1, RES, W1); check("M1 can't submit W1 while s2 (led by M1) is undocumented", !r.ok, r);
 r = await submit(W, RES, W2); check("W can't submit W2 while s7 (led by W) is undocumented", !r.ok, r);
 r = await as(L, `select session_id from public.undocumented_led_sessions('${L}','${RES}','${W1}')`); check("L sees what's left to document", r.ok && r.rows.length === 1 && r.rows[0].session_id === s1, r);
 r = await as(M2, `select * from public.undocumented_led_sessions('${L}','${RES}','${W1}')`); check("another musician can't list L's undocumented programs", none(r), r);
-r = await submit(M2, RES, W1); check("M2 submits RES W1 (led nothing at RES that week)", r.ok && r.n === 2, r);
+r = await submit(M2, RES, W1); let H = await hoursOf(M2, RES, W1);
+check("M2 submits RES W1 (led nothing at RES): s1 isn't documented yet, so 0 h programs; hallway concert 20 min = 0.33 h", r.ok && H.Programs?.h === 0 && H["Relationship Building"]?.h === 0.33 && H.Programs?.state === "submitted", H);
 r = await submit(M2, RES2, W1); check("M2 can't submit RES2 W1 while r1 is undocumented", !r.ok, r);
-r = await submit(W, RES, W1); check("W submits W1", r.ok && r.n === 1, r);
-r = await submit(X, RES, W1); check("X submits W1", r.ok && r.n === 2, r);
-r = await as(M2, `update public.time_entry set hours=9 where person_id='${M2}' and residency_id='${RES}' and week_starting='${W1}'`); check("submitted hours can't be changed by the musician", !r.ok, r);
-r = await as(M2, `update public.time_entry set state='approved' where person_id='${M2}'`); check("musician can't approve their own hours", !r.ok, r);
-r = await as(M1, `select distinct person_id from public.time_entry`); check("musician sees only their own hours", r.ok && r.rows.length === 1 && r.rows[0].person_id === M1, r);
-r = await as(L, `select distinct person_id from public.time_entry`); check("admin lead sees only their own hours", r.ok && r.rows.length === 1, r);
-r = await as(P, `select distinct residency_id from public.time_entry`); check("point person sees the program's hours, not another program's", r.ok && r.rows.length === 1 && r.rows[0].residency_id === RES, r);
-r = await as(Q, `select person_id from public.time_entry`); check("other point person sees only RES2 hours (M2's)", r.ok && r.rows.length === 1 && r.rows[0].person_id === M2, r);
-r = await as(O, `select * from public.time_entry`); check("outsider sees no hours", none(r), r);
+r = await submit(W, RES, W1); H = await hoursOf(W, RES, W1); check("W submits W1 (no work that week: 0 h)", r.ok && Object.values(H).every((x) => x.h === 0), H);
+r = await submit(X, RES, W1); H = await hoursOf(X, RES, W1); check("X submits W1: one-to-one 25 min = 0.42 h", r.ok && H["Relationship Building"]?.h === 0.42, H);
+r = await as(M2, `update public.time_entry set hours=9 where person_id='${M2}' and residency_id='${RES}' and week_starting='${W1}'`); check("submitted hours can't be changed by the musician (0 rows)", denied(r), r);
+r = await as(M2, `update public.time_entry set state='approved' where person_id='${M2}'`); check("musician can't approve their own hours (0 rows)", denied(r), r);
 
 // ============================================================================
 // 6. Documenting sessions (D3: the leader documents; v0.19, v0.20)
@@ -290,12 +277,17 @@ r = await su(`select count(*) filter (where r.resident_involvement <> 'none')::i
 check("Collab? Yes is stored as co_led and counts as collaborative (v0.19)", r[0].collab === 1 && r[0].n === 4, r);
 r = await su(`select count(*)::int as n from public.audit_log where table_name='session_report'`); check("reports are logged", r[0].n >= 5, r);
 // Now the leaders can submit.
-r = await submit(L, RES, W1); check("L submits W1 once s1 is documented", r.ok && r.n === 2, r);
-r = await submit(L, RES, W2); check("L submits W2", r.ok && r.n === 2, r);
-r = await submit(M1, RES, W1); check("M1 submits W1", r.ok && r.n === 2, r);
-r = await submit(M1, RES, W2); check("M1 submits W2", r.ok && r.n === 2, r);
-r = await submit(M2, RES, W2); check("M2 submits RES W2", r.ok && r.n === 1, r);
-r = await submit(M2, RES2, W1); check("M2 submits RES2 W1 once r1 is documented", r.ok && r.n === 1, r);
+r = await submit(L, RES, W1); H = await hoursOf(L, RES, W1); check("L submits W1 once s1 is documented: s1 60 + s2 50 min = 1.83 h", r.ok && H.Programs?.h === 1.83, H);
+r = await submit(L, RES, W2); H = await hoursOf(L, RES, W2); check("L submits W2: s3 60 + s5 60 = 2.0 h; one-to-one 15 min = 0.25 h", r.ok && H.Programs?.h === 2 && H["Relationship Building"]?.h === 0.25, H);
+r = await submit(M1, RES, W1); H = await hoursOf(M1, RES, W1); check("M1 submits W1: s1 60 + s2 50 = 1.83 h; one-to-one 30 min = 0.5 h", r.ok && H.Programs?.h === 1.83 && H["Relationship Building"]?.h === 0.5, H);
+r = await submit(M1, RES, W2); H = await hoursOf(M1, RES, W2); check("M1 submits W2: s3 60 + s5 60 = 2.0 h; mini-group 45 min = 0.75 h", r.ok && H.Programs?.h === 2 && H["Relationship Building"]?.h === 0.75, H);
+r = await submit(M2, RES, W2); H = await hoursOf(M2, RES, W2); check("M2 submits RES W2: absent from s3, so 0 h", r.ok && H.Programs?.h === 0, H);
+r = await submit(M2, RES2, W1); H = await hoursOf(M2, RES2, W1); check("M2 submits RES2 W1 once r1 is documented: 1.0 h", r.ok && H.Programs?.h === 1, H);
+r = await as(M1, `select distinct person_id from public.time_entry`); check("musician sees only their own hours", r.ok && r.rows.length === 1 && r.rows[0].person_id === M1, r);
+r = await as(L, `select distinct person_id from public.time_entry`); check("admin lead sees only their own hours", r.ok && r.rows.length === 1, r);
+r = await as(P, `select distinct residency_id from public.time_entry`); check("point person sees the program's hours, not another program's", r.ok && r.rows.length === 1 && r.rows[0].residency_id === RES, r);
+r = await as(Q, `select distinct person_id from public.time_entry`); check("other point person sees only RES2 hours (M2's)", r.ok && r.rows.length === 1 && r.rows[0].person_id === M2, r);
+r = await as(O, `select * from public.time_entry`); check("outsider sees no hours", none(r), r);
 
 // ============================================================================
 // 7. Billable partner time before approval: nothing counts yet (D9 revised)
@@ -320,20 +312,24 @@ r = await as(L, `select public.approve_week('${M1}','${RES}','${W1}')`); check("
 r = await as(M1, `select public.approve_week('${M1}','${RES}','${W1}')`); check("a musician can't approve", !r.ok, r);
 r = await as(O, `select public.return_week('${M1}','${RES}','${W1}','x')`); check("an outsider can't send hours back", !r.ok, r);
 r = await as(P, `update public.time_entry set state='approved' where person_id='${M1}'`); check("the point person approves through approve_week, not by editing rows (0 rows)", denied(r), r);
-r = await as(P, `select public.return_week('${M1}','${RES}','${W1}','Programs were 1.5 hours, not 2.')`); check("point person sends M1's W1 back with a note", r.ok && r.rows[0].return_week === 2, r);
-r = await as(M1, `select state, returned_note from public.time_entry where week_starting='${W1}' and time_category_id='${CAT_PROG}'`);
-check("M1 sees it back in draft with the note", r.ok && r.rows[0]?.state === "draft" && /1\.5/.test(r.rows[0]?.returned_note), r);
-r = await as(M1, `update public.time_entry set hours=1.5 where person_id='${M1}' and week_starting='${W1}' and time_category_id='${CAT_PROG}'`); check("M1 corrects the hours", r.ok && r.n === 1, r);
-r = await submit(M1, RES, W1); check("M1 resubmits", r.ok && r.n === 2, r);
-for (const [who, res, week, n] of [[M1, RES, W1, 2], [M1, RES, W2, 2], [L, RES, W1, 2], [L, RES, W2, 2], [M2, RES, W1, 2], [X, RES, W1, 2], [W, RES, W1, 1]]) {
-  r = await as(P, `select public.approve_week('${who}','${res}','${week}') as n`); check(`point person approves a week (${n} entries)`, r.ok && r.rows[0].n === n, r);
+// To change pay, fix the documentation (v0.24). The point person sends M1's W2
+// back: the gift concert (s5, led by M1, not billable) ran 45 minutes, not 60.
+r = await as(P, `select public.return_week('${M1}','${RES}','${W2}','The gift concert ran 45 minutes.')`); check("point person sends M1's W2 back with a note", r.ok && r.rows[0].return_week === 3, r);
+r = await as(M1, `select state, returned_note from public.time_entry where week_starting='${W2}' and time_category_id='${CAT_PROG}'`);
+check("M1 sees it back in draft with the note", r.ok && r.rows[0]?.state === "draft" && /45/.test(r.rows[0]?.returned_note), r);
+r = await as(M1, `update public.session_report set actual_minutes=45 where session_id='${s5}'`); check("M1, s5's leader, corrects its length", r.ok && r.n === 1, r);
+r = await submit(M1, RES, W2); H = await hoursOf(M1, RES, W2); check("M1 resubmits W2: s3 60 + s5 45 = 1.75 h", r.ok && H.Programs?.h === 1.75 && H.Programs?.state === "submitted", H);
+for (const [who, res, week] of [[M1, RES, W1], [M1, RES, W2], [L, RES, W1], [L, RES, W2], [M2, RES, W1], [X, RES, W1], [W, RES, W1]]) {
+  r = await as(P, `select public.approve_week('${who}','${res}','${week}') as n`); check(`point person approves a week (3 categories)`, r.ok && r.rows[0].n === 3, r);
 }
-r = await as(Q, `select public.approve_week('${M2}','${RES2}','${W1}') as n`); check("RES2 point person approves M2's RES2 week", r.ok && r.rows[0].n === 1, r);
+H = await hoursOf(L, RES, W2); check("approving refreshes from documentation: L also played s5, so L's W2 is now 1.75 h", H.Programs?.h === 1.75 && H.Programs?.state === "approved", H);
+H = await hoursOf(M2, RES, W1); check("…and M2's W1, submitted before s1 was documented, now has s1's 60 min (1.0 h)", H.Programs?.h === 1 && H.Programs?.state === "approved", H);
+r = await as(Q, `select public.approve_week('${M2}','${RES2}','${W1}') as n`); check("RES2 point person approves M2's RES2 week", r.ok && r.rows[0].n === 3, r);
 r = await as(P, `select public.approve_week('${M2}','${RES}','${W1}') as n`); check("approving again changes nothing", r.ok && r.rows[0].n === 0, r);
 r = await as(P, `select public.return_week('${L}','${RES}','${W1}','too late')`); check("approved hours can't be sent back", r.ok && r.rows[0].return_week === 0, r);
 r = await as(L, `update public.time_entry set hours=9 where person_id='${L}' and week_starting='${W1}'`); check("approved hours are locked for the musician", denied(r), r);
 r = await su(`select bool_and(approved_by='${P}' and approved_at is not null) as ok from public.time_entry where state='approved' and residency_id='${RES}'`); check("approvals record who and when", r[0].ok === true, r);
-r = await su(`select count(*)::int as n from public.audit_log where table_name='time_entry' and after->>'state'='approved'`); check("approvals are logged", r[0].n >= 13, r);
+r = await su(`select count(*)::int as n from public.audit_log where table_name='time_entry' and after->>'state'='approved'`); check("approvals are logged (8 weeks × 3 categories)", r[0].n >= 24, r);
 
 // ============================================================================
 // 9. Musician invoices: approved hours × rate + stipends, per pay period
@@ -345,17 +341,17 @@ const inv = async (who, person, start = PP) => {
 };
 const lineAmt = (i, desc, res) => i.lines.filter((l) => l.description === desc && (!res || l.residency_name === res)).reduce((n, l) => n + l.amount, 0);
 let I = await inv(L, L);
-check("L's invoice: Programs 4.5 h × $40 = $180", lineAmt(I, "Programs") === 180, I.lines);
-check("L's invoice: Relationship Building 0.5 h × $40 = $20", lineAmt(I, "Relationship Building") === 20, I.lines);
+check("L's invoice: Programs (1.83 + 1.75 = 3.58 h) × $40 = $143.20", lineAmt(I, "Programs") === 143.2, I.lines);
+check("L's invoice: Relationship Building 0.25 h × $40 = $10", lineAmt(I, "Relationship Building") === 10, I.lines);
 check("L's invoice: only the stipend due in the period ($150)", I.lines.filter((l) => l.unit === "payment").length === 1 && I.lines.find((l) => l.unit === "payment")?.amount === 150, I.lines);
-check("L's invoice total = sum of lines = $350", I.total === 350, I);
+check("L's invoice total = sum of lines = $303.20", I.total === 303.2, I);
 I = await inv(M1, M1);
-check("M1's invoice uses the corrected 1.5 h: (1.5 + 2.0) × $35 + (0.5 + 0.75) × $35 + $100 = $266.25", I.total === 266.25, I.lines);
+check("M1's invoice uses the corrected s5: (1.83 + 1.75) × $35 + (0.5 + 0.75) × $35 + $100 = $269.05", I.total === 269.05, I.lines);
 I = await inv(M2, M2);
-check("M2's invoice: only approved weeks, each program at its own rate ($30 at RES, $45 at RES2) = $90",
-  I.total === 90 && lineAmt(I, "Programs", "Example Maple") === 30 && lineAmt(I, "Programs", "Other Elm") === 45, I.lines);
+check("M2's invoice: only approved weeks, each program at its own rate (1 h × $30 + 0.33 h × $30 at RES, 1 h × $45 at RES2) = $84.90",
+  I.total === 84.9 && lineAmt(I, "Programs", "Example Maple") === 30 && lineAmt(I, "Programs", "Other Elm") === 45, I.lines);
 check("M2's submitted-but-unapproved W2 isn't paid", !I.lines.some((l) => l.quantity === 2), I.lines);
-I = await inv(A, X); check("admin sees X's invoice: 1.5 h × $33 = $49.50", I.total === 49.5, I.lines);
+I = await inv(A, X); check("admin sees X's invoice: 0.42 h × $33 = $13.86", I.total === 13.86, I.lines);
 I = await inv(A, W); check("W-2 staff get no musician invoice (contractors only)", I.ok && I.lines.length === 0, I);
 for (const [who, name] of [[P, "point person"], [Q, "other point person"], [M2, "another musician"], [O, "outsider"], [L, "admin lead"]]) {
   I = await inv(who, M1); check(`${name} can't see M1's invoice`, none(I), I);
@@ -369,8 +365,8 @@ question("Q6", "an invoice can be asked for only from a pay-period start (counte
   none(I), I.lines);
 r = await as(A, `update public.contract set hourly_rate=37 where id='${C.M1}'`); check("admin raises M1's rate to $37", r.ok && r.n === 1, r);
 I = await inv(M1, M1);
-check("the live invoice follows the new rate (4.75 h × $37 + $100 = $275.75)", I.total === 275.75, I.lines);
-question("Q5", "a rate change doesn't rewrite pay periods that have already ended (D9: 'changes apply to invoices generated afterwards; past invoice lines keep their amounts')", I.total === 266.25, I.lines);
+check("the live invoice follows the new rate (4.83 h × $37 + $100 = $278.71)", I.total === 278.71, I.lines);
+question("Q5", "a rate change doesn't rewrite pay periods that have already ended (D9: 'changes apply to invoices generated afterwards; past invoice lines keep their amounts')", I.total === 269.05, I.lines);
 await must(A, `update public.contract set hourly_rate=35 where id='${C.M1}'`);
 
 // ============================================================================
@@ -559,6 +555,7 @@ await must(A, `update public.person set system_roles='{}' where id='${Q}'`);
 
 // Final sweep: nothing protected was deleted along the way.
 r = await su(`select (select count(*) from public.time_entry)::int te, (select count(*) from public.session_report)::int sr, (select count(*) from public.contract)::int c, (select count(*) from public.resident)::int res, (select count(*) from public.partner_invoice)::int pi`);
-check("no hours, reports, contracts, residents or sent invoices were deleted", r[0].te === HOURS.length && r[0].sr === 5 && r[0].c === 5 && r[0].res === 5 && r[0].pi >= 3, r);
+check("no hours, reports, contracts, residents or sent invoices were deleted", r[0].te === 9 * 3 && // 9 submitted weeks × 3 categories
+   r[0].sr === 5 && r[0].c === 5 && r[0].res === 5 && r[0].pi >= 3, r);
 
 process.exit(T.summary("money-scenarios") ? 1 : 0);

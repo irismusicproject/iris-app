@@ -317,23 +317,20 @@ const ACTIONS = [
     const sql = ex ? `update public.time_entry set hours=${h} where id='${ex.id}'` : `insert into public.time_entry (person_id,residency_id,week_starting,time_category_id,hours) values ('${owner}','${res}','${wk}','${cat}',${h})`;
     history.push(`${NAME[who]} ${ex ? `changes (${ex.st})` : "enters"} ${NAME[owner]}'s ${h} h for ${wk}`);
     const r = await as(who, sql); const did = r.ok && r.n > 0;
-    let allowed;
-    if (!ex) allowed = who === owner && c.rosterOk(who, res);
-    else allowed = who === owner && c.active[who] && (ex.st === "draft" || (ex.st === "submitted" && Number(ex.hours) === h));
-    if (did && ex && who === owner && !c.active[who] && ex.st !== "approved") known("B1", "a deactivated person can still change their own draft hours", sql);
-    else if (did !== allowed) fail(`I6 ${NAME[who]} enters hours for ${NAME[owner]} (${ex?.st ?? "new"})`, { r, sql });
+    // v0.24: hours are calculated from documentation; nobody but an admin types them (none of these people is one).
+    if (did) fail(`I6 ${NAME[who]} typed hours for ${NAME[owner]} (${ex?.st ?? "new"}); hours are calculated, never typed (v0.24)`, { r, sql });
   }],
   [14, async function submitWeek() {
     const c = await ctx(); const who = pick([L, M1, M2, W, X]); const res = resOf(who), wk = pick(WEEKS);
-    const drafts = (await su(`select count(*)::int as n from public.time_entry where person_id='${who}' and residency_id='${res}' and week_starting='${wk}' and state='draft'`))[0].n;
+    const approvedAlready = (await su(`select count(*)::int as n from public.time_entry where person_id='${who}' and residency_id='${res}' and week_starting='${wk}' and state='approved'`))[0].n > 0;
     const undoc = (await su(`select count(*)::int as n from public.session se join public.session_assignment a on a.session_id=se.id join public.location l on l.id=se.location_id join public.site t on t.id=l.site_id
       where se.residency_id='${res}' and se.kind='group_session' and se.schedule_state<>'canceled' and se.starts_at<=now() and a.person_id='${who}' and a.role='leader' and a.status<>'absent'
         and (se.starts_at at time zone t.timezone)::date between '${wk}' and '${addDays(wk, 6)}' and not exists (select 1 from public.session_report r where r.session_id=se.id)`))[0].n;
-    const sql = `update public.time_entry set state='submitted', submitted_at=now() where person_id='${who}' and residency_id='${res}' and week_starting='${wk}' and state='draft'`;
-    history.push(`${NAME[who]} submits ${wk} (${drafts} drafts, ${undoc} undocumented)`);
-    const r = await as(who, sql); const did = r.ok && r.n > 0;
-    if (did && !c.active[who]) { known("B1", "a deactivated person can still submit their own hours", sql); return; }
-    if (did !== (drafts > 0 && undoc === 0 && c.active[who])) fail(`I6 ${NAME[who]} submits a week (Submit my week, v0.21)`, { r, drafts, undoc });
+    const sql = `select public.submit_week('${res}','${wk}')`;
+    history.push(`${NAME[who]} submits ${wk} (${undoc} undocumented${approvedAlready ? ", already approved" : ""})`);
+    const r = await as(who, sql);
+    const allowed = c.active[who] && c.rosterOk(who, res) && undoc === 0 && !approvedAlready;
+    if (r.ok !== allowed) fail(`I6 ${NAME[who]} submits a week (Submit my week, v0.21/v0.24)`, { r, undoc, approvedAlready });
   }],
   [14, async function approveOrReturn() {
     const c = await ctx(); const ret = chance(0.3);

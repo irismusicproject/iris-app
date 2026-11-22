@@ -11,7 +11,7 @@ import {
   type ActivityKind,
   type ResidentInvolvement,
 } from "@/shared/domain/documentation";
-import { createCalendarLink, deleteActivity, logActivity, resetCalendarLink, saveReflection, saveWeek, saveSessionReport, type DocResult } from "./actions";
+import { createCalendarLink, deleteActivity, leaveSharedActivity, logActivity, resetCalendarLink, saveReflection, saveSessionReport, submitWeek, type DocResult } from "./actions";
 
 const small = "rounded-full border border-border px-3 py-1 text-xs hover:bg-iris-soft disabled:opacity-60";
 type Option = { id: string; label: string };
@@ -31,7 +31,10 @@ export function ReportRow({
     scheduledMinutes: number;
     /** The program's usual type, pre-selected (v0.21). */
     usualTypeId?: string;
-    report: { attendance: number; interactionTypeId: string; involvement: ResidentInvolvement; minutes: number; notes: string } | null;
+    report: { attendance: number; interactionTypeId: string; involvement: ResidentInvolvement; minutes: number; notes: string; siteId: string | null } | null;
+    /** The program's buildings, and the scheduled room's building (v0.24). */
+    sites: Option[];
+    roomSiteId: string;
   };
   types: Option[];
 }) {
@@ -41,6 +44,7 @@ export function ReportRow({
   const [involvement, setInvolvement] = useState<ResidentInvolvement>(r?.involvement ?? "none");
   const [minutes, setMinutes] = useState(String(r?.minutes ?? session.scheduledMinutes));
   const [notes, setNotes] = useState(r?.notes ?? "");
+  const [siteId, setSiteId] = useState(r?.siteId ?? session.roomSiteId);
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
   const [done, setDone] = useState(!!r);
@@ -68,11 +72,21 @@ export function ReportRow({
               involvement,
               minutes: editLength ? Number(minutes) : session.scheduledMinutes,
               notes,
+              siteId,
             });
             if (res.status === "saved") { setDone(true); setMsg("Saved."); } else setMsg(res.message ?? "Something went wrong.");
           });
         }}
       >
+        {session.sites.length > 1 && (
+          <div className="sm:col-span-3">
+            <Field label="Building" hint="Where the program happened. Attendance and billing count it here.">
+              <select value={siteId} onChange={(e) => setSiteId(e.target.value)} className={`${inputClass} sm:w-72`}>
+                {session.sites.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
+              </select>
+            </Field>
+          </div>
+        )}
         <Field label="Attendance">
           <input inputMode="numeric" value={attendance} onChange={(e) => setAttendance(e.target.value)} required className={inputClass} />
         </Field>
@@ -148,6 +162,7 @@ export function ActivityForm({
   maxDate,
   lengths = {},
   last = null,
+  colleagues = {},
 }: {
   programs: Program[];
   residents: { id: string; siteId: string; name: string }[];
@@ -157,6 +172,8 @@ export function ActivityForm({
   /** Usual minutes per type, per program (residency id). */
   lengths?: Record<string, Partial<Record<ActivityKind, number>>>;
   last?: LastActivity | null;
+  /** Other roster musicians per program, who can share a log (v0.24). */
+  colleagues?: Record<string, Option[]>;
 }) {
   const [state, action, pending] = useActionState(logActivity, initial);
   const [residencyId, setResidencyId] = useState(programs[0]?.id ?? "");
@@ -168,11 +185,13 @@ export function ActivityForm({
   const [date, setDate] = useState(defaultDate);
   const [collab, setCollab] = useState("no");
   const [picked, setPicked] = useState<string[]>([]);
+  const [withIds, setWithIds] = useState<string[]>([]);
   const [seen, setSeen] = useState(state.savedAt);
   if (state.savedAt !== seen) {
     // Logged: clear who and how long, keep program, site, type and date.
     setSeen(state.savedAt);
     setPicked([]);
+    setWithIds([]);
     setCollab("no");
     setMinutes(usual(residencyId, kind));
   }
@@ -282,6 +301,26 @@ export function ActivityForm({
           </Field>
         </div>
       </fieldset>
+      {(colleagues[residencyId]?.length ?? 0) > 0 && (
+        <fieldset>
+          <legend className="text-sm font-medium">Other musicians (optional)</legend>
+          <p className="text-xs text-muted">Did someone else do this with you? Add them: they&apos;re credited the same minutes, and you document it once.</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {colleagues[residencyId]!.map((c) => (
+              <label key={c.id} className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-sm">
+                <input
+                  type="checkbox"
+                  name="other_musician_id"
+                  value={c.id}
+                  checked={withIds.includes(c.id)}
+                  onChange={(ev) => setWithIds((cur) => (ev.target.checked ? [...cur, c.id] : cur.filter((x) => x !== c.id)))}
+                />{" "}
+                {c.label}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
       {detailed ? (
         <Field label="Note for the partner (optional)" hint="A few sentences on what you did together; goes in the day's document for this site. No health information.">
           <textarea name="note" maxLength={3000} rows={4} className={inputClass} />
@@ -297,6 +336,21 @@ export function ActivityForm({
         {pending ? "Saving..." : "Log activity"}
       </button>
     </form>
+  );
+}
+
+export function LeaveSharedButton({ id, label }: { id: string; label: string }) {
+  const [pending, start] = useTransition();
+  return (
+    <ConfirmButton
+      disabled={pending}
+      className="text-xs text-muted underline"
+      label="Not me"
+      ariaLabel={`Take yourself off ${label}`}
+      question="Take yourself off this log?"
+      confirmLabel="Yes"
+      onConfirm={() => start(async () => { await leaveSharedActivity(id); })}
+    />
   );
 }
 
@@ -401,96 +455,62 @@ export function CalendarLinkCard({ feedUrl }: { feedUrl: string | null }) {
   );
 }
 
-// ---- The week's hours, every program, one submit (v0.21) ----
+// ---- The week's hours (v0.24): calculated from documentation, one submit ----
 
 export type WeekHoursProgram = {
   residencyId: string;
   programName: string;
-  initial: Record<string, number>;
-  prefill: Record<string, number>;
+  hours: { name: string; hours: number }[];
   state: "draft" | "submitted" | "approved" | null;
   returnedNote: string | null;
 };
 
-export function WeekHours({
-  week,
-  categories,
-  programs,
-  toDocument,
-}: {
-  week: string;
-  categories: { id: string; name: string; description: string | null }[];
-  programs: WeekHoursProgram[];
-  /** Programs this musician led this week that still need documenting. */
-  toDocument: string[];
-}) {
-  const startValue = (p: WeekHoursProgram, id: string) => String(p.initial[id] ?? p.prefill[id] ?? 0);
-  const [values, setValues] = useState<Record<string, Record<string, string>>>(() =>
-    Object.fromEntries(programs.map((p) => [p.residencyId, Object.fromEntries(categories.map((c) => [c.id, startValue(p, c.id)]))])),
-  );
+export function WeekHours({ week, programs, toDocument }: { week: string; programs: WeekHoursProgram[]; toDocument: string[] }) {
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
   const open = programs.filter((p) => p.state !== "submitted" && p.state !== "approved");
-  const sum = (rid: string) => categories.reduce((n, c) => n + (Number(values[rid]?.[c.id]) || 0), 0);
-  const total = open.reduce((n, p) => n + sum(p.residencyId), 0);
-  const save = (submit: boolean) =>
-    startTransition(async () => {
-      const r = await saveWeek(
-        week,
-        open.map((p) => ({ residencyId: p.residencyId, hours: categories.map((c) => ({ categoryId: c.id, hours: Number(values[p.residencyId]?.[c.id]) || 0 })) })),
-        submit,
-      );
-      setMsg(r.status === "error" ? r.message ?? "Something went wrong." : submit ? "Your week is submitted to the point person." : "Saved.");
-    });
+  const sum = (p: WeekHoursProgram) => p.hours.reduce((n, h) => n + h.hours, 0);
+  const total = open.reduce((n, p) => n + sum(p), 0);
   return (
     <div className="flex flex-col gap-6">
-      {programs.map((p) => {
-        const locked = p.state === "submitted" || p.state === "approved";
-        return (
-          <div key={p.residencyId} className="flex flex-col gap-3">
-            {programs.length > 1 && <h3 className="font-medium">{p.programName}</h3>}
-            {p.returnedNote && p.state === "draft" && (
-              <p className="rounded-lg border border-brand-orange/60 p-2 text-sm"><strong>Sent back by the point person:</strong> {p.returnedNote}</p>
-            )}
-            <div className="grid gap-3 sm:grid-cols-3">
-              {categories.map((c) => (
-                <Field key={c.id} label={c.name} hint={p.prefill[c.id] !== undefined && p.initial[c.id] === undefined ? "Pre-filled from your schedule and logs" : undefined}>
-                  <input
-                    inputMode="decimal"
-                    value={values[p.residencyId]?.[c.id] ?? ""}
-                    disabled={locked}
-                    onChange={(e) => setValues((v) => ({ ...v, [p.residencyId]: { ...v[p.residencyId], [c.id]: e.target.value } }))}
-                    aria-label={`${programs.length > 1 ? `${p.programName} ` : ""}${c.name} hours`}
-                    className={inputClass}
-                  />
-                </Field>
-              ))}
-            </div>
-            <p className="text-sm">
-              Total: <strong>{sum(p.residencyId).toFixed(2)} hours</strong>
-              <span className="ml-2 rounded-full bg-iris-soft px-2 py-0.5 text-xs">
-                {p.state === "approved" ? "Approved" : p.state === "submitted" ? "Submitted, waiting for approval" : "Not submitted yet"}
-              </span>
-            </p>
-          </div>
-        );
-      })}
+      {programs.map((p) => (
+        <div key={p.residencyId} className="flex flex-col gap-2">
+          {programs.length > 1 && <h3 className="font-medium">{p.programName}</h3>}
+          {p.returnedNote && p.state === "draft" && (
+            <p className="rounded-lg border border-brand-orange/60 p-2 text-sm"><strong>Sent back by the point person:</strong> {p.returnedNote}</p>
+          )}
+          <dl className="grid grid-cols-3 gap-3 text-sm">
+            {p.hours.map((h) => (
+              <div key={h.name} className="rounded-lg border border-border p-3">
+                <dt className="text-xs text-muted">{h.name}</dt>
+                <dd className="text-lg font-semibold">{h.hours.toFixed(2)}</dd>
+              </div>
+            ))}
+          </dl>
+          <p className="text-sm">
+            Total: <strong>{sum(p).toFixed(2)} hours</strong>
+            <span className="ml-2 rounded-full bg-iris-soft px-2 py-0.5 text-xs">
+              {p.state === "approved" ? "Approved" : p.state === "submitted" ? "Submitted, waiting for approval" : "Not submitted yet"}
+            </span>
+          </p>
+        </div>
+      ))}
       {open.length > 0 && (
         <div className="flex flex-col gap-2 border-t border-border pt-4">
-          {toDocument.length > 0 && (
-            <p className="text-sm text-brand-orange">Before you submit, document: {toDocument.join(", ")}.</p>
-          )}
-          <div className="flex flex-wrap items-center gap-2">
-            <button type="button" disabled={pending} className={small} onClick={() => save(false)}>Save draft</button>
-            <ConfirmButton
-              disabled={pending || toDocument.length > 0}
-              className={buttonClass}
-              label="Submit my week"
-              question={`Submit your documentation and ${total.toFixed(2)} hours for this week?`}
-              confirmLabel="Yes, submit"
-              onConfirm={() => save(true)}
-            />
-          </div>
+          {toDocument.length > 0 && <p className="text-sm text-brand-orange">Before you submit, document: {toDocument.join(", ")}.</p>}
+          <ConfirmButton
+            disabled={pending || toDocument.length > 0}
+            className={`${buttonClass} self-start`}
+            label="Submit my week"
+            question={`Submit your documentation and ${total.toFixed(2)} hours for this week?`}
+            confirmLabel="Yes, submit"
+            onConfirm={() =>
+              startTransition(async () => {
+                const r = await submitWeek(week, open.map((p) => p.residencyId));
+                setMsg(r.status === "error" ? r.message ?? "Something went wrong." : "Your week is submitted to the point person.");
+              })
+            }
+          />
         </div>
       )}
       {msg && <p role="status" className="text-sm text-iris">{msg}</p>}

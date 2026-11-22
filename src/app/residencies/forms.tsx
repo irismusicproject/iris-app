@@ -24,6 +24,8 @@ import {
   removeStipend,
   setContractRate,
   setSiteDetailedNotes,
+  retireSiteContact,
+  saveSiteContact,
   updateResidency,
   updateRosterMember,
   type SetupFormState,
@@ -398,5 +400,79 @@ export function DailyNotesDownload({ siteId, siteName, defaultDate }: { siteId: 
       <input type="date" name="date" defaultValue={defaultDate} required aria-label={`Day for ${siteName}`} className={`${inputClass} py-1 text-xs`} />
       <button className={smallButton}>Download</button>
     </form>
+  );
+}
+
+// ---- Community contacts per building (v0.26) ----
+
+export type SiteContact = { id: string; name: string; title: string | null; email: string | null; phone: string | null };
+
+function ContactForm({ residencyId, siteId, contact, onDone }: { residencyId: string; siteId: string; contact?: SiteContact; onDone: () => void }) {
+  const [name, setName] = useState(contact?.name ?? "");
+  const [title, setTitle] = useState(contact?.title ?? "");
+  const [phone, setPhone] = useState(contact?.phone ?? "");
+  const [email, setEmail] = useState(contact?.email ?? "");
+  const [pending, start] = useTransition();
+  const [msg, setMsg] = useState<string | null>(null);
+  return (
+    <form
+      className="grid gap-2 rounded-lg bg-iris-soft/60 p-3 sm:grid-cols-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        start(async () => {
+          const r = await saveSiteContact(residencyId, siteId, contact?.id ?? null, { name, title, email, phone });
+          if (r.status === "error") setMsg(r.message ?? "Something went wrong.");
+          else onDone();
+        });
+      }}
+    >
+      <input value={name} onChange={(e) => setName(e.target.value)} required placeholder="Name" aria-label="Contact name" className={`${inputClass} py-1.5 text-sm`} />
+      <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title (e.g. Life Enrichment Director)" aria-label="Contact title" className={`${inputClass} py-1.5 text-sm`} />
+      <input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" placeholder="Phone" aria-label="Contact phone" className={`${inputClass} py-1.5 text-sm`} />
+      <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="Email" aria-label="Contact email" className={`${inputClass} py-1.5 text-sm`} />
+      <div className="flex items-center gap-2 sm:col-span-2">
+        <button disabled={pending} className={smallButton}>{pending ? "Saving..." : contact ? "Save contact" : "Add contact"}</button>
+        <button type="button" className="text-xs text-muted underline" onClick={onDone}>Cancel</button>
+        {msg && <span role="status" className="text-xs text-red-600">{msg}</span>}
+      </div>
+    </form>
+  );
+}
+
+export function SiteContacts({ residencyId, siteId, contacts, canEdit }: { residencyId: string; siteId: string; contacts: SiteContact[]; canEdit: boolean }) {
+  const [editing, setEditing] = useState<string | "new" | null>(null);
+  const [pending, start] = useTransition();
+  return (
+    <div className="flex flex-col gap-1.5 text-sm">
+      {contacts.map((c) =>
+        editing === c.id ? (
+          <ContactForm key={c.id} residencyId={residencyId} siteId={siteId} contact={c} onDone={() => setEditing(null)} />
+        ) : (
+          <div key={c.id} className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+            <span className="font-medium">{c.name}</span>
+            {c.title && <span className="text-muted">{c.title}</span>}
+            {c.phone && <a href={`tel:${c.phone.replace(/[^\d+]/g, "")}`} className="text-iris hover:underline">{c.phone}</a>}
+            {c.email && <a href={`mailto:${c.email}`} className="text-iris hover:underline">{c.email}</a>}
+            {canEdit && (
+              <span className="flex items-center gap-2 text-xs">
+                <button type="button" className="text-muted underline" onClick={() => setEditing(c.id)}>Edit</button>
+                <ConfirmButton
+                  disabled={pending}
+                  label="Remove"
+                  question={`Remove ${c.name}?`}
+                  className="text-muted underline"
+                  onConfirm={() => start(async () => { await retireSiteContact(residencyId, siteId, c.id); })}
+                />
+              </span>
+            )}
+          </div>
+        ),
+      )}
+      {contacts.length === 0 && <span className="text-muted">No community contact yet.</span>}
+      {canEdit && editing === "new" && <ContactForm residencyId={residencyId} siteId={siteId} onDone={() => setEditing(null)} />}
+      {canEdit && editing === null && (
+        <button type="button" className={`${smallButton} self-start`} onClick={() => setEditing("new")}>Add a community contact</button>
+      )}
+    </div>
   );
 }

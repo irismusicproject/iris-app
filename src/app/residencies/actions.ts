@@ -5,7 +5,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, requirePerson } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import {
   validateResidency,
@@ -185,6 +185,38 @@ export async function setSiteDetailedNotes(residencyId: string, siteId: string, 
   const supabase = await createClient();
   const { error } = await supabase.from("site").update({ detailed_relationship_notes: on }).eq("id", siteId);
   if (error) return { status: "error", message: dbMessage(error, "site") };
+  revalidatePath(`/residencies/${residencyId}`);
+  return { status: "saved" };
+}
+
+// ---- Community contacts per building (point person or admin; v0.26) ----
+
+export type ContactInput = { name: string; title: string; email: string; phone: string };
+
+export async function saveSiteContact(residencyId: string, siteId: string, contactId: string | null, input: ContactInput): Promise<SetupFormState> {
+  await requirePerson();
+  if (!input.name.trim()) return { status: "error", message: "Enter the contact's name." };
+  if (input.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email.trim())) return { status: "error", message: "Check the email address." };
+  if (input.phone.length > 40 || input.title.length > 200 || input.name.length > 200) return { status: "error", message: "That's too long." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("save_site_contact", {
+    p_site: siteId,
+    p_contact: contactId,
+    p_name: input.name,
+    p_title: input.title,
+    p_email: input.email,
+    p_phone: input.phone,
+  });
+  if (error) return { status: "error", message: dbMessage(error, "contact") };
+  revalidatePath(`/residencies/${residencyId}`);
+  return { status: "saved" };
+}
+
+export async function retireSiteContact(residencyId: string, siteId: string, contactId: string): Promise<SetupFormState> {
+  await requirePerson();
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("retire_site_contact", { p_site: siteId, p_contact: contactId });
+  if (error) return { status: "error", message: dbMessage(error, "contact") };
   revalidatePath(`/residencies/${residencyId}`);
   return { status: "saved" };
 }

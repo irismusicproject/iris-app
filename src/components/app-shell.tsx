@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AdminMenu } from "@/components/admin-menu";
 import { Logo } from "@/components/logo";
 
 export function AppShell({
@@ -21,10 +22,8 @@ export function AppShell({
             <Link href="/residencies" className={nav}>Programs</Link>
             <Link href="/documentation" className={nav}>My week</Link>
             <Link href="/invoices" className={nav}>My invoices</Link>
-            {isAdmin && <Link href="/admin/people" className={nav}>People</Link>}
-            {isAdmin && <Link href="/admin/partners" className={nav}>Partners</Link>}
-            {isAdmin && <Link href="/admin/invoices" className={nav}>Invoices</Link>}
             <Link href="/account/profile" className={nav}>My profile</Link>
+            {isAdmin && <AdminMenu className={nav} />}
             <form action="/auth/signout" method="post">
               <button className={nav}>Log out</button>
             </form>
