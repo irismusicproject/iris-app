@@ -22,10 +22,6 @@
       "predictiveBackGestureEnabled": false,
       "package": "org.irismusicproject.iris"
     },
-    "web": {
-      "output": "server",
-      "favicon": "./assets/images/favicon.png"
-    },
     "plugins": [
       "expo-router",
       [
@@ -43,15 +39,14 @@
       "reactCompiler": true
     },
     "extra": {
-      "router": {
-        "asyncRoutes": {
-          "web": true
-        }
-      },
       "eas": {
         "projectId": "033f430f-9133-4cf5-bd62-dfe9a02f8ce4"
       }
     },
-    "owner": "iris-music-project"
+    "owner": "iris-music-project",
+    "platforms": [
+      "ios",
+      "android"
+    ]
   }
 }
