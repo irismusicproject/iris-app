@@ -189,6 +189,9 @@ with **[Lauren's side]** or **[Ryan's side]**.
 - **Previews use the staging database**, which holds fake data only (README,
   "Staging database"). Put realistic test data in `supabase/seed.sql`, never
   in production.
+- **Coordinate in GitHub issue #30** (pinned): read it with
+  `gh issue view 30 --comments` at the start of a session, and comment there
+  when you finish something the other side depends on.
 - **Prototype locally** (README, "Prototyping locally"). Run `npm run dev:local`:
   a private Supabase in Docker with every migration, fake data and two logins
   (`admin@example.com` / `musician@example.com`, password
