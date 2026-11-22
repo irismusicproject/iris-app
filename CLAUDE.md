@@ -157,11 +157,21 @@ the same backend:
 - **Previews use the staging database**, which holds fake data only (README,
   "Staging database"). Put realistic test data in `supabase/seed.sql`, never
   in production.
-- **Migrations deploy themselves** (README, "Automated database changes"):
-  staging on every pull request, production after an owner approves, and
-  *before* merge. So every migration must keep the current live code working
-  (add, don't break), and an applied migration is never edited. Never tell
-  anyone to paste a migration into the SQL Editor.
+- **Prototype locally** (README, "Prototyping locally"). Run `npm run dev:local`:
+  a private Supabase in Docker with every migration, fake data and two logins
+  (`admin@example.com` / `musician@example.com`, password
+  `local-only-password`). Emails land in the local mail viewer it prints.
+  Try database changes there, `npm run db:reset` to rebuild, and edit an
+  unmerged migration freely. You never need Supabase dashboard access, and
+  you never connect to staging or production.
+- **Before opening a PR:** `npm run test:db` (permission tests) and
+  `npm run test:e2e` (browser tests, against the running local Supabase).
+  Add tests for new tables and screens.
+- **Databases (Ryan owns these):** pull requests never touch a real database.
+  Merging a migration to `main` updates **staging** automatically; **production**
+  gets it only when Ryan runs "deploy-production". Never edit a migration
+  that's on `main`; fix it with a new one. Never tell anyone to paste a
+  migration into the SQL Editor.
 - Claude may pull, commit, push, open pull requests and merge them without
   asking first (permission from Lauren, Nov 2026). This does **not** replace
   the stop-and-ask rules above.
