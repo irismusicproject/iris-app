@@ -273,6 +273,33 @@ const expect = (name, allowed, r, sql) => {
   if (allowed !== did) fail(`I6 ${name}: expected ${allowed ? "allowed" : "refused"}`, { r, sql: sql?.slice(0, 300) });
 };
 const resOf = (who) => (who === M2 ? pick([RES, RES2]) : RES);
+// Approved weeks are final (v0.29, migration 20261213): the test's own reading
+// of the rule, written independently of the database's helper functions.
+let lockedSeen = 0; // how often a random action met an approved week (so the rule is really exercised)
+const approvedWeek = async (person, res, day) => {
+  const yes = (await su(`select 1 from public.time_entry where person_id='${person}' and residency_id='${res}' and week_starting='${weekStart(day)}' and state='approved' limit 1`)).length > 0;
+  if (yes) lockedSeen++; return yes;
+};
+const sessionLocked = async (sid) => {
+  const rows = await su(`select a.person_id, se.residency_id, ((se.starts_at at time zone t.timezone)::date)::text as day from public.session se
+    join public.session_assignment a on a.session_id=se.id join public.location l on l.id=se.location_id join public.site t on t.id=l.site_id where se.id='${sid}'`);
+  for (const x of rows) if (await approvedWeek(x.person_id, x.residency_id, x.day)) return true;
+  return false;
+};
+const activityLocked = async (aid) => {
+  const rows = await su(`select ra.person_id, ra.residency_id, ra.occurred_on::text as day from public.relationship_activity ra where ra.id='${aid}'
+    union all select m.person_id, ra.residency_id, ra.occurred_on::text from public.relationship_activity ra join public.relationship_activity_musician m on m.activity_id=ra.id where ra.id='${aid}'`);
+  for (const x of rows) if (await approvedWeek(x.person_id, x.residency_id, x.day)) return true;
+  return false;
+};
+// Programs the person played that week (not absent, not canceled, already happened) with no report yet.
+const undocumentedPlayed = async (person, res, wk) => (await su(`select count(*)::int as n from public.session se
+  join public.session_assignment a on a.session_id=se.id and a.person_id='${person}' and a.status<>'absent'
+  join public.location l on l.id=se.location_id join public.site t on t.id=l.site_id
+  where se.residency_id='${res}' and se.kind='group_session' and se.schedule_state<>'canceled' and se.starts_at<=now()
+    and (se.starts_at at time zone t.timezone)::date between '${wk}' and '${addDays(wk, 6)}'
+    and not exists (select 1 from public.session_report r where r.session_id=se.id)`))[0].n;
+
 const ACTIONS = [
   [10, async function logActivity() {
     const c = await ctx(); const who = chance(0.85) ? pick([L, M1, M2, W, X]) : pick([P, Q, O, A]);
@@ -280,15 +307,17 @@ const ACTIONS = [
     const day = addDays(pick(WEEKS), int(0, 6)), kind = pick(["one_to_one", "mini_group", "hallway_concert"]), minutes = int(5, 120);
     const sql = `insert into public.relationship_activity (person_id,residency_id,site_id,occurred_on,kind,minutes) values ('${who}','${res}','${site}','${day}','${kind}',${minutes}) returning id`;
     history.push(`${NAME[who]} logs ${minutes} min at ${day}`);
-    expect(`${NAME[who]} logs relationship building`, c.rosterOk(who, res) && day < TODAY, await as(who, sql), sql);
+    const locked = await approvedWeek(who, res, day);
+    expect(`${NAME[who]} logs relationship building${locked ? " (approved week)" : ""}`, c.rosterOk(who, res) && day < TODAY && (!locked || c.isAdmin[who]), await as(who, sql), sql);
   }],
   [5, async function editActivity() {
     const rows = await su(`select id, person_id from public.relationship_activity`); if (!rows.length) return;
     const c = await ctx(); const a = pick(rows); const who = chance(0.7) ? a.person_id : pick(EVERYONE); const del = chance(0.3);
     const sql = del ? `delete from public.relationship_activity where id='${a.id}'` : `update public.relationship_activity set minutes=${int(5, 120)} where id='${a.id}'`;
     history.push(`${NAME[who]} ${del ? "deletes" : "edits"} ${NAME[a.person_id]}'s activity`);
+    const locked = await activityLocked(a.id);
     const r = await as(who, sql); const did = r.ok && r.n > 0;
-    const allowedByDocs = (who === a.person_id && c.active[who]) || c.isAdmin[who];
+    const allowedByDocs = ((who === a.person_id && c.active[who]) && !locked) || c.isAdmin[who];
     if (did && who === a.person_id && !c.active[who]) known("B1", "a deactivated person can still change or delete their own activity", sql);
     else if (did !== allowedByDocs) fail(`I6 ${NAME[who]} ${del ? "deletes" : "edits"} an activity`, { r, sql });
   }],
@@ -298,7 +327,8 @@ const ACTIONS = [
     const c = await ctx(); const se = pick(rows); const who = chance(0.75) && se.leader ? se.leader : pick(EVERYONE);
     const sql = `insert into public.session_report (session_id,author_id,attendance,interaction_type_id,resident_involvement,actual_minutes) values ('${se.id}','${who}',${int(0, 40)},'${IT_PERF}','${pick(["none", "co_led"])}',${int(20, 150)})`;
     history.push(`${NAME[who]} documents a session`);
-    const allowed = !se.has && se.st !== "canceled" && ((se.leader === who && c.active[who]) || c.isAdmin[who]);
+    const locked = await sessionLocked(se.id);
+    const allowed = !se.has && se.st !== "canceled" && ((se.leader === who && c.active[who] && !locked) || c.isAdmin[who]);
     expect(`${NAME[who]} documents a session (${se.has ? "already documented" : se.st})`, allowed, await as(who, sql), sql);
   }],
   [4, async function editReport() {
@@ -308,7 +338,8 @@ const ACTIONS = [
     const sql = `update public.session_report set actual_minutes=${int(20, 150)} where session_id='${x.session_id}'`;
     history.push(`${NAME[who]} edits a report's length`);
     // A report of a session canceled after it was documented is locked (reports exist only for sessions that happened).
-    expect(`${NAME[who]} edits a report (${x.st})`, x.st !== "canceled" && ((x.leader === who && c.active[who]) || c.isAdmin[who]), await as(who, sql), sql);
+    const locked = await sessionLocked(x.session_id);
+    expect(`${NAME[who]} edits a report (${x.st}${locked ? ", approved week" : ""})`, x.st !== "canceled" && ((x.leader === who && c.active[who] && !locked) || c.isAdmin[who]), await as(who, sql), sql);
   }],
   [14, async function enterHours() {
     const c = await ctx(); const who = chance(0.9) ? pick([L, M1, M2, W, X]) : pick([P, Q, O]); const owner = chance(0.92) ? who : pick([L, M1, M2]);
@@ -339,8 +370,10 @@ const ACTIONS = [
     const wk = iso(x.week_starting); const who = chance(0.75) ? PP_OF[x.residency_id] : pick(EVERYONE);
     const sql = ret ? `select public.return_week('${x.person_id}','${x.residency_id}','${wk}','please check') as n` : `select public.approve_week('${x.person_id}','${x.residency_id}','${wk}') as n`;
     history.push(`${NAME[who]} ${ret ? "returns" : "approves"} ${NAME[x.person_id]}'s ${wk}`);
+    const waiting = ret ? 0 : await undocumentedPlayed(x.person_id, x.residency_id, wk);
     const r = await as(who, sql);
-    if (r.ok !== (c.isAdmin[who] || c.ppOk(who, x.residency_id))) fail(`I6 ${NAME[who]} ${ret ? "sends back" : "approves"} hours`, { r, sql });
+    // Approval waits while a program the musician played that week is undocumented (v0.29).
+    if (r.ok !== ((c.isAdmin[who] || c.ppOk(who, x.residency_id)) && waiting === 0)) fail(`I6 ${NAME[who]} ${ret ? "sends back" : "approves"} hours`, { r, sql, waiting });
   }],
   [3, async function changeRate() {
     const c = await ctx(); const who = chance(0.6) ? A : pick(NON_ADMINS); const cid = pick(contractIds); const rate = int(15, 90);
@@ -441,7 +474,8 @@ const ACTIONS = [
     const sql = `update public.session set schedule_state='canceled', cancellation_reason='${pick(["partner", "partner", "weather", "musician"])}', canceled_at='${sd.day} ${pick(["08:00", "10:30", "13:00"])}:00 ${tz}' where id='${se.id}'`;
     history.push(`${NAME[who]} cancels a published session`);
     const lead = se.residency_id === RES && who === L && c.active[L];
-    expect(`${NAME[who]} cancels a published session`, c.isAdmin[who] || c.ppOk(who, se.residency_id) || lead, await as(who, sql), sql);
+    const locked = await sessionLocked(se.id);
+    expect(`${NAME[who]} cancels a published session${locked ? " (approved week)" : ""}`, c.isAdmin[who] || ((c.ppOk(who, se.residency_id) || lead) && !locked), await as(who, sql), sql);
   }],
   [1, async function toggleX() {
     const on = (await state()).active[X];
@@ -466,6 +500,7 @@ for (step = 1; step <= STEPS; step++) {
   if (failingSteps >= 5) { console.log(`stopping after 5 failing steps (PROP_SEED=${SEED})`); break; }
   if (step % 250 === 0) console.log(`  step ${step}/${STEPS} (${Math.round((Date.now() - t0) / 1000)} s)`);
 }
+console.log(`approved-week rule checked against ${lockedSeen} locked situations`);
 const totals = (await su(`select (select count(*) from public.time_entry)::int te, (select count(*) from public.time_entry where state='approved')::int approved, (select count(*) from public.session_report)::int reports,
   (select count(*) from public.relationship_activity)::int acts, (select count(*) from public.partner_invoice)::int sent, (select count(*) from public.custom_invoice)::int custom`))[0];
 console.log("actions:", JSON.stringify(counts));
