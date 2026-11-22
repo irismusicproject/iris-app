@@ -196,17 +196,31 @@ export async function applyImportFile(_prev: ImportCheck | null, form: FormData)
       }
     }
 
-    // 4. Weekly and monthly programs (skipped if one with the same title, day and time exists).
+    // 4. Weekly and monthly programs. A row counts as already imported when one
+    // with the same title, room, day, week and time exists; identical rows in
+    // the file (e.g. two musicians at once) are matched one for one.
+    const seen = new Map<string, number>();
     for (const w of plan.weekly) {
       const s = seasonOf.get(k(w.program))!;
       const siteId = siteIds.get(`${k(s.partner)}|${k(w.building)}`)!;
       const locationId = roomIds.get(`${siteId}|${k(w.room)}`)!;
       const { data: same } = await supabase
         .from("series")
-        .select("id, weekdays, start_time")
+        .select("id, weekdays, start_time, default_location_id, recurrence, week_of_month")
         .eq("residency_id", s.residencyId)
         .ilike("title", w.title);
-      if ((same ?? []).some((x) => (x.start_time as string)?.slice(0, 5) === w.startTime && JSON.stringify(x.weekdays) === JSON.stringify(w.weekdays))) continue;
+      const sameKey = `${s.residencyId}|${k(w.title)}|${locationId}|${w.weekdays.join(",")}|${w.recurrence}|${w.weekOfMonth ?? ""}|${w.startTime}`;
+      const nth = seen.get(sameKey) ?? 0;
+      seen.set(sameKey, nth + 1);
+      const already = (same ?? []).filter(
+        (x) =>
+          (x.start_time as string)?.slice(0, 5) === w.startTime &&
+          JSON.stringify(x.weekdays) === JSON.stringify(w.weekdays) &&
+          x.default_location_id === locationId &&
+          x.recurrence === w.recurrence &&
+          (x.week_of_month ?? null) === w.weekOfMonth,
+      ).length;
+      if (already > nth) continue;
       const { data, error } = await supabase
         .from("series")
         .insert({
