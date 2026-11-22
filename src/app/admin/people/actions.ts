@@ -147,3 +147,53 @@ export async function setActive(
   revalidatePath("/admin/people");
   redirect(`/admin/people?${active ? "reactivated" : "deactivated"}=${id}`);
 }
+
+/**
+ * Change the sign-in email of someone who has never signed in (v0.32), e.g. a
+ * typo before the invite goes out. The database refuses it once they've
+ * signed in (person_guard_update). If an invite already went to the old
+ * address, that link stops working and the person shows "Not invited yet".
+ */
+export async function changeEmail(id: string, rawEmail: string): Promise<PersonFormState> {
+  await requireAdmin();
+  const email = rawEmail.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { status: "error", message: "That isn't an email address." };
+
+  const supabase = await createClient();
+  const { data: person } = await supabase.from("person").select("email, invited_at").eq("id", id).maybeSingle();
+  if (!person) return { status: "error", message: "That person wasn't found." };
+  if (person.email === email) return { status: "idle", message: "That's already their email." };
+  const { data: taken } = await supabase.from("person").select("id").eq("email", email).maybeSingle();
+  if (taken) return { status: "error", message: "Someone else in the app already uses that email." };
+
+  const admin = createAdminClient();
+  const { data: account } = await admin.auth.admin.getUserById(id);
+  if (!account?.user) return { status: "error", message: "Their sign-in account wasn't found. Ask Ryan." };
+  if (account.user.last_sign_in_at) {
+    return { status: "error", message: "They've already signed in, so their email can't be changed here. They can ask Ryan." };
+  }
+
+  // 1. The sign-in account.
+  const { error: authError } = await admin.auth.admin.updateUserById(id, { email, email_confirm: true });
+  if (authError) {
+    console.error("change email (auth) failed:", authError.code, authError.message);
+    return {
+      status: "error",
+      message: authError.code === "email_exists" ? "That email already has a sign-in account. Ask Ryan." : "We couldn't change it. Please try again.",
+    };
+  }
+  // 2. The person record (server key; the database checks they've never signed in).
+  const { error } = await admin.from("person").update({ email, invited_at: null }).eq("id", id);
+  if (error) {
+    await admin.auth.admin.updateUserById(id, { email: person.email, email_confirm: true }); // undo step 1
+    console.error("change email (person) failed:", error.code, error.message);
+    return { status: "error", message: error.code === "42501" ? "They've already signed in, so their email can't be changed here." : dbMessage(error) };
+  }
+  // 3. A link already sent to the old address stops working: making a new
+  //    one (not sent anywhere) replaces the old one.
+  if (person.invited_at) await admin.auth.admin.generateLink({ type: "recovery", email });
+
+  revalidatePath("/admin/people");
+  revalidatePath(`/admin/people/${id}`);
+  return { status: "idle", message: `Email changed to ${email}.${person.invited_at ? " The earlier invite no longer works; send a new one." : ""}` };
+}
