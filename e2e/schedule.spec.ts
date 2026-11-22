@@ -96,7 +96,8 @@ test("point person fills a month and sets leaders, musicians edit drafts, point 
   await leaderSelect.selectOption({ label: "Mira" });
   await expect(pointPage.getByText("Leader set.")).toBeVisible();
   await pointPage.reload();
-  await expect(pointPage.getByText("(leader)").first()).toBeVisible();
+  // The Leader column keeps the choice after a reload (workbook layout, #35).
+  await expect(pointPage.getByLabel(/^Leader for Tuesday/).first().locator("option:checked")).toHaveText("Mira");
 
   // 4. The point person marks the last Jam Band date "No Program" (on drafts
   //    that's the point person or the date's leader; the Admin Lead handles
