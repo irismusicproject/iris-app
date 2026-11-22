@@ -197,3 +197,25 @@ export async function changeEmail(id: string, rawEmail: string): Promise<PersonF
   revalidatePath(`/admin/people/${id}`);
   return { status: "idle", message: `Email changed to ${email}.${person.invited_at ? " The earlier invite no longer works; send a new one." : ""}` };
 }
+
+/**
+ * Merge a duplicate (someone who has never signed in) into another person
+ * (v0.33). The database moves their roster places, roles, usual programs and
+ * dates, then deletes the record; here we delete their sign-in account.
+ */
+export async function mergePerson(fromId: string, intoId: string): Promise<PersonFormState> {
+  await requireAdmin();
+  const supabase = await createClient();
+  const { data: into } = await supabase.from("person").select("name").eq("id", intoId).maybeSingle();
+  if (!into) return { status: "error", message: "Choose the person to keep." };
+  const { error } = await supabase.rpc("merge_person", { p_from: fromId, p_into: intoId });
+  if (error) {
+    console.error("merge_person failed:", error.code, error.message);
+    const friendly = ["42501", "22023", "23514"].includes(error.code ?? "");
+    return { status: "error", message: friendly ? `${error.message.charAt(0).toUpperCase()}${error.message.slice(1)}.` : "We couldn't merge them. Please try again." };
+  }
+  const { error: authError } = await createAdminClient().auth.admin.deleteUser(fromId);
+  if (authError) console.error("merge: delete sign-in account failed:", authError.code, authError.message);
+  revalidatePath("/admin/people");
+  redirect(`/admin/people/${intoId}?merged=1`);
+}
