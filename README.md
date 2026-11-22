@@ -89,6 +89,11 @@ All under **Authentication**:
 - Resend sends from the subdomain **mail.irismusicproject.org**, verified in the US East region with open and click tracking off. Click tracking would rewrite the sign-in links.
 - **The sender address must end in `@mail.irismusicproject.org`.** The root domain irismusicproject.org is not verified in Resend, and Resend rejects sends from it.
 - If emails stop arriving, check Resend's **Logs** and **Emails** pages first. They show each send from Supabase and any error.
+- **Emails the app sends itself** (`src/lib/notify.ts`) are separate from Supabase's sign-in emails and use two Vercel settings:
+  - `RESEND_API_KEY`: a Resend key with **Sending access** only, separate from the one in Supabase. With it, the app sends the **welcome email** to people an admin added earlier (`src/lib/welcome-email.ts`). Without it, those people get Supabase's "Reset your password" email instead.
+  - `NOTIFICATIONS_ENABLED=true`: only then do queued notifications (No Program, deadline reminders) go out. Until then they stay in the admin **Outbox** and are never sent later. Turn it on per environment, deliberately.
+  - A message that keeps failing stops after **5 tries**; the Outbox shows why.
+  - Staging (Vercel previews) sends as **Iris (staging)** from `staging@mail.irismusicproject.org`.
 - If you need a new key, create it in Resend under **API Keys** with **Sending access** for `mail.irismusicproject.org`, paste it into Supabase's SMTP password, test, then delete the old key.
 
 ## DNS records (Squarespace)
