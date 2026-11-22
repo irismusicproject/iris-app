@@ -39,6 +39,8 @@ jobs:
             echo "NEXT_PUBLIC_SITE_URL=http://localhost:3000"
           } >> "$GITHUB_ENV"
 
+      - name: Check the local prototyping setup (npm run dev:local without the app)
+        run: node scripts/local-supabase.mjs
       - run: npx playwright install --with-deps chromium
       - run: npm run build
       - run: npx playwright test
