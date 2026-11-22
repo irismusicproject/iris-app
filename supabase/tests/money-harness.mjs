@@ -8,7 +8,8 @@
 //   check(name, cond)            a rule the code keeps; a failure fails the run.
 //   knownBug(id, name, cond)     the docs say `cond` should hold, the code
 //                                breaks it today. Reported, doesn't fail the
-//                                run. If it starts passing, it says so.
+//                                run. If it starts passing, the run FAILS until
+//                                it is turned into a plain check().
 //   question(id, name, cond)     the docs are ambiguous; `cond` is the reading
 //                                we'd expect. Reported, doesn't fail the run.
 import { PGlite } from "@electric-sql/pglite";
@@ -60,7 +61,9 @@ export function reporter() {
       return !!cond;
     },
     knownBug(id, name, cond, detail) {
-      if (cond) { pass++; fixed.push(`${id} ${name}`); console.log(`PASS (was KNOWN BUG ${id}: now fixed? remove the marker)`, name); }
+      // Strict: a known bug that now passes fails the run, so the fix must turn
+      // this knownBug(...) into a plain check(...) in the same change.
+      if (cond) { fail++; fixed.push(`${id} ${name}`); console.log(`FAIL (KNOWN BUG ${id} now passes: change it to check(...))`, name); }
       else { known.push(`${id} ${name}`); console.log(`KNOWN BUG ${id}`, name, fmt(detail)); }
       return !!cond;
     },
