@@ -59,6 +59,7 @@ function seriesFromForm(form: FormData) {
     minutes: minutesText ? Number(minutesText) : null,
     active_from: String(form.get("active_from") ?? ""),
     active_until: String(form.get("active_until") ?? "") || null,
+    default_leader_id: isId(String(form.get("default_leader_id") ?? "")) ? String(form.get("default_leader_id")) : null,
   };
 }
 

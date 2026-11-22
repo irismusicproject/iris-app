@@ -76,6 +76,7 @@ export default async function WeeklyPage({ params }: { params: Promise<{ id: str
             <p className="mt-1 text-sm text-muted">
               {days} · {time12(s.start_time)}{s.minutes ? ` · ${s.minutes} min` : ""} · {s.location?.display_name}
               {people ? ` · ${people}` : ""}
+              {s.default_leader_id ? ` · Usual leader: ${nameOf(s.default_leader_id)}` : ""}
               {ended ? " · Ended" : ""}
             </p>
             {access.canSchedule && (

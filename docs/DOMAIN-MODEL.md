@@ -1,6 +1,6 @@
 # Iris App — Domain Model (Language 1: the code)
 
-_Draft v0.14, November 22, 2026 (v0.14: documentation from the CESLC workbook sample, weekly; musicians write draft notes; schedule laid out like the workbook tab. v0.13: people in a program can see each other's names, nothing else. v0.12: every roster musician edits draft titles, rooms and musicians; the point person assigns leaders. v0.11: `Partner`, `Site`, `Location` built; see section 1. v0.10: scheduled relationship building (e.g. Lessons) and the partner calendar layout; v0.9: partner permission for resident names confirmed; v0.8: decisions D14 and D15 settled: residents and attendance; v0.7: decisions D10, D11 and D16 settled: events, extras, absences, substitutes and the roster; v0.6: both D9 billing details confirmed; v0.5: decisions D9 and D13 settled: partner billing and version 1 scope; v0.4: decisions D2, D4, D6, D7 and D8 settled; v0.3: decisions D1, D3 and D5 settled, including how a month's schedule is reviewed, published and sent; v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
+_Draft v0.15, November 22, 2026 (v0.15: usual leaders, season reminders, private calendar links. v0.14: documentation from the CESLC workbook sample, weekly; musicians write draft notes; schedule laid out like the workbook tab. v0.13: people in a program can see each other's names, nothing else. v0.12: every roster musician edits draft titles, rooms and musicians; the point person assigns leaders. v0.11: `Partner`, `Site`, `Location` built; see section 1. v0.10: scheduled relationship building (e.g. Lessons) and the partner calendar layout; v0.9: partner permission for resident names confirmed; v0.8: decisions D14 and D15 settled: residents and attendance; v0.7: decisions D10, D11 and D16 settled: events, extras, absences, substitutes and the roster; v0.6: both D9 billing details confirmed; v0.5: decisions D9 and D13 settled: partner billing and version 1 scope; v0.4: decisions D2, D4, D6, D7 and D8 settled; v0.3: decisions D1, D3 and D5 settled, including how a month's schedule is reviewed, published and sent; v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
 app's objects. GLOSSARY.md translates the team's language (Language 2) and
 our partner-facing language (Language 3) into these objects._
 
@@ -309,6 +309,7 @@ it doesn't happen. Its `Session`s happen.
 | `default_location_id` | → Location | Must be at one of the residency's sites |
 | `recurrence` | rule | Weekly on chosen weekdays, e.g. Wednesdays 11:00, 120 minutes. Time and length are **optional** for `relationship_building` |
 | `default_personnel` | → Person (many) | Must be on the current roster |
+| `default_leader_id` | → Person | Optional **usual leader** (v0.15): made leader on every date when a month is filled in. Weekly programs without one are left for the point person |
 | `active_from`, `active_until` | date | |
 
 ### `Session`
@@ -415,6 +416,26 @@ dates). Musicians' blackout dates (`scope = person`) are **in version 1
 | `scope` | enum + id | `all_iris`, `partner`, `site`, `residency`, `person` (a musician's blackout dates) |
 | `starts_on`, `ends_on` | date | |
 | `reason` | text | |
+
+### `CalendarFeed`
+A musician's **private calendar link** (v0.15, decided by Lauren Nov 22,
+2026). Google, Apple and Outlook calendars subscribe to it and refresh on
+their own.
+
+| Attribute | Type | Notes |
+|---|---|---|
+| `person_id` | → Person | One link per person |
+| `token` | text | Secret. The person can replace it ("Make a new link"), which stops the old one |
+
+**Shows:** published (and canceled, as "No Program") sessions the person
+plays in (not absent), plus special events of programs they're on; from 60
+days ago to a year ahead. Drafts never appear. **Security review pending
+(Ryan's side):** the feed is readable by anyone holding the link.
+
+**Season reminders (v0.15).** Each month's schedule shows a "Coming up this
+season" box: the program's special events in later months (often planned
+at the start of a season), so musicians see them every month until they
+happen.
 
 ### `CalendarExport`
 One version of a monthly partner calendar for one site (Language 3
@@ -741,6 +762,7 @@ Permissions come from **relationships**, not job titles.
 | Mark a month's draft schedule reviewed | Current `StaffAssignment.role = point_person`; admins |
 | Edit a draft session's title, internal notes, room and who plays (participants); for special events also date and time | Any current `RosterMember` of the residency |
 | See the **names** (only) of the people on a program's rosters and staff | Anyone who can see that residency: its current roster, its Iris staff, admins (decided by Lauren, Nov 22, 2026). Email, phone and the rest of `Person` stay private |
+| Create, see and replace their own calendar link | The person (while `active`) |
 | Assign session leaders | The current point person and admins; the Admin Lead may swap leaders afterwards |
 | See a residency's sessions and community info | Any current `RosterMember` |
 | See and edit `Partner`, `Site`, `Location` | `Person.system_roles ∋ admin`. **For now admins only;** roster members get read access to their residency's sites once `RosterMember` exists |

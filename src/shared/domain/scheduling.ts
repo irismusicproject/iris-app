@@ -119,6 +119,8 @@ export type Series = {
   minutes: number | null;
   active_from: string;
   active_until: string | null;
+  /** Usual leader: made leader on each date when a month is filled in (v0.15). */
+  default_leader_id: string | null;
 };
 
 export type Session = {

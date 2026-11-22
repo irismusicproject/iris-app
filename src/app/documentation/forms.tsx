@@ -12,7 +12,7 @@ import {
   type ActivityKind,
   type ResidentInvolvement,
 } from "@/shared/domain/documentation";
-import { deleteActivity, logActivity, saveReflection, saveSessionReport, type DocResult } from "./actions";
+import { createCalendarLink, deleteActivity, logActivity, resetCalendarLink, saveReflection, saveSessionReport, type DocResult } from "./actions";
 
 const small = "rounded-full border border-border px-3 py-1 text-xs hover:bg-iris-soft disabled:opacity-60";
 type Option = { id: string; label: string };
@@ -267,5 +267,62 @@ export function ReflectionForm({
         {pending ? "Saving..." : "Save reflection"}
       </button>
     </form>
+  );
+}
+
+// ---- Private calendar link ----
+
+export function CalendarLinkCard({ feedUrl }: { feedUrl: string | null }) {
+  const [pending, start] = useTransition();
+  const [copied, setCopied] = useState(false);
+  const webcal = feedUrl?.replace(/^https?:/, "webcal:");
+  return (
+    <div className="flex flex-col gap-3 text-sm">
+      {!feedUrl ? (
+        <>
+          <p className="text-muted">
+            Get a private link that adds your Iris programs (the ones you play in, plus your programs&apos; special events) to Google,
+            Apple or Outlook Calendar. It updates on its own when the schedule changes.
+          </p>
+          <button type="button" disabled={pending} className={`${buttonClass} self-start`} onClick={() => start(async () => { await createCalendarLink(); })}>
+            {pending ? "Creating..." : "Create my calendar link"}
+          </button>
+        </>
+      ) : (
+        <>
+          <div className="flex flex-wrap items-center gap-2">
+            <input readOnly value={feedUrl} aria-label="Your private calendar link" className={`${inputClass} min-w-0 flex-1 text-xs`} onFocus={(e) => e.currentTarget.select()} />
+            <button
+              type="button"
+              className={small}
+              onClick={async () => {
+                await navigator.clipboard.writeText(feedUrl);
+                setCopied(true);
+              }}
+            >
+              {copied ? "Copied" : "Copy"}
+            </button>
+          </div>
+          <ul className="list-disc space-y-1 pl-5 text-muted">
+            <li><strong>Apple Calendar or iPhone:</strong> <a href={webcal} className="text-iris underline-offset-2 hover:underline">tap here to subscribe</a>.</li>
+            <li><strong>Google Calendar:</strong> on a computer, Other calendars → “+” → From URL, then paste the link.</li>
+            <li><strong>Outlook:</strong> Add calendar → Subscribe from web, then paste the link.</li>
+          </ul>
+          <p className="text-xs text-muted">
+            Keep this link to yourself: anyone with it can see your Iris schedule.{" "}
+            <button
+              type="button"
+              disabled={pending}
+              className="underline underline-offset-2"
+              onClick={() => {
+                if (confirm("Make a new link? The old one stops working, so you'll need to subscribe again.")) start(async () => { await resetCalendarLink(); setCopied(false); });
+              }}
+            >
+              Make a new link
+            </button>
+          </p>
+        </>
+      )}
+    </div>
   );
 }

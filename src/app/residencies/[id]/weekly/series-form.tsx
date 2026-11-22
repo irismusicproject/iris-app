@@ -69,6 +69,14 @@ export function SeriesForm({
           ))}
         </div>
       </fieldset>
+      {kind === "group_session" && (
+        <Field label="Usual leader (optional)" hint="Made leader on every date when a month is filled in. Leave blank and the point person picks each date's leader.">
+          <select name="default_leader_id" defaultValue={series?.default_leader_id ?? ""} className={inputClass}>
+            <option value="">No usual leader</option>
+            {musicians.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+          </select>
+        </Field>
+      )}
       <fieldset>
         <legend className="text-sm font-medium">Usual musicians</legend>
         <p className="text-xs text-muted">Added to each date when the month is filled in. Anyone on the roster can change them per date.</p>
