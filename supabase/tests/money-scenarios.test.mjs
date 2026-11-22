@@ -87,10 +87,14 @@ const r1m = (await su(`select date_trunc('month', starts_at at time zone 'Americ
 r = await as(Q, `select public.mark_month_reviewed('${RES2}','${T1}','${r1m}')`); check("RES2 point person reviews Elm Court", r.ok, r);
 r = await as(Q, `select public.publish_month('${RES2}','${T1}','${r1m}')`); check("RES2 point person publishes Elm Court", r.ok, r);
 r = await as(M2, `select public.mark_absent_with_substitute('${s3}','${W}')`); check("M2 marks self absent on s3 and names W as sub (D11)", r.ok, r);
-r = await as(P, `update public.session set schedule_state='canceled', cancellation_reason='partner', canceled_at=${at(addDays(W2, 3), "America/New_York", "10:30:00")} where id='${s4}'`);
+// The database records canceled_at itself (fix K3, migration 20261209), so the test
+// cancels normally and then sets the recorded time behind the scenes to simulate it.
+r = await as(P, `update public.session set schedule_state='canceled', cancellation_reason='partner' where id='${s4}'`);
 check("point person records a late partner cancellation (10:30 am) on s4", r.ok && r.n === 1, r);
-r = await as(P, `update public.session set schedule_state='canceled', cancellation_reason='partner', canceled_at=${at(addDays(W2, 4), "America/New_York", "08:00:00")} where id='${s6}'`);
+await su(`update public.session set canceled_at=${at(addDays(W2, 3), "America/New_York", "10:30:00")} where id='${s4}'`);
+r = await as(P, `update public.session set schedule_state='canceled', cancellation_reason='partner' where id='${s6}'`);
 check("point person records an on-time partner cancellation (8 am) on s6", r.ok && r.n === 1, r);
+await su(`update public.session set canceled_at=${at(addDays(W2, 4), "America/New_York", "08:00:00")} where id='${s6}'`);
 
 // ============================================================================
 // 2. Pay: contracts and stipends (admins set them; the musician and admins see them)
