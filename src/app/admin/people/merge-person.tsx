@@ -54,8 +54,8 @@ export function MergePerson({ id, name, email, others, isSelf }: { id: string; n
               then delete that record? They&apos;ll sign in with <span className="font-medium">{keptEmail}</span>.
             </p>
             <p className="text-xs">
-              If either has signed in before, both old passwords stop working and a link to set a new one goes to {keptEmail}.
-              {isSelf && " That includes you: you'll be signed out and get that email."} This can&apos;t be undone.
+              If {from.name}&apos;s record has ever been used to sign in, both old passwords stop working and a link to set a new one goes
+              to {keptEmail}{isSelf ? " (you'd be signed out)" : ""}. Otherwise {name} keeps signing in with the same password. This can&apos;t be undone.
             </p>
             <div className="flex gap-2">
               <button

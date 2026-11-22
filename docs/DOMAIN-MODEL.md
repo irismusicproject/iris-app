@@ -240,8 +240,11 @@ Anyone who signs in: musicians, staff, volunteers. One record per human.
   residents they added, hours, pay rates, reflections and calendars. Empty
   details are filled from the other record; instruments and roles are
   combined. The admin picks which **email** the person signs in with. If
-  either had signed in before, both old passwords stop working, they're
-  signed out, and a link to set a new password goes to the kept email. Both
+  the record merged **away** had signed in before, both old passwords stop
+  working, they're signed out, and a link to set a new password goes to the
+  kept email (Lauren, after Ryan's review: that's the only case where someone
+  else may still hold a working password). Otherwise the kept sign-in and
+  password stay as they are. Both
   having hours for the same week, a pay rate for the same season or a
   reflection for the same month should never happen; if it does, the merge
   stops and says where. The other record and its sign-in account are

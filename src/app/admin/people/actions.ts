@@ -224,8 +224,8 @@ export async function changeEmail(id: string, rawEmail: string, rawConfirm: stri
  * Merge two people into one (v0.33): everything from `fromId` moves to
  * `intoId` (the database checks and moves it all), then `fromId`'s sign-in
  * account is deleted. The kept person signs in with the email the admin picks.
- * If either had signed in, both old passwords stop working and the kept person
- * is emailed a link to set a new one.
+ * If the merged-away record had signed in, both old passwords stop working and
+ * the kept person is emailed a link to set a new one.
  */
 export async function mergePerson(fromId: string, intoId: string, keepEmailOf: "from" | "into"): Promise<PersonFormState> {
   const viewer = await requireAdmin();
@@ -236,12 +236,15 @@ export async function mergePerson(fromId: string, intoId: string, keepEmailOf: "
   if (!from || !into) return { status: "error", message: "Choose the person to merge in." };
 
   const admin = createAdminClient();
-  const [{ data: fromAcct }, { data: intoAcct }] = await Promise.all([admin.auth.admin.getUserById(fromId), admin.auth.admin.getUserById(intoId)]);
+  const { data: fromAcct } = await admin.auth.admin.getUserById(fromId);
   const email = keepEmailOf === "from" ? from.email : into.email;
-  const eitherSignedIn = !!fromAcct?.user?.last_sign_in_at || !!intoAcct?.user?.last_sign_in_at;
+  // v0.33 (Lauren, after Ryan's review): reset passwords only if the record merged
+  // away had signed in; that's the only case where someone else may still have a
+  // working password. Folding in an unused duplicate leaves the kept sign-in alone.
+  const resetPassword = !!fromAcct?.user?.last_sign_in_at;
 
   // 1. The data (all or nothing, in the database).
-  const { error } = await supabase.rpc("merge_person", { p_from: fromId, p_into: intoId, p_end_sessions: eitherSignedIn });
+  const { error } = await supabase.rpc("merge_person", { p_from: fromId, p_into: intoId, p_end_sessions: resetPassword });
   if (error) {
     console.error("merge_person failed:", error.code, error.message);
     const friendly = ["42501", "22023", "23514"].includes(error.code ?? "");
@@ -261,8 +264,8 @@ export async function mergePerson(fromId: string, intoId: string, keepEmailOf: "
       problems.push(`their email is still ${into.email}; use Change email to set ${email}`);
     }
   }
-  // 4. If either had signed in: new password for the kept account, and a link to set it.
-  if (eitherSignedIn) {
+  // 4. If the merged-away record had signed in: new password for the kept account, and a link to set it.
+  if (resetPassword) {
     const { error: pwError } = await admin.auth.admin.updateUserById(intoId, { password: crypto.randomUUID() + crypto.randomUUID() });
     if (pwError) console.error("merge: password reset failed:", pwError.message);
     try {
@@ -275,7 +278,7 @@ export async function mergePerson(fromId: string, intoId: string, keepEmailOf: "
   }
 
   revalidatePath("/admin/people");
-  if (intoId === viewer.person.id && eitherSignedIn) redirect("/login?merged=1");
+  if (intoId === viewer.person.id && resetPassword) redirect("/login?merged=1");
   redirect(`/admin/people/${intoId}?merged=1${problems.length ? `&note=${encodeURIComponent(problems.join("; "))}` : ""}`);
 }
 
