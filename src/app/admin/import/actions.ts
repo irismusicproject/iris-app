@@ -107,8 +107,14 @@ export async function applyImportFile(_prev: ImportCheck | null, form: FormData)
     const personId = (n: string) => people.get(k(n))!;
 
     // 2. Partners, buildings and rooms.
-    const { data: partnerRows } = await supabase.from("partner").select("id, display_name");
-    const partners = new Map((partnerRows ?? []).map((p) => [k(p.display_name), p.id as string]));
+    // A partner already in the app matches by its legal name or its display
+    // name (legal names are unique, so a second one can't be created).
+    const { data: partnerRows } = await supabase.from("partner").select("id, legal_name, display_name");
+    const partners = new Map<string, string>();
+    for (const p of partnerRows ?? []) {
+      partners.set(k(p.display_name), p.id as string);
+      partners.set(k(p.legal_name), p.id as string);
+    }
     const siteIds = new Map<string, string>();
     const roomIds = new Map<string, string>();
     for (const s of plan.sites) {
