@@ -104,7 +104,7 @@ const CAFE = r.rows?.[0]?.id;
 r = await as(P, `insert into public.series_default_person values ('${CAFE}','${M1}'),('${CAFE}','${M2}')`); check("point person sets the usual musicians", r.ok, r);
 r = await as(L, `insert into public.series_default_person values ('${CAFE}','${M3}')`); check("Admin Lead can't change usual musicians", !r.ok, r);
 r = await as(P, `insert into public.series_default_person values ('${CAFE}','${O}')`);
-check("usual musicians must be on the roster (outsider refused)", !r.ok, r, "K1");
+check("usual musicians must be on the roster (outsider refused)", !r.ok, r) /* fixed K1, migration 20261209 */;
 if (r.ok) await su(`delete from public.series_default_person where series_id='${CAFE}' and person_id='${O}'`);
 
 // Monthly programs (v0.18): the 1st-4th of one weekday.
@@ -246,7 +246,7 @@ check("Admin Lead staffs the new event (nobody on it yet)", r.ok, r);
 r = await as(M2, `update public.session set starts_at = starts_at + interval '1 day 30 minutes', scheduled_minutes=120 where id='${EV}'`); check("musician playing a special event moves its date and time", r.ok && r.n === 1, r);
 r = await as(M3, `update public.session set starts_at = starts_at + interval '1 hour' where id='${EV}'`); check("musician not playing it can't (0 rows)", r.ok && r.n === 0, r);
 r = await as(M2, `update public.session set starts_at = starts_at + interval '2 years' where id='${EV}'`);
-check("a special event can't move to a date outside its musicians' season", !r.ok || r.n === 0, r, "K5");
+check("a special event can't move to a date outside its musicians' season", !r.ok || r.n === 0, r) /* fixed K5, migration 20261209 */;
 if (r.ok && r.n === 1) await su(`update public.session set starts_at = starts_at - interval '2 years' where id='${EV}'`);
 r = await as(L, `insert into public.session (residency_id,title,location_id,starts_at,scheduled_minutes) values ('${RES}','Pop-up Choir','${R2}',timestamp '${addDays(B, 20)} 15:00' at time zone '${NY}',45) returning id`);
 const EV2 = r.rows?.[0]?.id;
@@ -276,7 +276,7 @@ r = await as(M1, `update public.session set schedule_state='canceled', cancellat
 r = await as(M3, `update public.session set schedule_state='canceled', cancellation_reason='musician' where id='${d3}'`); check("a musician not on it can't either (0 rows)", r.ok && r.n === 0, r);
 r = await as(M2, `update public.session set schedule_state='canceled', cancellation_reason='partner', canceled_at='2000-01-01' where id='${d3}' returning canceled_at > now() - interval '5 minutes' as fresh`);
 check("the leader makes another date No Program", r.ok && r.n === 1, r);
-check("…and can't type in when it was canceled (canceled_at is the recording time)", r.ok && r.rows[0]?.fresh === true, r, "K3");
+check("…and can't type in when it was canceled (canceled_at is the recording time)", r.ok && r.rows[0]?.fresh === true, r) /* fixed K3, migration 20261209 */;
 r = await as(L, `update public.session set schedule_state='draft' where id='${d3}'`); check("the Admin Lead restores a No Program date (v0.17)", r.ok && r.n === 1, r);
 r = await as(L, `update public.session set schedule_state='canceled', cancellation_reason='musician' where id='${d4}'`);
 check("the Admin Lead (not playing) cancels a draft date for a planned absence (D11)", r.ok && r.n === 1, r, "Q3");
@@ -345,7 +345,7 @@ r = await as(L, `update public.session set schedule_state='canceled', cancellati
 check("Admin Lead makes a published date No Program (partner's request)", r.ok && r.n === 1 && r.rows[0].fresh, r);
 r = await as(L, `update public.session set canceled_at='2000-01-01 08:00' where id='${d7}'`);
 const ca = (await stateOf(d7)).canceled_at;
-check("…and can't rewrite when the cancellation was recorded", !r.ok || r.n === 0 || new Date(ca) > new Date(Date.now() - 5 * 60e3), { r, ca }, "K3");
+check("…and can't rewrite when the cancellation was recorded", !r.ok || r.n === 0 || new Date(ca) > new Date(Date.now() - 5 * 60e3), { r, ca }) /* fixed K3, migration 20261209 */;
 r = await as(L, `update public.session set schedule_state='draft' where id='${d7}'`); check("Admin Lead restores it (back to draft until the next version)", r.ok && r.n === 1, r);
 st = await stateOf(d7); check("…reason and time cleared", st.schedule_state === "draft" && st.cancellation_reason === null && st.canceled_at === null, st);
 
@@ -392,7 +392,7 @@ r = await as(P, `update public.session_assignment set role='participant' where s
 const demoted = r.ok && r.n === 1;
 check("a published date can't be left without a leader", !demoted, r, "Q7");
 if (demoted) {
-  r = await newVer(L, B1); check("an updated calendar refuses a published group session with no leader", !r.ok && /leader/.test(r.err ?? ""), r, "K4");
+  r = await newVer(L, B1); check("an updated calendar refuses a published group session with no leader", !r.ok && /leader/.test(r.err ?? ""), r) /* fixed K4, migration 20261209 */;
   await ok(P, `update public.session_assignment set role='leader' where session_id='${cafeB1[0]}' and person_id='${M1}'`);
 }
 
