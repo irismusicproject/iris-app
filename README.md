@@ -22,7 +22,7 @@ The app is built with Next.js on Vercel. Sign-in runs through Supabase. Only inv
 
 | Piece | Where | Notes |
 |-------|-------|-------|
-| Code | GitHub, `irismusicproject/iris-app` (public) | Merging to `main` deploys automatically. |
+| Code | GitHub, `irismusicproject/iris-app` (public) | `main` = finished work, on staging. `production` = released, on the live site (see Releasing). |
 | Hosting | Vercel | Live at https://app.irismusicproject.org |
 | Sign-in and data | Supabase | Invite-only; email and password, or an emailed code. |
 | Email sending | Resend | Sends from `no-reply@mail.irismusicproject.org`. |
@@ -162,6 +162,8 @@ GitHub applies migrations. **Don't paste migrations into the SQL Editor.** While
 2. **Merging to `main`** applies new migrations to **staging** automatically, plus the fake data in `supabase/seed.sql`.
 3. **Production** changes only when an owner (Ryan) runs **Actions → Database migrations → Run workflow → deploy-production** and approves it. Until then, new screens that need new tables won't work on the live site.
 
+**If staging gets out of step with `main`** (the staging update fails with "Remote migration versions not found in local migrations directory," usually because a migration changed after it reached staging), run **Actions → Database migrations → Run workflow → reset-staging**. It wipes staging's tables and rebuilds them from `main` plus the fake data. It can only reach staging. Afterward, rerun the "First admins" SQL in staging for anyone who needs an admin login there.
+
 **Rules for migrations:**
 - **Add, don't break.** When production is updated, the live code must keep working. To rename or remove a column, first add the new one, switch the code over, then drop the old one.
 - **Never edit a migration that has already run.** Fix it with a new migration.
@@ -178,9 +180,38 @@ GitHub applies migrations. **Don't paste migrations into the SQL Editor.** While
 3. **Build staging's tables.** Open **Actions → Database migrations → Run workflow**, choose **build-staging**, and run it. It applies every migration plus the fake data to staging only.
 4. **Tell the tool what production already has.** Production's first migrations were run by hand. Open **Actions → Database migrations → Run workflow**, choose **mark-applied**, and enter the versions already run on production, for example `20261121120000 20261122120000`. Approve the run. Its last step should show nothing pending.
 
+## Automated PR review
+
+Every pull request gets one advisory comment from Claude (`.github/workflows/claude-review.yml`). It checks the change against `CLAUDE.md` and `docs/DOMAIN-MODEL.md`: permissions on new tables, forbidden names, privacy, edited migrations, missing tests and docs. Each push updates the same comment.
+
+- **It never blocks merging.** It isn't a required check, and a failed review doesn't fail the run. Treat it as a second pair of eyes, not a gate.
+- **It costs Anthropic API credit** on every run (each push to a pull request).
+- **It skips pull requests from forks.**
+- **Setup (Ryan, once):** add the repository secret `ANTHROPIC_API_KEY` under **Settings → Secrets and variables → Actions**. Until then, the workflow skips with a warning.
+- **To turn it off:** open **Actions → Claude PR review**, click **⋯**, and choose **Disable workflow**. Deleting the secret also stops it.
+
+## Releasing
+
+Two branches, two meanings:
+
+| Branch | Means | Database | Website |
+|---|---|---|---|
+| `main` | Finished: merged after CI passes | staging, updated automatically | the staging site: https://iris-app-git-main-rhearty1-5601s-projects.vercel.app (Vercel login required) |
+| `production` | Released by Ryan | production | app.irismusicproject.org |
+
+**The handoff:** Lauren (or anyone) merges finished work to `main` when CI is green and notes it in issue #30. Ryan checks it on the staging site.
+
+**To release:** **Actions → Release → Run workflow**, enter the **version**, then approve the **production** environment when GitHub asks. The workflow applies new migrations to production's database first, then moves `production` up to `main`, and Vercel publishes it. The run's summary lists what was released. Only this workflow moves `production`.
+
+**Versions** follow `MAJOR.MINOR.PATCH`: **v0.x** while only insiders use the app; **v1.0** is the first release to musicians (Joanna and Jiyoung); then **v1.1, v1.2…** for new features and **v1.1.1** for a bug fix only. Each release tags the exact code and publishes a page under **Releases** listing the pull requests it contains. v0.1 is the sign-in, People and Partners version that was live on November 21, 2026.
+
+**If a release goes wrong:** in Vercel, open **Deployments**, choose the previous production deployment, and click **Instant Rollback**.
+
+**One-time setup (Ryan):** in Vercel → **Settings → Git**, set **Production Branch** to `production`.
+
 ## Deploying
 
-Vercel deploys every merge to `main` automatically. Production needs these four environment variables, under Settings, then Environment Variables. Previews use staging's values instead:
+Vercel publishes the `production` branch to the live site and builds every other branch (including `main`) as a preview. Production needs these four environment variables, under Settings, then Environment Variables. Previews use staging's values instead:
 
 - `NEXT_PUBLIC_SUPABASE_URL`: the Supabase project URL
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: the Supabase publishable key

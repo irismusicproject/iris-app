@@ -20,9 +20,9 @@ on:
   workflow_dispatch:
     inputs:
       task:
-        description: "plan = show pending migrations on both databases; build-staging = apply all migrations and fake data to staging; deploy-production = apply main's migrations to production; mark-applied = record already-applied migrations in production's history"
+        description: "plan = show pending migrations on both databases; build-staging = apply all migrations and fake data to staging; reset-staging = WIPE staging and rebuild it from main (fake data only, never production); deploy-production = apply main's migrations to production; mark-applied = record already-applied migrations in production's history"
         type: choice
-        options: [plan, build-staging, deploy-production, mark-applied]
+        options: [plan, build-staging, reset-staging, deploy-production, mark-applied]
         default: plan
       versions:
         description: "For mark-applied: migration versions separated by spaces, e.g. 20261121120000 20261122120000"
@@ -31,10 +31,6 @@ on:
 
 permissions:
   contents: read
-
-concurrency:
-  group: database-migrations
-  cancel-in-progress: false
 
 env:
   SUPABASE_CLI_VERSION: 2.122.1
@@ -46,6 +42,11 @@ jobs:
       || (github.event_name == 'workflow_dispatch' && inputs.task != 'mark-applied')
     runs-on: ubuntu-latest
     environment: staging
+    # One staging change at a time. A production job waiting for approval
+    # never holds up staging: they're separate queues.
+    concurrency:
+      group: database-staging
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
       - uses: supabase/setup-cli@v1
@@ -60,6 +61,15 @@ jobs:
           else
             echo "ok=true" >> "$GITHUB_OUTPUT"
           fi
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      # reset-staging: for when staging and main disagree (e.g. a migration
+      # was changed after it reached staging). Drops staging's tables and
+      # migration history, then rebuilds from main plus the fake seed. This
+      # job only ever has staging's DATABASE_URL, so it can't reach production.
+      - name: Wipe and rebuild staging from main
+        if: steps.cfg.outputs.ok == 'true' && inputs.task == 'reset-staging'
+        run: supabase db reset --yes --db-url "$DATABASE_URL"
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
       - name: Migrations that will run on staging
@@ -81,6 +91,9 @@ jobs:
     # The "production" environment requires an owner's approval before this
     # job starts, and is the only place production's connection string lives.
     environment: production
+    concurrency:
+      group: database-production
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
       - uses: supabase/setup-cli@v1
@@ -114,6 +127,9 @@ jobs:
     if: github.event_name == 'workflow_dispatch' && inputs.task == 'mark-applied'
     runs-on: ubuntu-latest
     environment: production
+    concurrency:
+      group: database-production
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
       - uses: supabase/setup-cli@v1
