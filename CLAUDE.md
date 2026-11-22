@@ -94,7 +94,7 @@ D1: the review suggested "Ensemble Program"; the model uses `Residency`).
 | D6 | Resident involvement levels; meaning of "collaborative event" | **Decided:** recorded when documenting; Collab? Yes/No, every Yes counts as co-led (Nov 22); target per season, set by point person or admin |
 | D7 | Conflicting handbook deadlines | **Decided:** schedule 10th/15th; documentation + hours Tuesday 5 pm; cancellations 9 am (monthly reflection due date assumed) |
 | D8 | Semester vs. season | **Decided:** seasons per residency (`Season.kind`) |
-| D9 | Contract and pay components; partner billing basis | **Decided:** musician rate per contract; partners per hour or installments; billable hours = session + relationship building per site; admin-set rate, stipends, overhead, corporate invoice; overhead on hours + stipends |
+| D9 | Contract and pay components; partner billing basis | **Decided:** musician rate per contract; partners per hour or installments; billable hours = per musician (session length × musicians present + their relationship building) per site, after the point person approves the week (Nov 22); admin-set rate, stipends, overhead, corporate invoice; overhead on hours + stipends |
 | D10 | Events, extras, special projects | **Decided:** as modeled; concerts are special events; extras billed unless marked not billable |
 | D11 | Absences, substitutes, cancellation reasons | **Decided:** planned absences become "No Program"; musicians record their own sub; missed-session limit warns (value not set yet) |
 | D12 | Titles separate from personnel and location | Adopted |

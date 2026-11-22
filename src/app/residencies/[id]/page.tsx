@@ -105,6 +105,9 @@ export default async function ResidencyPage({ params }: { params: Promise<{ id: 
         {access.isPointPerson && (
           <Link href={`/residencies/${id}/hours`} className="rounded-full border border-border px-4 py-2 hover:bg-iris-soft">Hours to approve</Link>
         )}
+        {isAdmin && (
+          <Link href={`/residencies/${id}/billing`} className="rounded-full border border-border px-4 py-2 hover:bg-iris-soft">Community invoices</Link>
+        )}
       </div>
 
       <section className={card}>
