@@ -146,6 +146,38 @@ the same backend:
   code** is the fallback. Both work on web and native. Emailed links are
   used only for invites and password resets.
 
+## Division of labor (Lauren, Nov 22, 2026)
+
+Two sides, each with its own Claude Code session. Know which side you're on
+(Lauren's computer and account = Lauren's side; Ryan's = Ryan's side).
+
+**Lauren: designer and product owner.** She decides what the app does and
+how it looks and works, and she alone judges whether a feature "looks good,
+operationally."
+- **Lauren's Claude** builds features as prototypes: screens, and the
+  migrations they need, on a feature branch, run locally (`npm run
+  dev:local`) so Lauren can try them in the browser.
+- It does **not** write new tests or spend time on test runs. CI still runs
+  on every PR; if CI fails, say so in plain words and hand it to Ryan's side
+  unless the fix is an obvious bug in the feature itself.
+- It still follows the stop-and-ask rules and the three languages.
+- When Lauren says a feature looks good, it opens (or updates) the PR, marks
+  it **ready for Ryan**, and posts a handoff on issue #30: what the feature
+  does, which migrations and permission rules it adds, and anything not yet
+  checked. **It doesn't merge feature PRs.** Docs-only PRs (decisions,
+  glossary, this file) it may merge itself once checks pass.
+
+**Ryan: tester, and maintenance, repair and security of the builds.**
+- **Ryan's Claude** tests what Lauren approved: writes and runs permission
+  and browser tests, reviews migrations and permission rules, fixes bugs,
+  handles security, sign-in and infrastructure, merges to `main`, and deploys
+  database changes to production.
+- It doesn't change how a feature looks or behaves without Lauren's OK; it
+  asks on issue #30.
+
+**Handoffs** go through issue #30 (`gh issue view 30 --comments`), starting
+with **[Lauren's side]** or **[Ryan's side]**.
+
 ## Working style
 
 - Small changes, one concern at a time, on a short-lived branch per task.
@@ -164,17 +196,18 @@ the same backend:
   Try database changes there, `npm run db:reset` to rebuild, and edit an
   unmerged migration freely. You never need Supabase dashboard access, and
   you never connect to staging or production.
-- **Before opening a PR:** `npm run test:db` (permission tests) and
-  `npm run test:e2e` (browser tests, against the running local Supabase).
-  Add tests for new tables and screens.
+- **Tests are Ryan's side** (see Division of labor): `npm run test:db`
+  (permission tests) and `npm run test:e2e` (browser tests). Ryan's side adds
+  tests for new tables and screens once Lauren approves a feature.
 - **Databases (Ryan owns these):** pull requests never touch a real database.
   Merging a migration to `main` updates **staging** automatically; **production**
   gets it only when Ryan runs "deploy-production". Never edit a migration
   that's on `main`; fix it with a new one. Never tell anyone to paste a
   migration into the SQL Editor.
-- Claude may pull, commit, push, open pull requests and merge them without
-  asking first (permission from Lauren, Nov 2026). This does **not** replace
-  the stop-and-ask rules above.
+- Claude may pull, commit, push and open pull requests without asking first
+  (permission from Lauren, Nov 2026). **Merging:** feature PRs are merged by
+  Ryan's side after testing; Lauren's side merges only docs-only PRs. None
+  of this replaces the stop-and-ask rules above.
 - Lauren and Ryan may be working in the repo at the same time:
   - Resolve trivial conflicts yourself: non-overlapping changes,
     formatting, lockfile updates.
@@ -183,8 +216,10 @@ the same backend:
     resolving would discard someone's work.
   - Never force-push, rewrite `main`'s history, or delete branches you
     didn't create.
-- Who owns what: **Lauren** owns product decisions and testing; **Ryan**
-  owns the database, sign-in, permissions, infrastructure and code review.
+- Who owns what: **Lauren** owns product decisions and design, and judges
+  whether features work for Iris; **Ryan** owns testing, maintenance, repair
+  and security: the database, sign-in, permissions, infrastructure, code
+  review, merging features and deploying.
 - Before every commit, check `git status` and `git diff --staged` for
   anything private.
 - Explain changes in plain language. The project owner is not a
