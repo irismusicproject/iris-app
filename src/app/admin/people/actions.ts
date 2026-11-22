@@ -7,6 +7,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendWelcomeEmail } from "@/lib/welcome-email";
 import { createClient } from "@/lib/supabase/server";
 import { confirmUrl } from "@/lib/site-url";
+import { canSendEmail, sendEmail } from "@/lib/notify";
+import { isEmail, normalizeEmail } from "@/shared/domain/email";
 import { validateAdminEdit, validateNewPerson } from "@/shared/domain/person";
 
 export type PersonFormState = {
@@ -146,4 +148,74 @@ export async function setActive(
 
   revalidatePath("/admin/people");
   redirect(`/admin/people?${active ? "reactivated" : "deactivated"}=${id}`);
+}
+
+/**
+ * Change someone's sign-in email (v0.32): a typo from the import, or a new
+ * address they asked for. The new address is typed twice. If they've already
+ * signed in, their password stays and a notice goes to the old and new
+ * address. A link already sent to the old address stops working.
+ */
+export async function changeEmail(id: string, rawEmail: string, rawConfirm: string): Promise<PersonFormState> {
+  await requireAdmin();
+  const email = normalizeEmail(rawEmail);
+  if (!isEmail(email)) return { status: "error", message: "That isn't an email address." };
+  if (normalizeEmail(rawConfirm) !== email) return { status: "error", message: "The two emails don't match. Type it again in both boxes." };
+
+  const supabase = await createClient();
+  const { data: person } = await supabase.from("person").select("email, name, invited_at").eq("id", id).maybeSingle();
+  if (!person) return { status: "error", message: "That person wasn't found." };
+  if (person.email === email) return { status: "idle", message: "That's already their email." };
+  const { data: taken } = await supabase.from("person").select("id").eq("email", email).maybeSingle();
+  if (taken) return { status: "error", message: "Someone else in the app already uses that email. If it's the same person, use Merge instead." };
+
+  const admin = createAdminClient();
+  const { data: account } = await admin.auth.admin.getUserById(id);
+  if (!account?.user) return { status: "error", message: "Their sign-in account wasn't found. Ask Ryan." };
+  const signedInBefore = !!account.user.last_sign_in_at;
+
+  // 1. The sign-in account.
+  const { error: authError } = await admin.auth.admin.updateUserById(id, { email, email_confirm: true });
+  if (authError) {
+    console.error("change email (auth) failed:", authError.code, authError.message);
+    return {
+      status: "error",
+      message: authError.code === "email_exists" ? "That email already has a sign-in account. Ask Ryan." : "We couldn't change it. Please try again.",
+    };
+  }
+  // 2. The person record (server key; the database refuses email changes from the browser).
+  //    Someone not yet signed in shows "Not invited yet" again, so the invite goes to the new address.
+  const { error } = await admin.from("person").update(signedInBefore ? { email } : { email, invited_at: null }).eq("id", id);
+  if (error) {
+    await admin.auth.admin.updateUserById(id, { email: person.email, email_confirm: true }); // undo step 1
+    console.error("change email (person) failed:", error.code, error.message);
+    return { status: "error", message: dbMessage(error) };
+  }
+  // 3. A link already sent to the old address stops working: making a new
+  //    one (not sent anywhere) replaces the old one.
+  await admin.auth.admin.generateLink({ type: "recovery", email });
+  // 4. Someone who already uses the app hears about it at both addresses.
+  if (signedInBefore && canSendEmail()) {
+    const first = person.name.trim().split(/\s+/)[0] || "there";
+    const text =
+      `Hi ${first},\n\nThe email you use to sign in to the Iris Music Project app was changed by an Iris admin ` +
+      `from ${person.email} to ${email}. Your password hasn't changed.\n\n` +
+      `If you didn't ask for this, please reply to Iris staff right away.\n`;
+    for (const to of [person.email, email]) {
+      try {
+        await sendEmail({ to, subject: "Your Iris app sign-in email was changed", text });
+      } catch (e) {
+        console.error("email change notice failed:", e instanceof Error ? e.message : e);
+      }
+    }
+  }
+
+  revalidatePath("/admin/people");
+  revalidatePath(`/admin/people/${id}`);
+  return {
+    status: "idle",
+    message: signedInBefore
+      ? `Email changed to ${email}. They sign in with it from now on, with the same password${canSendEmail() ? "; a notice went to both addresses" : ""}.`
+      : `Email changed to ${email}.${person.invited_at ? " The earlier invite no longer works; send a new one." : ""}`,
+  };
 }
