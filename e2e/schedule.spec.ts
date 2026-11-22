@@ -76,7 +76,8 @@ test("point person fills a month and sets leaders, musicians edit drafts, point 
   await expect(musPage.getByRole("button", { name: /No Program/ })).toHaveCount(0);
   const firstTitle = musPage.getByLabel(/^Title for Tuesday/).first();
   await firstTitle.fill("Jam Band: Motown");
-  await musPage.getByRole("button", { name: "Save title" }).click();
+  // Workbook-style cells (#35): a title saves on Enter or when you click away.
+  await firstTitle.press("Enter");
   await expect(musPage.getByText("Title saved.")).toBeVisible();
   await musPage.getByLabel(/^Room for Tuesday/).first().selectOption({ label: "Lounge" });
   await expect(musPage.getByText("Room saved.")).toBeVisible();
