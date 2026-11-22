@@ -3,7 +3,8 @@
 Read this before doing anything in this repo. Then read
 `docs/DOMAIN-MODEL.md` and `docs/GLOSSARY.md` before writing or changing code,
 database tables, or UI text. `docs/REQUIREMENTS.md` says what to build;
-`docs/TERMINOLOGY-REVIEW.md` explains the open decisions.
+`docs/TERMINOLOGY-REVIEW.md` explains the open decisions. `docs/OFFLINE-SPEC.md`
+is the draft plan for offline work in the native apps.
 
 ## What this app is
 
@@ -139,7 +140,9 @@ the same backend:
   module that starts with email (Resend) and can add push notifications
   later.
 - **Offline-friendly drafts.** Documentation forms keep drafts on the device
-  and submit when there's a connection.
+  and submit when there's a connection. Not built yet; the draft plan, with a
+  verdict on each proposal, is `docs/OFFLINE-SPEC.md`. Its Ask items are
+  ask-first, and `DOMAIN-MODEL.md` wins where they differ.
 - **Sign-in (decided by Ryan, Nov 2026).** Email and **password** is the
   normal way in, with a minimum of 12 characters. The rule lives in
   `src/shared/auth/password.ts` and in Supabase. An emailed **one-time
