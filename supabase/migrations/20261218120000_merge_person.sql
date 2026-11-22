@@ -64,6 +64,34 @@ begin
     raise exception 'both have a monthly reflection for %; remove one first', clash using errcode = '23514';
   end if;
 
+  -- Approved weeks are final (v0.29): one person's approved week can't take on
+  -- the other's work (programs played, relationship building) from that week,
+  -- or pay and community invoices would change without a new approval.
+  with approved as (
+    select distinct te.person_id, te.residency_id, te.week_starting
+    from public.time_entry te
+    where te.person_id in (p_from, p_into) and te.state = 'approved'
+  ),
+  work as (
+    select sa.person_id, se.residency_id, public.week_monday(public.session_local_date(se.id)) as week_starting
+    from public.session_assignment sa join public.session se on se.id = sa.session_id
+    where sa.person_id in (p_from, p_into)
+    union
+    select ra.person_id, ra.residency_id, public.week_monday(ra.occurred_on)
+    from public.relationship_activity ra where ra.person_id in (p_from, p_into)
+    union
+    select m.person_id, ra.residency_id, public.week_monday(ra.occurred_on)
+    from public.relationship_activity_musician m join public.relationship_activity ra on ra.id = m.activity_id
+    where m.person_id in (p_from, p_into)
+  )
+  select string_agg(distinct r.name || ', week of ' || to_char(ap.week_starting, 'Mon FMDD'), '; ') into clash
+    from approved ap
+    join work w on w.residency_id = ap.residency_id and w.week_starting = ap.week_starting and w.person_id <> ap.person_id
+    join public.residency r on r.id = ap.residency_id;
+  if clash is not null then
+    raise exception 'one of them has an approved week that the other also worked (%); an admin has to sort that week out first', clash using errcode = '23514';
+  end if;
+
   -- 1. Roster places (the guard forbids changing person_id, so add rows).
   for rm in select * from public.roster_member where person_id = p_from loop
     select id into kept from public.roster_member where season_id = rm.season_id and person_id = p_into;
