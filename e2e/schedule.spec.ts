@@ -79,6 +79,8 @@ test("point person fills a month and sets leaders, musicians edit drafts, point 
   // Workbook-style cells (#35): a title saves on Enter or when you click away.
   await firstTitle.press("Enter");
   await expect(musPage.getByText("Title saved.")).toBeVisible();
+  // The room menu sits under each date's "More" (workbook layout, #35).
+  await musPage.getByRole("button", { name: "More" }).first().click();
   await musPage.getByLabel(/^Room for Tuesday/).first().selectOption({ label: "Lounge" });
   await expect(musPage.getByText("Room saved.")).toBeVisible();
   await musPage.reload();
