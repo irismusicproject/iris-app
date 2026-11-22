@@ -21,13 +21,13 @@ export type ImportCheck = {
   log?: string[];
 };
 
-const MAX_BYTES = 5 * 1024 * 1024;
+const MAX_BYTES = 4 * 1024 * 1024; // next.config.ts: serverActions.bodySizeLimit
 const k = (v: string) => v.trim().toLowerCase().replace(/\s+/g, " ");
 
 async function load(form: FormData) {
   const file = form.get("file");
   if (!(file instanceof File) || !file.size) return { error: "Choose a spreadsheet (.xlsx) first." };
-  if (file.size > MAX_BYTES) return { error: "That file is too big (over 5 MB)." };
+  if (file.size > MAX_BYTES) return { error: "That file is too big (over 4 MB)." };
   if (!file.name.toLowerCase().endsWith(".xlsx")) return { error: "Use an Excel .xlsx file (in Google Sheets: File → Download → .xlsx)." };
   try {
     const { raw, missingTabs } = await readImportFile(Buffer.from(await file.arrayBuffer()));

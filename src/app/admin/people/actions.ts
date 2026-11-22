@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { sendWelcomeEmail } from "@/lib/welcome-email";
 import { createClient } from "@/lib/supabase/server";
 import { confirmUrl } from "@/lib/site-url";
 import { validateAdminEdit, validateNewPerson } from "@/shared/domain/person";
@@ -72,12 +73,15 @@ export async function addPerson(_prev: PersonFormState, form: FormData): Promise
 export async function sendInvite(id: string): Promise<PersonFormState> {
   await requireAdmin();
   const supabase = await createClient();
-  const { data: person } = await supabase.from("person").select("email, active").eq("id", id).maybeSingle();
+  const { data: person } = await supabase.from("person").select("email, name, active").eq("id", id).maybeSingle();
   if (!person?.active) return { status: "error", message: "Only active people can be invited." };
-  const { error } = await supabase.auth.resetPasswordForEmail(person.email, { redirectTo: confirmUrl("/account/password?welcome=1") });
-  if (error) {
-    console.error("send invite failed:", error.code, error.message);
-    return { status: "error", message: error.status === 429 ? "Too many emails just now. Try again in a minute." : "We couldn't send the invite. Please try again." };
+  // Welcome email with a "choose your password" link (lib/welcome-email.ts);
+  // Supabase's reset email when the app has no email service configured.
+  try {
+    await sendWelcomeEmail({ email: person.email, name: person.name });
+  } catch (e) {
+    console.error("send invite failed:", e instanceof Error ? e.message : e);
+    return { status: "error", message: "We couldn't send the invite. Please try again in a minute." };
   }
   await supabase.from("person").update({ invited_at: new Date().toISOString() }).eq("id", id);
   revalidatePath("/admin/people");
