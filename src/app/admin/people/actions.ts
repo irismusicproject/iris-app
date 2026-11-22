@@ -33,33 +33,56 @@ export async function addPerson(_prev: PersonFormState, form: FormData): Promise
   const parsed = validateNewPerson(form);
   if (!parsed.ok) return { status: "error", errors: parsed.errors };
   const p = parsed.value;
+  // v0.29: admins can add someone without emailing them yet.
+  const sendInvite = form.get("send_invite") === "on";
 
   const admin = createAdminClient();
-  const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(p.email, {
-    redirectTo: confirmUrl("/account/password?welcome=1"),
-  });
-  if (inviteError || !invited.user) {
-    if (inviteError?.code === "email_exists" || inviteError?.status === 422) {
+  const { data: created, error: authError } = sendInvite
+    ? await admin.auth.admin.inviteUserByEmail(p.email, { redirectTo: confirmUrl("/account/password?welcome=1") })
+    : await admin.auth.admin.createUser({ email: p.email, email_confirm: true });
+  if (authError || !created.user) {
+    if (authError?.code === "email_exists" || authError?.status === 422) {
       return {
         status: "error",
         errors: { email: "That email already has a sign-in account. If they're missing from this list, ask Ryan to link it." },
       };
     }
-    console.error("inviteUserByEmail failed:", inviteError?.code, inviteError?.message);
-    return { status: "error", message: "We couldn't send the invite. Please try again." };
+    console.error(sendInvite ? "inviteUserByEmail failed:" : "createUser failed:", authError?.code, authError?.message);
+    return { status: "error", message: sendInvite ? "We couldn't send the invite. Please try again." : "We couldn't add them. Please try again." };
   }
 
   // Insert with the admin's own session, so the database's RLS rules decide.
   const supabase = await createClient();
-  const { error } = await supabase.from("person").insert({ id: invited.user.id, ...p });
+  const { error } = await supabase.from("person").insert({ id: created.user.id, ...p, invited_at: sendInvite ? new Date().toISOString() : null });
   if (error) {
-    await admin.auth.admin.deleteUser(invited.user.id); // undo the invite
+    await admin.auth.admin.deleteUser(created.user.id); // undo the account
     console.error("insert person failed:", error.code, error.message);
     return { status: "error", message: dbMessage(error) };
   }
 
   revalidatePath("/admin/people");
-  redirect(`/admin/people?added=${encodeURIComponent(p.email)}`);
+  redirect(`/admin/people?${sendInvite ? "added" : "prepared"}=${encodeURIComponent(p.email)}`);
+}
+
+/**
+ * Invite someone an admin added earlier without an invite (v0.29). Their
+ * account already exists, so this sends the "set your password" email; they
+ * can also sign in with "Email me a code instead".
+ */
+export async function sendInvite(id: string): Promise<PersonFormState> {
+  await requireAdmin();
+  const supabase = await createClient();
+  const { data: person } = await supabase.from("person").select("email, active").eq("id", id).maybeSingle();
+  if (!person?.active) return { status: "error", message: "Only active people can be invited." };
+  const { error } = await supabase.auth.resetPasswordForEmail(person.email, { redirectTo: confirmUrl("/account/password?welcome=1") });
+  if (error) {
+    console.error("send invite failed:", error.code, error.message);
+    return { status: "error", message: error.status === 429 ? "Too many emails just now. Try again in a minute." : "We couldn't send the invite. Please try again." };
+  }
+  await supabase.from("person").update({ invited_at: new Date().toISOString() }).eq("id", id);
+  revalidatePath("/admin/people");
+  revalidatePath(`/admin/people/${id}`);
+  return { status: "idle", message: `Invite sent to ${person.email}.` };
 }
 
 export async function updatePerson(

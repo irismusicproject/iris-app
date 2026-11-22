@@ -1,6 +1,6 @@
 # Iris App — Glossary (Languages 2 and 3)
 
-_Draft v0.18, November 22, 2026 (v0.18: roster phone and instruments; v0.17: community contacts, staff directory, links; v0.16: shared logs, building, follow-up, outbox; v0.15: custom invoices; v0.14: community invoices built, billable hours per musician; v0.13: usual type and lengths, Submit my week, daily one-to-one notes document; v0.12: Collab? Yes/No, hours approval and musician invoices; v0.11: monthly programs; v0.10: usual leader, calendar link; v0.9: documentation words from the CESLC workbook; v0.8: partner calendar layout from the Dec 2026 sample; "Lessons"; v0.7: D14, D15 settled; v0.6: D10, D11, D16 settled; "No Program" and roster words added; v0.5: D9, D13 settled: partner billing words added; v0.4: D2, D4, D6, D7, D8 settled; v0.3: D1, D3, D5 settled; schedule review and sending words added). Translates the words people use into the objects
+_Draft v0.19, November 22, 2026 (v0.19: pre-adding people and import; v0.18: roster phone and instruments; v0.17: community contacts, staff directory, links; v0.16: shared logs, building, follow-up, outbox; v0.15: custom invoices; v0.14: community invoices built, billable hours per musician; v0.13: usual type and lengths, Submit my week, daily one-to-one notes document; v0.12: Collab? Yes/No, hours approval and musician invoices; v0.11: monthly programs; v0.10: usual leader, calendar link; v0.9: documentation words from the CESLC workbook; v0.8: partner calendar layout from the Dec 2026 sample; "Lessons"; v0.7: D14, D15 settled; v0.6: D10, D11, D16 settled; "No Program" and roster words added; v0.5: D9, D13 settled: partner billing words added; v0.4: D2, D4, D6, D7, D8 settled; v0.3: D1, D3, D5 settled; schedule review and sending words added). Translates the words people use into the objects
 defined in DOMAIN-MODEL.md (Language 1), which is authoritative._
 
 - **Part A: Team language.** How Iris staff and musicians talk, and which object each word means.
@@ -92,6 +92,7 @@ enough context to tell which object it is.
 | "community contact", "our contact at the building" | `PartnerContact` (with its `Site`) | Point person or admins edit; the program's people see (v0.17) |
 | "staff list", "Iris staff" (with phones) | Staff directory: admins and current point people | Everyone signed in (v0.17) |
 | "roster" (with phones and instruments) | `RosterMember` + `Person.phone`, `Person.instruments` | The program's people see them (v0.18) |
+| "add without inviting", "pre-populate", "set up before roll-out" | `Person` with empty `invited_at`; the admin Import page | Nobody is emailed until "Send invite" (v0.19) |
 | "photo links", "Drive / Dropbox folder" | `ResourceLink` | On Home; admins edit (v0.17) |
 | "usual type" (of a program) | `Series.default_interaction_type_id` | Pre-selected when documenting (v0.13) |
 | "usual length" (one-to-one, mini-group, hallway concert) | `ActivityLength.minutes` | Fills Minutes on the log form (v0.13) |

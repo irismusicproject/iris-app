@@ -56,7 +56,7 @@ Only for checking something on staging. Copy `.env.example` to `.env.local`, fil
 
 Admins add people in the app at **People** (`/admin/people`). The app sends the invite. The steps below are the older way, through Supabase directly; use them only if the People screen isn't available.
 
-Public sign-up is off. To give someone access, go to Supabase, then **Authentication → Users → Add user → Send invitation**, and enter their email. They click the link in the email, choose a password (12 characters or more), and land on the dashboard. After that, they log in at `/login` with their email and password.
+Public sign-up is off. To give someone access, an admin adds them on **People** (with "Send the invite email now" ticked), or adds them quietly and later presses **Send invite** on their page (v0.29). Admins can also set up many people, programs and schedules at once from **Admin → Import**, which sends no email. (Supabase's **Authentication → Users → Add user → Send invitation** still works too.) They click the link in the email, choose a password (12 characters or more), and land on the dashboard. After that, they log in at `/login` with their email and password.
 
 People who joined before passwords existed have no password yet. They can use **Email me a code instead** on the log-in page, then **Set or change your password** on the dashboard, or use **Forgot password?**.
 

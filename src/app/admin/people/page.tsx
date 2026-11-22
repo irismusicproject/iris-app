@@ -25,6 +25,8 @@ export default async function PeoplePage({
 
   const notice = params.added
     ? `Invite sent to ${params.added}.`
+    : params.prepared
+      ? `${params.prepared} is added without an invite. Invite them from their page when you're ready.`
     : params.saved
       ? `${nameOf(params.saved)}'s changes are saved.`
       : params.deactivated
@@ -60,6 +62,9 @@ export default async function PeoplePage({
                 {!p.active && (
                   <span className="ml-2 rounded-full border border-border px-2 py-0.5 text-xs">Deactivated</span>
                 )}
+                {p.active && !p.invited_at && (
+                  <span className="ml-2 rounded-full border border-brand-orange px-2 py-0.5 text-xs text-brand-orange">Not invited yet</span>
+                )}
                 <span className="block text-sm text-muted break-all">{p.email}</span>
               </span>
               <span className="text-sm text-muted">
@@ -76,7 +81,7 @@ export default async function PeoplePage({
       <section className="mt-10 rounded-xl border border-border bg-surface p-5 sm:p-6">
         <h2 className="text-lg font-semibold">Add a person</h2>
         <p className="mt-1 text-sm text-muted">
-          They&apos;ll get an email invite, choose a password, and land on their home page.
+          With the invite, they get an email, choose a password, and land on their home page. Without it, they&apos;re added quietly so you can set up rosters and schedules first.
         </p>
         <div className="mt-5">
           <AddPersonForm />
