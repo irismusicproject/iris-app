@@ -5,7 +5,8 @@ import { requirePerson } from "@/lib/auth";
 import { getResidencyAccess, getResidencyNames } from "@/lib/residency-access";
 import { createClient } from "@/lib/supabase/server";
 import { SESSION_KIND_LABELS, WEEKDAYS, type SessionKind } from "@/shared/domain/scheduling";
-import { formatMonth, localDateTime } from "@/shared/domain/time";
+import { formatDay, formatMonth, formatTime, localDateTime } from "@/shared/domain/time";
+import { AddOneTimeForm } from "../month/month-controls";
 import { FillSeasonButton, SeasonLeaderSelect } from "./season-controls";
 
 // Season view (DOMAIN-MODEL v0.16): the whole semester at a glance, for the
@@ -27,12 +28,16 @@ type SeriesRow = {
   series_default_person: { person_id: string }[];
 };
 type SessionRow = {
+  id: string;
   series_id: string | null;
   kind: SessionKind;
+  title: string;
   starts_at: string;
+  has_set_time: boolean;
+  is_special_event: boolean;
   schedule_state: "draft" | "published" | "canceled";
-  location: { site: { timezone: string } | null } | null;
-  session_assignment: { role: string; status: string }[];
+  location: { display_name: string; site: { display_name: string; timezone: string } | null } | null;
+  session_assignment: { person_id: string; role: string; status: string }[];
 };
 
 const time12 = (t: string | null) => {
@@ -72,7 +77,7 @@ export default async function SeasonPage({ params, searchParams }: { params: Pro
     );
   }
 
-  const [{ data: seriesRows }, { data: sessionRows }] = await Promise.all([
+  const [{ data: seriesRows }, { data: sessionRows }, { data: siteRows }] = await Promise.all([
     supabase
       .from("series")
       .select("id, kind, title, weekdays, start_time, minutes, default_leader_id, active_from, active_until, series_default_person(person_id)")
@@ -80,11 +85,16 @@ export default async function SeasonPage({ params, searchParams }: { params: Pro
       .order("active_from"),
     supabase
       .from("session")
-      .select("series_id, kind, starts_at, schedule_state, location(site(timezone)), session_assignment(role, status)")
+      .select("id, series_id, kind, title, starts_at, has_set_time, is_special_event, schedule_state, location(display_name, site(display_name, timezone)), session_assignment(person_id, role, status)")
       .eq("residency_id", id)
       .gte("starts_at", new Date(Date.parse(`${season.starts_on}T00:00:00Z`) - 86_400_000).toISOString())
       .lte("starts_at", new Date(Date.parse(`${season.ends_on}T00:00:00Z`) + 2 * 86_400_000).toISOString()),
+    supabase.from("residency_site").select("site(display_name, timezone, location(id, display_name, active))").eq("residency_id", id),
   ]);
+  type SiteRow = { site: { display_name: string; timezone: string; location: { id: string; display_name: string; active: boolean }[] } | null };
+  const sites = ((siteRows ?? []) as unknown as SiteRow[]).map((r) => r.site!).filter(Boolean);
+  const rooms = sites.flatMap((st) => st.location.filter((l) => l.active).map((l) => ({ id: l.id, label: sites.length > 1 ? `${st.display_name} · ${l.display_name}` : l.display_name })));
+  const siteTz = sites[0]?.timezone ?? "America/New_York";
   const series = ((seriesRows ?? []) as SeriesRow[])
     .filter((s) => s.active_from <= season.ends_on && (!s.active_until || s.active_until >= season.starts_on))
     .sort((a, b) => Math.min(...a.weekdays) - Math.min(...b.weekdays) || (a.start_time ?? "99").localeCompare(b.start_time ?? "99"));
@@ -113,6 +123,8 @@ export default async function SeasonPage({ params, searchParams }: { params: Pro
       needLeader: inMonth.filter(needsLeader).length,
     };
   });
+  const specialEvents = sessions.filter((s) => s.is_special_event).sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+  const defaultEventDate = today > season.starts_on && today < season.ends_on ? today : season.starts_on;
   const seriesNeedLeader = (sid: string) => sessions.filter((s) => s.series_id === sid && needsLeader(s)).length;
   const fmt = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString("en-US", { timeZone: "UTC", month: "short", day: "numeric", year: "numeric" });
 
@@ -164,6 +176,45 @@ export default async function SeasonPage({ params, searchParams }: { params: Pro
           })}
           {series.length === 0 && <p className="py-3 text-sm text-muted">No weekly programs in this season yet.</p>}
         </div>
+      </section>
+
+      <section className={card}>
+        <h2 className="text-lg font-semibold">Special events this season</h2>
+        <p className="mt-1 text-sm text-muted">Concerts and other one-time events, often planned at the start of the season. They show at the top of every month&apos;s schedule until they happen.</p>
+        <ul className="mt-3 divide-y divide-border text-sm">
+          {specialEvents.map((e) => {
+            const tz = e.location?.site?.timezone ?? siteTz;
+            const playing = e.session_assignment.filter((a) => a.status !== "absent");
+            const leader = playing.find((a) => a.role === "leader");
+            return (
+              <li key={e.id} className="flex flex-wrap items-baseline justify-between gap-2 py-2">
+                <span>
+                  <span className="font-medium">{formatDay(e.starts_at, tz)}</span>
+                  {e.has_set_time && <span className="text-muted"> · {formatTime(e.starts_at, tz)}</span>}
+                  {" · "}{e.schedule_state === "canceled" ? <span className="text-muted line-through">{e.title}</span> : e.title}
+                  <span className="block text-xs text-muted">
+                    {e.location?.display_name}
+                    {playing.length ? ` · ${playing.map((a) => nameOf(a.person_id).split(" ")[0]).join(", ")}` : " · No musicians yet"}
+                    {e.kind === "group_session" && !leader && e.schedule_state !== "canceled" ? " · needs a leader" : ""}
+                  </span>
+                </span>
+                <span className="text-xs text-muted">
+                  {e.schedule_state === "canceled" ? "No Program" : e.schedule_state === "published" ? "Published" : "Draft"}
+                  {" · "}
+                  <Link href={`/residencies/${id}/month/${localDateTime(e.starts_at, tz).date.slice(0, 7)}`} className="text-iris underline-offset-2 hover:underline">Open month</Link>
+                </span>
+              </li>
+            );
+          })}
+          {specialEvents.length === 0 && <li className="py-2 text-muted">No special events this season yet.</li>}
+        </ul>
+        {access.canSchedule && rooms.length > 0 && (
+          <details className="mt-4 border-t border-border pt-4">
+            <summary className="cursor-pointer text-sm font-medium text-iris">Add a special event</summary>
+            <p className="mt-2 text-xs text-muted">Add the musicians, leader and title details from its month&apos;s schedule afterwards.</p>
+            <div className="mt-4"><AddOneTimeForm residencyId={id} timeZone={siteTz} rooms={rooms} defaultDate={defaultEventDate} /></div>
+          </details>
+        )}
       </section>
 
       <section className={card}>
