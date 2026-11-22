@@ -49,6 +49,9 @@ export default async function Dashboard({
         Schedules, session notes and time will live here.
       </p>
       <ul className="mt-6 space-y-2 text-sm">
+        <li>
+          <Link href="/residencies" className={link}>Programs</Link>: {isAdmin ? "set up programs, seasons, rosters and point persons" : "the programs you're part of"}
+        </li>
         {isAdmin && (
           <li>
             <Link href="/admin/people" className={link}>People</Link>: add, edit and deactivate staff and musicians
