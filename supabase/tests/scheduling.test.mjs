@@ -83,12 +83,15 @@ r = await as(null, `select * from public.session`); check("anon reads no session
 const seriesSql = (who, loc) => as(who, `insert into public.series (residency_id,title,default_location_id,weekdays,start_time,minutes,active_from)
   values ('${RES}','Music Café','${loc}','{2,4}','14:00',45,'2027-01-01') returning id`);
 r = await seriesSql(M1, ROOM); check("musician can't create a series", !r.ok, r);
-r = await seriesSql(L, ROOM2); check("series at another partner's room rejected", !r.ok, r);
-r = await seriesSql(L, ROOM); check("admin lead creates a series", r.ok, r); const SER = r.rows?.[0]?.id;
-r = await as(L, `insert into public.series_default_person values ('${SER}','${M1}'),('${SER}','${M2}')`); check("admin lead sets default musicians", r.ok, r);
-r = await as(L, `select public.generate_series_month('${SER}','2027-02-01') as n`);
+// v0.18 (Lauren, Nov 22, 2026): the point person (and admins) plan; the Admin Lead no longer sets up programs.
+r = await seriesSql(L, ROOM); check("v0.18: admin lead can't create a series", !r.ok, r);
+r = await seriesSql(P, ROOM2); check("series at another partner's room rejected", !r.ok, r);
+r = await seriesSql(P, ROOM); check("point person creates a series", r.ok, r); const SER = r.rows?.[0]?.id;
+r = await as(P, `insert into public.series_default_person values ('${SER}','${M1}'),('${SER}','${M2}')`); check("point person sets default musicians", r.ok, r);
+r = await as(L, `select public.generate_series_month('${SER}','2027-02-01') as n`); check("v0.18: admin lead can't fill a month", !r.ok, r);
+r = await as(P, `select public.generate_series_month('${SER}','2027-02-01') as n`);
 check("generate Feb 2027 creates 8 draft sessions", r.ok && r.rows[0].n === 8, r);
-r = await as(L, `select public.generate_series_month('${SER}','2027-02-01') as n`); check("generating again adds nothing", r.ok && r.rows[0].n === 0, r);
+r = await as(P, `select public.generate_series_month('${SER}','2027-02-01') as n`); check("generating again adds nothing", r.ok && r.rows[0].n === 0, r);
 r = await as(M1, `select public.generate_series_month('${SER}','2027-03-01') as n`); check("musician can't generate sessions", !r.ok, r);
 r = await as(L, `select count(*)::int as n from public.session_assignment`); check("default musicians added (16 assignments)", r.ok && r.rows[0].n === 16, r);
 r = await as(L, `select bool_and((starts_at at time zone 'America/New_York')::time = '14:00') as ok from public.session`);
@@ -96,14 +99,14 @@ check("sessions start 2:00 pm site time", r.ok && r.rows[0].ok === true, r);
 const sessions = (await as(L, `select id from public.session where series_id='${SER}' order by starts_at`)).rows.map((x) => x.id);
 
 // ---- Scheduled relationship building ("Lessons"): weekly, no set time, no leader
-r = await as(L, `insert into public.series (residency_id,kind,title,default_location_id,weekdays,active_from)
+r = await as(P, `insert into public.series (residency_id,kind,title,default_location_id,weekdays,active_from)
   values ('${RES}','group_session','No Time','${ROOM}','{2}','2027-01-01')`);
 check("group session series needs a time", !r.ok, r);
-r = await as(L, `insert into public.series (residency_id,kind,title,default_location_id,weekdays,active_from)
+r = await as(P, `insert into public.series (residency_id,kind,title,default_location_id,weekdays,active_from)
   values ('${RES}','relationship_building','Lessons','${ROOM}','{2}','2027-01-01') returning id`);
-check("admin lead creates a weekly Lessons series with no time", r.ok, r); const LES = r.rows?.[0]?.id;
-r = await as(L, `insert into public.series_default_person values ('${LES}','${M1}'),('${LES}','${M2}')`);
-r = await as(L, `select public.generate_series_month('${LES}','2027-02-01') as n`); check("Lessons fills Feb's 4 Tuesdays", r.ok && r.rows[0].n === 4, r);
+check("point person creates a weekly Lessons series with no time", r.ok, r); const LES = r.rows?.[0]?.id;
+r = await as(P, `insert into public.series_default_person values ('${LES}','${M1}'),('${LES}','${M2}')`);
+r = await as(P, `select public.generate_series_month('${LES}','2027-02-01') as n`); check("Lessons fills Feb's 4 Tuesdays", r.ok && r.rows[0].n === 4, r);
 r = await as(L, `select bool_and(not has_set_time and kind='relationship_building' and scheduled_minutes is null) as ok from public.session where series_id='${LES}'`);
 check("Lessons sessions have no set time", r.ok && r.rows[0].ok === true, r);
 
@@ -111,32 +114,40 @@ check("Lessons sessions have no set time", r.ok && r.rows[0].ok === true, r);
 r = await as(O, `update public.session set title='Hacked'`); check("outsider can't edit sessions (0 rows)", r.ok && r.n === 0, r);
 r = await as(L, `insert into public.session (residency_id,title,location_id,starts_at,scheduled_minutes,schedule_state) values ('${RES}','Concert','${ROOM}','2027-02-20 19:00-05','60','published')`);
 check("new session can't start published", !r.ok, r);
-r = await as(L, `update public.session set schedule_state='published' where id='${sessions[0]}'`); check("can't publish one session directly", !r.ok, r);
+r = await as(P, `update public.session set schedule_state='published' where id='${sessions[0]}'`); check("even a planner can't publish one session directly", !r.ok, r);
 r = await as(L, `insert into public.session_assignment (session_id,person_id) values ('${sessions[0]}','${O}')`); check("can't assign someone off the roster", !r.ok, r);
-r = await as(L, `update public.session set schedule_state='canceled' where id='${sessions[7]}'`); check("cancel needs a reason", !r.ok, r);
-r = await as(L, `update public.session set schedule_state='canceled', cancellation_reason='musician' where id='${sessions[7]}' returning canceled_at is not null as stamped`);
+r = await as(P, `update public.session set schedule_state='canceled' where id='${sessions[7]}'`); check("cancel needs a reason", !r.ok, r);
+r = await as(P, `update public.session set schedule_state='canceled', cancellation_reason='musician' where id='${sessions[7]}' returning canceled_at is not null as stamped`);
 check("cancel for a planned absence (No Program) stamps canceled_at", r.ok && r.rows[0]?.stamped === true, r);
 r = await as(L, `insert into public.session (residency_id,title,location_id,starts_at,scheduled_minutes,is_special_event) values ('${RES}','Winter Concert','${ROOM}','2027-02-20 19:00-05',60,true) returning id`);
 check("admin lead adds a one-time special event", r.ok, r); const EVT = r.rows?.[0]?.id;
 r = await as(L, `insert into public.session_assignment (session_id,person_id,role) values ('${EVT}','${M1}','leader'),('${EVT}','${M2}','participant')`);
 check("admin lead staffs the special event", r.ok, r);
 
-// ---- Every roster musician edits drafts (DOMAIN-MODEL v0.12)
+// ---- Musicians edit DRAFT dates they play in (DOMAIN-MODEL v0.18): title, room,
+// notes, who plays, and pick or swap the leader; date/time only for special events.
 r = await as(M2, `update public.session set title='Jam Band: Motown' where id='${sessions[0]}'`); check("roster musician edits a draft title", r.ok && r.n === 1, r);
 r = await as(M2, `update public.session set location_id='${ROOM_B}' where id='${sessions[0]}'`); check("roster musician changes a draft's room", r.ok && r.n === 1, r);
 r = await as(M2, `update public.session set location_id='${ROOM2}' where id='${sessions[0]}'`); check("…but not to another partner's room", !r.ok, r);
 r = await as(M2, `update public.session set starts_at = starts_at + interval '1 hour' where id='${sessions[0]}'`); check("musician can't move a regular session's time", !r.ok, r);
 r = await as(M2, `update public.session set starts_at='2027-02-21 19:00-05' where id='${EVT}'`); check("musician moves a special event's date and time", r.ok && r.n === 1, r);
 r = await as(M2, `update public.session set schedule_state='canceled', cancellation_reason='other' where id='${sessions[1]}'`); check("musician can't cancel", !r.ok, r);
-r = await as(M2, `update public.session set internal_note='x' where id='${sessions[1]}'`); check("musician can't edit other fields", !r.ok, r);
+r = await as(M2, `update public.session set internal_note='Bring the songbooks' where id='${sessions[1]}'`); check("musician edits a draft's notes (v0.14)", r.ok && r.n === 1, r);
+r = await as(M2, `update public.session set public_note='x' where id='${sessions[1]}'`); check("musician can't edit the partner-facing note", !r.ok, r);
+r = await as(M2, `update public.session set billable=false where id='${sessions[1]}'`); check("musician can't edit other fields", !r.ok, r);
 r = await as(O, `update public.session set title='Nope' where id='${sessions[1]}'`); check("outsider edits no drafts (0 rows)", r.ok && r.n === 0, r);
 r = await as(M2, `insert into public.session_assignment (session_id,person_id) values ('${sessions[1]}','${L}')`); check("roster musician adds a musician to a draft", r.ok, r);
-r = await as(M2, `insert into public.session_assignment (session_id,person_id,role) values ('${sessions[2]}','${L}','leader')`); check("musician can't add a leader", !r.ok, r);
+// QUESTION for Lauren: DOMAIN-MODEL says musicians pick the leader "after the point
+// person has set it", but the database lets a musician add a leader to a date that
+// has none. This check records today's behavior; revisit when she answers.
+r = await as(M2, `insert into public.session_assignment (session_id,person_id,role) values ('${sessions[2]}','${L}','leader')`); check("(current behavior) musician can add a leader to a leaderless draft they play in", r.ok, r);
+r = await as(P, `delete from public.session_assignment where session_id='${sessions[2]}' and person_id='${L}'`); check("point person removes that leader again", r.ok && r.n === 1, r);
 r = await as(M2, `delete from public.session_assignment where session_id='${sessions[1]}' and person_id='${L}'`); check("roster musician removes a musician from a draft", r.ok && r.n === 1, r);
-r = await as(M2, `update public.session_assignment set role='leader' where session_id='${sessions[1]}' and person_id='${M2}'`); check("musician can't make themselves leader (0 rows)", r.ok && r.n === 0, r);
-r = await as(P, `update public.session_assignment set role='leader' where session_id='${sessions[1]}' and person_id='${M2}'`); check("point person assigns a leader", r.ok && r.n === 1, r);
+r = await as(O, `update public.session_assignment set role='leader' where session_id='${sessions[1]}'`); check("outsider can't pick a leader (0 rows)", r.ok && r.n === 0, r);
+r = await as(M2, `update public.session_assignment set role='leader' where session_id='${sessions[1]}' and person_id='${M2}'`); check("musician picks themselves as leader on a draft they play in (v0.18)", r.ok && r.n === 1, r);
+r = await as(M2, `update public.session_assignment set status='absent' where session_id='${sessions[1]}' and person_id='${M1}'`); check("…but can't change anyone's status directly", !r.ok, r);
 r = await as(M1, `delete from public.session_assignment where session_id='${sessions[1]}' and person_id='${M2}'`); check("musician can't remove a leader (0 rows)", r.ok && r.n === 0, r);
-r = await as(L, `update public.session_assignment set role='participant' where session_id='${sessions[1]}' and person_id='${M2}'`); check("admin lead can swap a leader back", r.ok && r.n === 1, r);
+r = await as(L, `update public.session_assignment set role='participant' where session_id='${sessions[1]}' and person_id='${M2}'`); check("admin lead not playing that date can't change its leader (0 rows)", r.ok && r.n === 0, r);
 
 // ---- Review and publish (D5)
 r = await as(L, `select public.publish_month('${RES}','${SITE}','2027-02-01')`); check("can't publish before review", !r.ok && /review/.test(r.err), r);
@@ -144,9 +155,10 @@ r = await as(L, `select public.mark_month_reviewed('${RES}','${SITE}','2027-02-0
 r = await as(P, `select public.mark_month_reviewed('${RES}','${SITE}','2027-02-01')`); check("point person marks month reviewed", r.ok, r);
 r = await as(P, `select public.mark_month_reviewed('${RES}','${SITE}','2027-02-01')`); check("can't review the same month twice", !r.ok, r);
 r = await as(L, `select public.publish_month('${RES}','${SITE}','2027-02-01')`); check("can't publish with sessions missing a leader", !r.ok && /leader/.test(r.err), r);
-r = await as(L, `update public.session_assignment set role='leader' where person_id='${M1}' and session_id in (${sessions.map((s) => `'${s}'`).join(",")})`);
-check("admin lead sets leaders", r.ok && r.n === 8, r);
-r = await as(L, `update public.session_assignment set role='leader' where person_id='${M2}' and session_id='${sessions[0]}'`);
+r = await as(L, `update public.session_assignment set role='leader' where person_id='${M1}' and session_id='${sessions[0]}'`); check("v0.18: admin lead doesn't set leaders on dates they don't play (0 rows)", r.ok && r.n === 0, r);
+r = await as(P, `update public.session_assignment set role='leader' where person_id='${M1}' and session_id in (${sessions.filter((_, i) => i !== 1).map((s) => `'${s}'`).join(",")})`);
+check("point person sets leaders on the other 7 dates", r.ok && r.n === 7, r);
+r = await as(P, `update public.session_assignment set role='leader' where person_id='${M2}' and session_id='${sessions[0]}'`);
 check("two playing leaders on one session rejected", !r.ok, r);
 r = await as(M1, `select public.publish_month('${RES}','${SITE}','2027-02-01')`); check("musician can't publish", !r.ok, r);
 r = await as(L, `select public.publish_month('${RES}','${SITE}','2027-02-01')`); check("admin lead publishes the month", r.ok, r);
@@ -182,6 +194,11 @@ r = await as(M1, `select public.generate_residency_month('${RES}','2027-03-01') 
 r = await as(P, `select public.generate_residency_month('${RES}','2027-03-01') as n`); check("point person fills March for all weekly programs (14)", r.ok && r.rows[0].n === 14, r);
 
 // ---- Partner feedback → version 2
+// Fix F1 (migration 20261207): a new group session with no leader blocks the updated calendar.
+r = await as(P, `insert into public.session (residency_id,title,location_id,starts_at,scheduled_minutes) values ('${RES}','Pop-up Choir','${ROOM}','2027-02-26 15:00-05',45) returning id`);
+const NOLEAD = r.rows?.[0]?.id;
+r = await as(L, `select public.new_calendar_version('${RES}','${SITE}','2027-02-01','test')`); check("F1 fixed: updated calendar refuses a new date with no leader", !r.ok && /leader/.test(r.err), r);
+r = await as(P, `insert into public.session_assignment (session_id,person_id,role) values ('${NOLEAD}','${M2}','leader')`); check("point person gives it a leader", r.ok, r);
 r = await as(L, `select public.new_calendar_version('${RES}','${SITE}','2027-02-01','Partner asked to move one date')`);
 check("admin lead downloads updated calendar (v2)", r.ok, r);
 r = await as(L, `select schedule_state from public.session where id='${LATE}'`); check("new draft session published with v2", r.ok && r.rows[0]?.schedule_state === "published", r);
