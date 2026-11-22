@@ -2,11 +2,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { requireAdmin } from "@/lib/auth";
-import { getAgreements, getBillTo, loadPartnerInvoices } from "@/lib/partner-invoices";
+import { getAgreements, getBillTo, loadPartnerMonth } from "@/lib/partner-invoices";
 import { createClient } from "@/lib/supabase/server";
 import { money } from "@/shared/domain/documentation";
 import { BILLING_BASIS_LABELS, formatInvoiceMonth } from "@/shared/domain/partner-invoice";
-import { AgreementForm, InstallmentEditor, InvoiceActions } from "./billing-controls";
+import { createCustomInvoice } from "@/app/admin/invoices/actions";
+import { AgreementForm, InstallmentEditor, InvoiceActions, MonthChoices } from "./billing-controls";
 
 // Community invoices (DOMAIN-MODEL section 5, v0.22): one per contract, per
 // site, per month (D4). Admins only. Hours count per musician once the point
@@ -38,7 +39,14 @@ export default async function BillingPage({ params, searchParams }: { params: Pr
   const season = (seasons ?? []).find((s) => s.starts_on <= shiftMonth(month, 1) && s.ends_on >= month);
   const agreements = season ? await getAgreements(id, season.id) : [];
   const billTo = await getBillTo(id);
-  const invoices = await Promise.all(agreements.map((a) => loadPartnerInvoices(a, month, season!.starts_on, siteNames, billTo)));
+  const { data: customRows } = await supabase
+    .from("custom_invoice")
+    .select("id, number, title, invoice_date, total, state")
+    .eq("residency_id", id)
+    .gte("invoice_date", month)
+    .lt("invoice_date", shiftMonth(month, 1))
+    .order("invoice_date");
+  const months = await Promise.all(agreements.map((a) => loadPartnerMonth(a, month, season!.starts_on, siteNames, billTo)));
 
   const card = "mt-6 rounded-xl border border-border bg-surface p-5 sm:p-6";
   const nav = "rounded-full border border-border px-3 py-1 text-sm hover:bg-iris-soft";
@@ -78,8 +86,18 @@ export default async function BillingPage({ params, searchParams }: { params: Pr
               </span>
             </div>
 
+            <div className="mt-4">
+              <MonthChoices
+                key={`${a.id}-${month}-${JSON.stringify(months[i]!.options)}`}
+                residencyId={id}
+                agreementId={a.id}
+                month={month}
+                stipends={months[i]!.options.stipends}
+                locked={months[i]!.options.anySent}
+              />
+            </div>
             <ul className="mt-4 flex flex-col gap-5">
-              {invoices[i]!.map((inv) => {
+              {months[i]!.invoices.map((inv) => {
                 const q = new URLSearchParams({ agreement: a.id, month: ym(month), kind: inv.kind, ...(inv.siteId ? { site: inv.siteId } : {}) });
                 return (
                   <li key={`${inv.kind}-${inv.siteId}`} className="rounded-lg border border-border p-4">
@@ -146,6 +164,27 @@ export default async function BillingPage({ params, searchParams }: { params: Pr
             </details>
           </section>
         ))}
+
+      <section className={card}>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-lg font-semibold">Custom invoices this month</h2>
+          <form action={async () => { "use server"; await createCustomInvoice(id); }}>
+            <button className="rounded-full border border-border px-3 py-1 text-xs hover:bg-iris-soft">New custom invoice</button>
+          </form>
+        </div>
+        <p className="mt-1 text-sm text-muted">Typed by hand, for work outside a contract (e.g. an extra concert).</p>
+        <ul className="mt-3 divide-y divide-border text-sm">
+          {(customRows ?? []).map((c) => (
+            <li key={c.id}>
+              <Link href={`/admin/invoices/${c.id}`} className="flex flex-wrap justify-between gap-2 py-2 hover:text-iris">
+                <span><span className="font-medium">{c.title}</span> · {c.number} · {c.invoice_date}</span>
+                <span>{money(Number(c.total))} · {c.state === "paid" ? "Paid" : c.state === "sent" ? "Sent" : "Draft"}</span>
+              </Link>
+            </li>
+          ))}
+          {(customRows ?? []).length === 0 && <li className="py-2 text-muted">None this month.</li>}
+        </ul>
+      </section>
 
       {season && (
         <section className={card}>

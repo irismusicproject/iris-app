@@ -132,3 +132,12 @@ export function partnerInvoiceNumber(month: string, label: string, kind: Partner
   const tag = kind === "overhead" ? "OH" : kind === "contract" ? "CT" : label.split(/\s+/).filter(Boolean).map((w) => w[0]!.toUpperCase()).join("").slice(0, 4) || "S";
   return `IMP-${month.slice(0, 7).replace("-", "")}-${tag}`;
 }
+
+// ---- Custom invoices (v0.23): typed by hand, outside a contract ----
+
+/** One typed line. With a quantity and rate, amount = quantity × rate; otherwise a fixed amount. */
+export type CustomLine = { description: string; quantity: number | null; unit_amount: number | null; amount: number };
+
+export function customLinesTotal(lines: CustomLine[]): number {
+  return Math.round(lines.reduce((n, l) => n + Number(l.amount || 0), 0) * 100) / 100;
+}

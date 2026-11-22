@@ -5,7 +5,7 @@ import { Field } from "@/components/app-shell";
 import { buttonClass, inputClass } from "@/components/auth-card";
 import { ConfirmButton } from "@/components/confirm-button";
 import { OVERHEAD_BILLING_LABELS, type Agreement } from "@/shared/domain/partner-invoice";
-import { addPartnerInstallment, markInvoiceSent, removePartnerInstallment, saveAgreement, setInvoicePaid, type BillingResult } from "./actions";
+import { addPartnerInstallment, markInvoiceSent, removePartnerInstallment, saveAgreement, setInvoicePaid, setMonthChoices, type BillingResult } from "./actions";
 
 const small = "rounded-full border border-border px-3 py-1 text-xs hover:bg-iris-soft disabled:opacity-60";
 const num = (v: string) => (v.trim() === "" ? null : Number(v));
@@ -28,7 +28,8 @@ export function AgreementForm({
   const [rate, setRate] = useState(agreement?.hourly_rate != null ? String(Number(agreement.hourly_rate)) : "");
   const [contracted, setContracted] = useState(agreement?.contracted_hours != null ? String(Number(agreement.contracted_hours)) : "");
   const [stipends, setStipends] = useState(agreement?.bill_stipends ?? false);
-  const [overhead, setOverhead] = useState(agreement?.overhead_percent != null ? String(Number(agreement.overhead_percent)) : "");
+  const [overheadOn, setOverheadOn] = useState(agreement ? !!agreement.overhead_percent : false);
+  const [overhead, setOverhead] = useState(agreement?.overhead_percent ? String(Number(agreement.overhead_percent)) : "15");
   const [overheadBilling, setOverheadBilling] = useState(agreement?.overhead_billing ?? "same_invoice");
   const [late, setLate] = useState(agreement?.bill_late_cancellations ?? true);
   const [picked, setPicked] = useState<string[]>(siteIds.length ? siteIds : sites.length === 1 ? [sites[0]!.id] : []);
@@ -46,7 +47,7 @@ export function AgreementForm({
             hourlyRate: num(rate),
             contractedHours: num(contracted),
             billStipends: stipends,
-            overheadPercent: num(overhead),
+            overheadPercent: overheadOn ? num(overhead) : null,
             overheadBilling,
             billLateCancellations: late,
             siteIds: picked,
@@ -73,10 +74,18 @@ export function AgreementForm({
         <Field label="Contracted hours this season (optional)" hint="Shown on every invoice as progress">
           <input inputMode="decimal" value={contracted} onChange={(e) => setContracted(e.target.value)} className={inputClass} />
         </Field>
-        <Field label="Overhead % (optional)" hint="Applied to billable hours (or installments) plus billed stipends">
-          <input inputMode="decimal" value={overhead} onChange={(e) => setOverhead(e.target.value)} className={inputClass} />
-        </Field>
-        {num(overhead) ? (
+        <div className="flex flex-col gap-2 text-sm">
+          <label className="flex items-center gap-2 font-medium">
+            <input type="checkbox" checked={overheadOn} onChange={(e) => setOverheadOn(e.target.checked)} /> Charge overhead
+          </label>
+          {overheadOn && (
+            <label className="flex items-center gap-2">
+              <input inputMode="decimal" value={overhead} onChange={(e) => setOverhead(e.target.value)} aria-label="Overhead percent" className={`${inputClass} w-20 py-1.5`} />
+              % of billable hours (or installments) plus billed stipends
+            </label>
+          )}
+        </div>
+        {overheadOn ? (
           <Field label="Overhead goes">
             <select value={overheadBilling} onChange={(e) => setOverheadBilling(e.target.value as typeof overheadBilling)} className={inputClass}>
               {(["same_invoice", "separate_invoice"] as const).map((k) => <option key={k} value={k}>{OVERHEAD_BILLING_LABELS[k]}</option>)}
@@ -189,5 +198,51 @@ export function InvoiceActions({
       {state === "paid" && invoiceId && <button type="button" disabled={pending} className="text-xs text-muted underline" onClick={() => run(() => setInvoicePaid(residencyId, invoiceId, false))}>Undo paid</button>}
       {msg && <span role="status" className="text-xs text-red-600">{msg}</span>}
     </span>
+  );
+}
+
+/** Stipend checkboxes for one contract and month (v0.23). */
+export function MonthChoices({
+  residencyId,
+  agreementId,
+  month,
+  stipends,
+  locked,
+}: {
+  residencyId: string;
+  agreementId: string;
+  month: string;
+  stipends: { id: string; label: string; amount: number; included: boolean }[];
+  locked: boolean;
+}) {
+  const [left, setLeft] = useState<string[]>(stipends.filter((s) => !s.included).map((s) => s.id));
+  const [pending, start] = useTransition();
+  const [msg, setMsg] = useState<string | null>(null);
+  const save = (next: string[]) => {
+    setLeft(next);
+    start(async () => {
+      const r = await setMonthChoices(residencyId, agreementId, month, next);
+      setMsg(r.status === "error" ? r.message ?? "Something went wrong." : null);
+    });
+  };
+  if (stipends.length === 0) return null;
+  return (
+    <div className="rounded-lg bg-iris-soft/60 p-3 text-sm">
+      <p className="font-medium">Stipends this month{locked ? " (sent, can't change)" : ""}</p>
+      <div className="mt-2 flex flex-col gap-1.5">
+        {stipends.map((s) => (
+          <label key={s.id} className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={!left.includes(s.id)}
+              disabled={locked || pending}
+              onChange={(e) => save(e.target.checked ? left.filter((x) => x !== s.id) : [...left, s.id])}
+            />
+            Bill {s.label} · ${s.amount.toFixed(2)}
+          </label>
+        ))}
+      </div>
+      {msg && <p role="status" className="mt-1 text-xs text-red-600">{msg}</p>}
+    </div>
   );
 }

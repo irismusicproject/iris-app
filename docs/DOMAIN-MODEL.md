@@ -1,6 +1,6 @@
 # Iris App — Domain Model (Language 1: the code)
 
-_Draft v0.22, November 22, 2026 (v0.22: community invoices built; billable hours are now per musician and count once the point person approves the week (revises D9); drafts live, sent invoices frozen; admins only. v0.21: less double entry for musicians: usual type per program, usual relationship-building lengths, "Same as last time", one "Submit my week"; detailed one-to-one notes and a daily Word document per site. v0.20: program length set once by the point person or an admin; leaders change it only if a session ran longer or shorter. v0.19: musician hours and invoices built: hours entered on My week, the point person approves, admins set rates and stipends, invoices per two-week pay period; "Collab?" is Yes/No and every Yes counts as co-led; the collaboration target is set per season by the point person or an admin. v0.18: roles narrowed: the point person plans, the Admin Lead publishes and updates published dates, musicians edit drafts they play in and pick leaders; monthly programs. v0.17: "No Program" dates can be restored. v0.16: season view for the point person. v0.15: usual leaders, season reminders, private calendar links. v0.14: documentation from the CESLC workbook sample, weekly; musicians write draft notes; schedule laid out like the workbook tab. v0.13: people in a program can see each other's names, nothing else. v0.12: every roster musician edits draft titles, rooms and musicians; the point person assigns leaders. v0.11: `Partner`, `Site`, `Location` built; see section 1. v0.10: scheduled relationship building (e.g. Lessons) and the partner calendar layout; v0.9: partner permission for resident names confirmed; v0.8: decisions D14 and D15 settled: residents and attendance; v0.7: decisions D10, D11 and D16 settled: events, extras, absences, substitutes and the roster; v0.6: both D9 billing details confirmed; v0.5: decisions D9 and D13 settled: partner billing and version 1 scope; v0.4: decisions D2, D4, D6, D7 and D8 settled; v0.3: decisions D1, D3 and D5 settled, including how a month's schedule is reviewed, published and sent; v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
+_Draft v0.23, November 22, 2026 (v0.23: overhead switched on or off on the contract; stipend lines can be left off each month; custom invoices typed by hand. v0.22: community invoices built; billable hours are now per musician and count once the point person approves the week (revises D9); drafts live, sent invoices frozen; admins only. v0.21: less double entry for musicians: usual type per program, usual relationship-building lengths, "Same as last time", one "Submit my week"; detailed one-to-one notes and a daily Word document per site. v0.20: program length set once by the point person or an admin; leaders change it only if a session ran longer or shorter. v0.19: musician hours and invoices built: hours entered on My week, the point person approves, admins set rates and stipends, invoices per two-week pay period; "Collab?" is Yes/No and every Yes counts as co-led; the collaboration target is set per season by the point person or an admin. v0.18: roles narrowed: the point person plans, the Admin Lead publishes and updates published dates, musicians edit drafts they play in and pick leaders; monthly programs. v0.17: "No Program" dates can be restored. v0.16: season view for the point person. v0.15: usual leaders, season reminders, private calendar links. v0.14: documentation from the CESLC workbook sample, weekly; musicians write draft notes; schedule laid out like the workbook tab. v0.13: people in a program can see each other's names, nothing else. v0.12: every roster musician edits draft titles, rooms and musicians; the point person assigns leaders. v0.11: `Partner`, `Site`, `Location` built; see section 1. v0.10: scheduled relationship building (e.g. Lessons) and the partner calendar layout; v0.9: partner permission for resident names confirmed; v0.8: decisions D14 and D15 settled: residents and attendance; v0.7: decisions D10, D11 and D16 settled: events, extras, absences, substitutes and the roster; v0.6: both D9 billing details confirmed; v0.5: decisions D9 and D13 settled: partner billing and version 1 scope; v0.4: decisions D2, D4, D6, D7 and D8 settled; v0.3: decisions D1, D3 and D5 settled, including how a month's schedule is reviewed, published and sent; v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
 app's objects. GLOSSARY.md translates the team's language (Language 2) and
 our partner-facing language (Language 3) into these objects._
 
@@ -704,8 +704,8 @@ services).
 | `hourly_rate` | money | For `per_hour`. Admin-editable |
 | `contracted_hours` | number | Hours the contract commits to for the season. Shown on every invoice as progress |
 | `installments` | list of `{due_on, amount}` | For `installments`, e.g. four quarterly payments |
-| `bill_stipends` | bool | Also bill the musicians' stipend installments due that month (from their `Contract`s for this residency season) |
-| `overhead_percent` | decimal | Optional, e.g. 15. **Decided (D9):** applied to billable hours plus billed stipends. **Assumption (v0.22):** on an `installments` contract, applied to the installment due plus billed stipends |
+| `bill_stipends` | bool | Also bill the musicians' stipend installments due that month (from their `Contract`s for this residency season). **v0.23 (Lauren, Nov 22, 2026):** each month, before sending, an admin can leave individual stipend lines off (`PartnerInvoiceChoice`) |
+| `overhead_percent` | decimal | Optional, e.g. 15. **Decided (D9):** applied to billable hours plus billed stipends. **Assumption (v0.22):** on an `installments` contract, applied to the installment due plus billed stipends. **v0.23 (Lauren, Nov 22, 2026):** a "Charge overhead" checkbox on the contract switches it on or off (off = empty) |
 | `overhead_billing` | enum | `same_invoice` or `separate_invoice` (e.g. billed to a corporate office) |
 | `overhead_bill_to_id` | → PartnerContact | Required when `overhead_billing = separate_invoice`: the corporate office's billing contact |
 | `site_bill_to_id` | → PartnerContact | Who receives the site invoices; defaults to the partner's billing contact. **Not built yet (v0.22):** invoices go to `Partner.legal_name`, `billing_address` and `billing_email` |
@@ -767,6 +767,25 @@ Each invoice has a PDF; drafts print "DRAFT".
 - **Decided (D9):** when a contract covers several sites, billed
   stipends and overhead go on one separate invoice to `site_bill_to_id`
   rather than being split across site invoices.
+
+### `PartnerInvoiceChoice`
+One contract's choices for one month before its invoices are sent (v0.23):
+`agreement_id`, `month`, `excluded_stipend_ids` (stipend installments not to
+bill this month). Can't change once an invoice for that month is sent.
+
+### `CustomInvoice`
+An invoice typed by hand for work outside a `PartnerAgreement`: a concert
+for an organization that isn't a regular partner, a corporate office's
+overhead, anything else (v0.23, Lauren, Nov 22, 2026). Admins only.
+
+| Attribute | Type | Notes |
+|---|---|---|
+| `residency_id` | → Residency | Optional; when set, the invoice also shows on that program's Community invoices page |
+| `title`, `invoice_date`, `number` | text, date, text | Number e.g. `IMP-202611-C1` |
+| `bill_to` | text | Typed: name, address, email |
+| `lines` | list of `{description, quantity, unit_amount, amount}` | Quantity × rate, or a fixed amount |
+| `total` | money | Sum of lines |
+| `state` | enum | `draft` (editable, deletable), `sent` (frozen), `paid` |
 
 ### `InvoiceLine`
 One line on either kind of invoice: `description`, `quantity`, `unit`,

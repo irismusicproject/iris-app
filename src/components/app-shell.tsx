@@ -23,6 +23,7 @@ export function AppShell({
             <Link href="/invoices" className={nav}>My invoices</Link>
             {isAdmin && <Link href="/admin/people" className={nav}>People</Link>}
             {isAdmin && <Link href="/admin/partners" className={nav}>Partners</Link>}
+            {isAdmin && <Link href="/admin/invoices" className={nav}>Invoices</Link>}
             <Link href="/account/profile" className={nav}>My profile</Link>
             <form action="/auth/signout" method="post">
               <button className={nav}>Log out</button>

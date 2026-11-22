@@ -1,6 +1,6 @@
 # Iris App — Glossary (Languages 2 and 3)
 
-_Draft v0.14, November 22, 2026 (v0.14: community invoices built, billable hours per musician; v0.13: usual type and lengths, Submit my week, daily one-to-one notes document; v0.12: Collab? Yes/No, hours approval and musician invoices; v0.11: monthly programs; v0.10: usual leader, calendar link; v0.9: documentation words from the CESLC workbook; v0.8: partner calendar layout from the Dec 2026 sample; "Lessons"; v0.7: D14, D15 settled; v0.6: D10, D11, D16 settled; "No Program" and roster words added; v0.5: D9, D13 settled: partner billing words added; v0.4: D2, D4, D6, D7, D8 settled; v0.3: D1, D3, D5 settled; schedule review and sending words added). Translates the words people use into the objects
+_Draft v0.15, November 22, 2026 (v0.15: custom invoices; v0.14: community invoices built, billable hours per musician; v0.13: usual type and lengths, Submit my week, daily one-to-one notes document; v0.12: Collab? Yes/No, hours approval and musician invoices; v0.11: monthly programs; v0.10: usual leader, calendar link; v0.9: documentation words from the CESLC workbook; v0.8: partner calendar layout from the Dec 2026 sample; "Lessons"; v0.7: D14, D15 settled; v0.6: D10, D11, D16 settled; "No Program" and roster words added; v0.5: D9, D13 settled: partner billing words added; v0.4: D2, D4, D6, D7, D8 settled; v0.3: D1, D3, D5 settled; schedule review and sending words added). Translates the words people use into the objects
 defined in DOMAIN-MODEL.md (Language 1), which is authoritative._
 
 - **Part A: Team language.** How Iris staff and musicians talk, and which object each word means.
@@ -134,6 +134,7 @@ enough context to tell which object it is.
 | "special project" [CH] | `SpecialProject` | |
 | "musician invoice" | `MusicianInvoice` | |
 | "community invoice" | `PartnerInvoice(kind = site)` | One per contract, per site, per month (D4) |
+| "custom invoice", "one-off invoice" (e.g. a concert for a non-partner, corporate overhead) | `CustomInvoice` | Typed by hand; optional program link (v0.15) |
 | "billable hours", "contract hours delivered" | Per musician: documented session length × musicians present + each musician's relationship-building minutes at a site, once the point person approves their week | Same for every site (D9, revised v0.14) |
 | "rate" (partner) | `PartnerAgreement.hourly_rate` | Admin-editable |
 | "overhead", "15% overhead" | `PartnerAgreement.overhead_percent` | Optional per contract |

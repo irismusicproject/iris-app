@@ -126,3 +126,18 @@ export async function setInvoicePaid(residencyId: string, invoiceId: string, pai
   refresh(residencyId);
   return ok;
 }
+
+/** This month's choices for a contract (v0.23): stipend lines to leave off. */
+export async function setMonthChoices(residencyId: string, agreementId: string, month: string, excludedStipendIds: string[]): Promise<BillingResult> {
+  await requireAdmin();
+  if (!/^\d{4}-\d{2}-01$/.test(month) || !excludedStipendIds.every(isId)) return { status: "error", message: "Pick a month." };
+  const supabase = await createClient();
+  const { count } = await supabase.from("partner_invoice").select("id", { count: "exact", head: true }).eq("agreement_id", agreementId).eq("month", month);
+  if (count) return { status: "error", message: "An invoice for this month was already sent, so its lines are frozen." };
+  const { error } = await supabase
+    .from("partner_invoice_choice")
+    .upsert({ agreement_id: agreementId, month, excluded_stipend_ids: excludedStipendIds }, { onConflict: "agreement_id,month" });
+  if (error) return fail(error);
+  refresh(residencyId);
+  return ok;
+}
