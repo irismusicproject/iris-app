@@ -1,0 +1,57 @@
+name: Staging test accounts
+
+# Creates or updates the overnight-test personas (admin, point person, Admin
+# Lead, musician, substitute, deactivated) on the STAGING database only.
+# Run it by hand: Actions -> Staging test accounts -> Run workflow. Run it
+# again after "reset-staging" or after new scheduling tables reach staging.
+# See README, "Overnight testing", and scripts/staging-accounts.mjs.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  accounts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Holds staging's keys only, so this job can never reach production.
+    environment: staging
+    concurrency:
+      group: staging-accounts
+      cancel-in-progress: false
+    steps:
+      - name: Is this set up?
+        id: cfg
+        run: |
+          missing=""
+          [ -n "$SUPABASE_URL" ] || missing="$missing SUPABASE_URL (staging environment)"
+          [ -n "$SUPABASE_SECRET_KEY" ] || missing="$missing SUPABASE_SECRET_KEY (staging environment)"
+          [ -n "$STAGING_TEST_PASSWORD" ] || missing="$missing STAGING_TEST_PASSWORD"
+          if [ -n "$missing" ]; then
+            echo "::warning::Missing secrets:$missing. See README, Overnight testing. Skipping."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          STAGING_TEST_PASSWORD: ${{ secrets.STAGING_TEST_PASSWORD }}
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        if: steps.cfg.outputs.ok == 'true'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        if: steps.cfg.outputs.ok == 'true'
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+        if: steps.cfg.outputs.ok == 'true'
+      - name: Create or update the personas
+        if: steps.cfg.outputs.ok == 'true'
+        run: node scripts/staging-accounts.mjs --staging
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          STAGING_TEST_PASSWORD: ${{ secrets.STAGING_TEST_PASSWORD }}
