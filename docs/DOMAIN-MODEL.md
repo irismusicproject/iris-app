@@ -637,7 +637,7 @@ A two-week, Monday–Sunday period. Attributes: `starts_on`, `ends_on`,
 
 **Assumption (v0.19):** periods are counted every 14 days from the
 `Setting` `pay_period_anchor` (Monday, November 2, 2026), not stored as rows.
-`pay_date` is not built yet. Lauren to confirm the real anchor date.
+`pay_date` is not built yet.
 
 ### `PayAdjustment`
 A one-off payment outside hourly pay and stipends: special pay, an extra
@@ -784,7 +784,7 @@ Admin-editable rules from the handbook, so compliance is data.
 | `documentation_and_time_due` | **One deadline** for `SessionReport`s, `RelationshipActivity` logs and `TimeEntry` hours: **Tuesday 17:00 of the following week** |
 | `cancellation_notice_time` | 09:00 the same day, for illness or emergency |
 | `max_musician_absences_per_season` | Set by admins; **no default yet**. Passing it warns the Admin Lead and point person (D11) |
-| `pay_period_anchor` | A Monday that starts a pay period; **assumed** 2026-11-02 (v0.19) |
+| `pay_period_anchor` | A Monday that starts a pay period; **2026-11-02** (decided by Lauren, Nov 22, 2026) |
 
 **Assumption (D7):** a `MonthlyReflection` is due by the same Tuesday
 17:00 deadline in the week after the month ends.
