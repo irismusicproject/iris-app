@@ -44,7 +44,7 @@ test("fill a month, musicians edit drafts, point person sets leaders, lead marks
   const season = must(await d.from("season").insert({ residency_id: res.id, name: `Spring ${year}`, starts_on: `${year}-01-01`, ends_on: `${year}-06-30`, kind: "semester" }).select("id").single(), "season");
   must(await d.from("roster_member").insert([
     { season_id: season.id, person_id: lead.id, is_admin_lead: true },
-    { season_id: season.id, person_id: mus.id },
+    { season_id: season.id, person_id: mus.id, is_admin_lead: false },
   ]).select(), "roster");
   must(await d.from("staff_assignment").insert({ residency_id: res.id, person_id: point.id, role: "point_person", starts_on: "2020-01-01" }).select(), "point person");
   const jam = must(await d.from("series").insert({ residency_id: res.id, title: "Jam Band", default_location_id: library, weekdays: [2], start_time: "15:00", minutes: 45, active_from: `${year}-01-01` }).select("id").single(), "Jam Band series");
