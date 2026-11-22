@@ -287,3 +287,24 @@ export async function newCalendarVersion(residencyId: string, siteId: string, mo
   refresh(residencyId);
   return ok;
 }
+
+// ---- Season view (DOMAIN-MODEL v0.16) ----
+
+/** Leader for the whole season: sets the usual leader and every draft date from today on. */
+export async function setSeriesLeaderForSeason(residencyId: string, seriesId: string, personId: string): Promise<ScheduleResult & { changed?: number }> {
+  await requirePerson();
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("set_series_leader", { p_series: seriesId, p_person: isId(personId) ? personId : null });
+  if (error) return fail(error);
+  refresh(residencyId);
+  return { status: "saved", changed: data as number };
+}
+
+export async function fillSeason(residencyId: string, seasonId: string): Promise<ScheduleResult & { created?: number }> {
+  await requirePerson();
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("generate_season", { p_season: seasonId });
+  if (error) return fail(error);
+  refresh(residencyId);
+  return { status: "saved", created: data as number };
+}

@@ -204,6 +204,8 @@ export default async function MonthPage({
         {access.canSchedule && needLeader > 0 && <span className="ml-2 text-brand-orange">{needLeader} need{needLeader === 1 ? "s" : ""} a leader</span>}
       </p>
       <p className="mt-2 text-sm text-muted">
+        <Link href={`/residencies/${id}/season`} className="text-iris underline-offset-2 hover:underline">Season view</Link>
+        {" · "}
         <Link href={`/residencies/${id}/weekly`} className="text-iris underline-offset-2 hover:underline">Weekly programs</Link>
         {access.onRoster && !access.canSchedule && " · You can edit each date's title, notes, room and musicians while the month is a draft."}
       </p>
