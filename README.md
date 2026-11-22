@@ -196,7 +196,7 @@ Two branches, two meanings:
 
 | Branch | Means | Database | Website |
 |---|---|---|---|
-| `main` | Finished: merged after CI passes | staging, updated automatically | the staging site (Vercel's `main` branch address) |
+| `main` | Finished: merged after CI passes | staging, updated automatically | the staging site: https://iris-app-git-main-rhearty1-5601s-projects.vercel.app (Vercel login required) |
 | `production` | Released by Ryan | production | app.irismusicproject.org |
 
 **The handoff:** Lauren (or anyone) merges finished work to `main` when CI is green and notes it in issue #30. Ryan checks it on the staging site.
