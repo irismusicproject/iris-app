@@ -14,6 +14,7 @@ const eslintConfig = [
   {
     ignores: [
       "node_modules/**",
+      "mobile/**", // the phone app has its own checks (mobile/package.json)
       ".next/**",
       "out/**",
       "build/**",
