@@ -7,13 +7,11 @@ import { ConfirmButton } from "@/components/confirm-button";
 import {
   ACTIVITY_KIND_LABELS,
   ACTIVITY_KINDS,
-  RESIDENT_INVOLVEMENT_LABELS,
-  RESIDENT_INVOLVEMENTS,
   residentsRequired,
   type ActivityKind,
   type ResidentInvolvement,
 } from "@/shared/domain/documentation";
-import { createCalendarLink, deleteActivity, logActivity, resetCalendarLink, saveReflection, saveSessionReport, type DocResult } from "./actions";
+import { createCalendarLink, deleteActivity, logActivity, resetCalendarLink, saveHours, saveReflection, saveSessionReport, type DocResult } from "./actions";
 
 const small = "rounded-full border border-border px-3 py-1 text-xs hover:bg-iris-soft disabled:opacity-60";
 type Option = { id: string; label: string };
@@ -80,8 +78,10 @@ export function ReportRow({
           </select>
         </Field>
         <Field label="Collab?">
-          <select value={involvement} onChange={(e) => setInvolvement(e.target.value as ResidentInvolvement)} className={inputClass}>
-            {RESIDENT_INVOLVEMENTS.map((v) => <option key={v} value={v}>{RESIDENT_INVOLVEMENT_LABELS[v]}</option>)}
+          {/* Yes/No (v0.19): every "Yes" counts toward the collaboration target, stored as co_led. */}
+          <select value={involvement === "none" ? "none" : "co_led"} onChange={(e) => setInvolvement(e.target.value as ResidentInvolvement)} className={inputClass}>
+            <option value="none">No</option>
+            <option value="co_led">Yes</option>
           </select>
         </Field>
         <Field label="Minutes">
@@ -104,21 +104,18 @@ export function ReportRow({
 // ---- Log a relationship-building activity ----
 
 type Program = { id: string; name: string; sites: Option[] };
-type Lesson = { id: string; residencyId: string; siteId: string; label: string; date: string };
 
 const initial: DocResult = { status: "idle" };
 
 export function ActivityForm({
   programs,
   residents,
-  lessons,
   defaultDate,
   minDate,
   maxDate,
 }: {
   programs: Program[];
   residents: { id: string; siteId: string; name: string }[];
-  lessons: Lesson[];
   defaultDate: string;
   minDate: string;
   maxDate: string;
@@ -129,7 +126,6 @@ export function ActivityForm({
   const [siteId, setSiteId] = useState(program?.sites[0]?.id ?? "");
   const [kind, setKind] = useState<ActivityKind>("one_to_one");
   const siteResidents = useMemo(() => residents.filter((r) => r.siteId === siteId), [residents, siteId]);
-  const siteLessons = lessons.filter((l) => l.residencyId === residencyId && l.siteId === siteId);
   const e = state.errors;
   return (
     <form
@@ -178,14 +174,6 @@ export function ActivityForm({
             </select>
           </Field>
         </div>
-        {siteLessons.length > 0 && (
-          <Field label="Part of a scheduled lesson? (optional)">
-            <select name="session_id" defaultValue="" className={inputClass}>
-              <option value="">No</option>
-              {siteLessons.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}
-            </select>
-          </Field>
-        )}
       </div>
       <fieldset>
         <legend className="text-sm font-medium">
@@ -320,6 +308,82 @@ export function CalendarLinkCard({ feedUrl }: { feedUrl: string | null }) {
           </p>
         </>
       )}
+    </div>
+  );
+}
+
+// ---- Weekly hours for one program (timesheet) ----
+
+export function HoursCard({
+  residencyId,
+  programName,
+  week,
+  categories,
+  initial,
+  prefill,
+  state,
+  returnedNote,
+}: {
+  residencyId: string;
+  programName: string | null;
+  week: string;
+  categories: { id: string; name: string; description: string | null }[];
+  initial: Record<string, number>;
+  prefill: Record<string, number>;
+  state: "draft" | "submitted" | "approved" | null;
+  returnedNote: string | null;
+}) {
+  const start = (id: string) => String(initial[id] ?? prefill[id] ?? 0);
+  const [values, setValues] = useState<Record<string, string>>(() => Object.fromEntries(categories.map((c) => [c.id, start(c.id)])));
+  const [pending, startTransition] = useTransition();
+  const [msg, setMsg] = useState<string | null>(null);
+  const locked = state === "submitted" || state === "approved";
+  const total = categories.reduce((n, c) => n + (Number(values[c.id]) || 0), 0);
+  const save = (submit: boolean) =>
+    startTransition(async () => {
+      const r = await saveHours(residencyId, week, categories.map((c) => ({ categoryId: c.id, hours: Number(values[c.id]) || 0 })), submit);
+      setMsg(r.status === "error" ? r.message ?? "Something went wrong." : submit ? "Submitted to the point person." : "Saved.");
+    });
+  return (
+    <div className="flex flex-col gap-3">
+      {programName && <h3 className="font-medium">{programName}</h3>}
+      {returnedNote && state === "draft" && (
+        <p className="rounded-lg border border-brand-orange/60 p-2 text-sm"><strong>Sent back by the point person:</strong> {returnedNote}</p>
+      )}
+      <div className="grid gap-3 sm:grid-cols-3">
+        {categories.map((c) => (
+          <Field key={c.id} label={c.name} hint={prefill[c.id] !== undefined && initial[c.id] === undefined ? `Pre-filled from your schedule and logs` : undefined}>
+            <input
+              inputMode="decimal"
+              value={values[c.id]}
+              disabled={locked}
+              onChange={(e) => setValues((v) => ({ ...v, [c.id]: e.target.value }))}
+              aria-label={`${c.name} hours`}
+              className={inputClass}
+            />
+          </Field>
+        ))}
+      </div>
+      <p className="text-sm">
+        Total: <strong>{total.toFixed(2)} hours</strong>
+        <span className="ml-2 rounded-full bg-iris-soft px-2 py-0.5 text-xs">
+          {state === "approved" ? "Approved" : state === "submitted" ? "Submitted, waiting for approval" : "Not submitted yet"}
+        </span>
+      </p>
+      {!locked && (
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" disabled={pending} className={small} onClick={() => save(false)}>Save draft</button>
+          <ConfirmButton
+            disabled={pending}
+            className={buttonClass}
+            label="Submit hours"
+            question={`Submit ${total.toFixed(2)} hours for this week?`}
+            confirmLabel="Yes, submit"
+            onConfirm={() => save(true)}
+          />
+        </div>
+      )}
+      {msg && <p role="status" className="text-sm text-iris">{msg}</p>}
     </div>
   );
 }

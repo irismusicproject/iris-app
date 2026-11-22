@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { buttonClass, inputClass } from "@/components/auth-card";
-import { fillSeason, setSeriesLeaderForSeason } from "../../schedule-actions";
+import { fillSeason, setCollaborationTarget, setSeriesLeaderForSeason } from "../../schedule-actions";
 
 export function SeasonLeaderSelect({
   residencyId,
@@ -77,5 +77,28 @@ export function FillSeasonButton({ residencyId, seasonId, seasonName }: { reside
       <span className="text-xs text-muted">Fills every month of {seasonName} from the weekly programs, with usual leaders. Months already filled get only what&apos;s missing.</span>
       {msg && <p role="status" className="w-full text-sm text-iris">{msg}</p>}
     </div>
+  );
+}
+
+export function CollaborationTargetForm({ residencyId, seasonId, value }: { residencyId: string; seasonId: string; value: number }) {
+  const [v, setV] = useState(String(value));
+  const [pending, start] = useTransition();
+  const [msg, setMsg] = useState<string | null>(null);
+  return (
+    <form
+      className="flex flex-wrap items-center gap-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        start(async () => {
+          const r = await setCollaborationTarget(residencyId, seasonId, Number(v));
+          setMsg(r.status === "error" ? r.message ?? "Something went wrong." : "Saved.");
+        });
+      }}
+    >
+      <input inputMode="numeric" value={v} onChange={(e) => setV(e.target.value)} aria-label="Collaborative programs per musician" className={`${inputClass} w-20 py-1.5`} />
+      <span className="text-sm">collaborative programs per musician this season</span>
+      <button disabled={pending} className="rounded-full border border-border px-3 py-1 text-xs hover:bg-iris-soft">{pending ? "Saving..." : "Save"}</button>
+      {msg && <span role="status" className="text-xs text-iris">{msg}</span>}
+    </form>
   );
 }

@@ -45,3 +45,20 @@ export function dueLabel(monday: string): string {
   const tue = addDays(monday, 8);
   return `${new Date(`${tue}T12:00:00Z`).toLocaleDateString("en-US", { timeZone: "UTC", weekday: "long", month: "long", day: "numeric" })}, 5 pm`;
 }
+
+// ---- Pay periods (DOMAIN-MODEL section 5, v0.19) ----
+
+/** Two-week pay periods, Monday–Sunday, counted from an anchor Monday (Setting pay_period_anchor). */
+export function payPeriodStart(date: string, anchor: string): string {
+  const monday = weekStart(date);
+  const days = Math.round((Date.parse(`${monday}T12:00:00Z`) - Date.parse(`${weekStart(anchor)}T12:00:00Z`)) / 86_400_000);
+  const offset = ((days % 14) + 14) % 14; // 0 or 7: both are Mondays
+  return addDays(monday, -offset);
+}
+/** "Nov 2 – Nov 15, 2026" */
+export function formatPayPeriod(start: string): string {
+  const end = addDays(start, 13);
+  const f = (v: string, o: Intl.DateTimeFormatOptions) => new Date(`${v}T12:00:00Z`).toLocaleDateString("en-US", { timeZone: "UTC", ...o });
+  return `${f(start, { month: "short", day: "numeric" })} – ${f(end, { month: "short", day: "numeric" })}, ${end.slice(0, 4)}`;
+}
+export const money = (n: number) => n.toLocaleString("en-US", { style: "currency", currency: "USD" });

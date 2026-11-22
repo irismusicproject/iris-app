@@ -151,3 +151,41 @@ export async function resetCalendarLink(): Promise<DocResult> {
   revalidatePath("/documentation");
   return { status: "saved" };
 }
+
+// ---- Weekly hours (DOMAIN-MODEL section 5, v0.19) ----
+
+/** Save a week's hours for one program; with submit, send them to the point person. */
+export async function saveHours(
+  residencyId: string,
+  week: string,
+  hours: { categoryId: string; hours: number }[],
+  submit: boolean,
+): Promise<DocResult> {
+  const { person } = await requirePerson();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(week)) return { status: "error", message: "Pick a week." };
+  if (hours.some((h) => !isId(h.categoryId) || !Number.isFinite(h.hours) || h.hours < 0 || h.hours > 80))
+    return { status: "error", message: "Hours must be between 0 and 80." };
+  const supabase = await createClient();
+  const rows = hours.map((h) => ({
+    person_id: person.id,
+    residency_id: residencyId,
+    week_starting: week,
+    time_category_id: h.categoryId,
+    hours: Math.round(h.hours * 4) / 4,
+    source: "manual",
+    state: "draft" as const,
+  }));
+  const { error } = await supabase.from("time_entry").upsert(rows, { onConflict: "person_id,residency_id,week_starting,time_category_id" });
+  if (error) return fail(error);
+  if (submit) {
+    const { error: e2 } = await supabase
+      .from("time_entry")
+      .update({ state: "submitted", submitted_at: new Date().toISOString(), returned_note: null })
+      .eq("person_id", person.id)
+      .eq("residency_id", residencyId)
+      .eq("week_starting", week);
+    if (e2) return fail(e2);
+  }
+  revalidatePath("/documentation");
+  return { status: "saved" };
+}

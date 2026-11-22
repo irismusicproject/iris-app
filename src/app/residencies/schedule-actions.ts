@@ -326,3 +326,17 @@ export async function fillSeason(residencyId: string, seasonId: string): Promise
   refresh(residencyId);
   return { status: "saved", created: data as number };
 }
+
+// ---- Collaboration target (v0.19) ----
+
+export async function setCollaborationTarget(residencyId: string, seasonId: string, value: number): Promise<ScheduleResult> {
+  await requirePerson();
+  if (!Number.isInteger(value) || value < 0 || value > 100) return { status: "error", message: "Enter a number from 0 to 100." };
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("target")
+    .upsert({ season_id: seasonId, metric: "collaborative_programs_per_musician", value }, { onConflict: "season_id,metric" });
+  if (error) return fail(error);
+  refresh(residencyId);
+  return ok;
+}
