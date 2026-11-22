@@ -1,0 +1,112 @@
+name: Overnight test
+
+# Every night at 12:15 am Eastern (05:15 UTC; 1:15 am during daylight time),
+# a read-only browser test of the STAGING site: every page x every test
+# persona, on desktop and phone, with screenshots, accessibility scans,
+# console errors, failed requests and load times. The results become a GitHub
+# issue, "Overnight test report <date>". See README, "Overnight testing".
+#
+# It only opens pages. It never writes to a database, and it has no database
+# keys at all: it signs in through the site like a person would.
+
+on:
+  schedule:
+    - cron: "15 5 * * *"
+  workflow_dispatch:
+    inputs:
+      staging_url:
+        description: "Site to test (default: the STAGING_URL secret, else the staging site for main)"
+        type: string
+        required: false
+
+permissions:
+  contents: read
+  issues: write # to post the report
+
+concurrency:
+  group: overnight-test
+  cancel-in-progress: false
+
+jobs:
+  overnight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      STAGING_URL: ${{ inputs.staging_url || secrets.STAGING_URL || 'https://iris-app-git-main-rhearty1-5601s-projects.vercel.app' }}
+      STAGING_TEST_PASSWORD: ${{ secrets.STAGING_TEST_PASSWORD }}
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+    steps:
+      - name: Is this set up?
+        id: cfg
+        run: |
+          missing=""
+          [ -n "$STAGING_TEST_PASSWORD" ] || missing="$missing STAGING_TEST_PASSWORD"
+          [ -n "$VERCEL_AUTOMATION_BYPASS_SECRET" ] || missing="$missing VERCEL_AUTOMATION_BYPASS_SECRET"
+          if [ -n "$missing" ]; then
+            echo "::warning::Overnight test skipped. Missing repository secrets:$missing. See README, Overnight testing."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Can we reach the staging site?
+        id: reach
+        if: steps.cfg.outputs.ok == 'true'
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 \
+            -H "x-vercel-protection-bypass: $VERCEL_AUTOMATION_BYPASS_SECRET" "$STAGING_URL/login" || echo 000)
+          echo "Staging answered $code"
+          if [ "$code" = "200" ]; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::$STAGING_URL/login answered $code, not 200. A 401 or 403 usually means VERCEL_AUTOMATION_BYPASS_SECRET is wrong or out of date; 404 means no deployment at that address."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            echo "code=$code" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        if: steps.cfg.outputs.ok == 'true'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        if: steps.cfg.outputs.ok == 'true'
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+        if: steps.cfg.outputs.ok == 'true'
+      - run: npx playwright install --with-deps chromium
+        if: steps.reach.outputs.ok == 'true'
+
+      - name: Visit every page as every persona
+        if: steps.reach.outputs.ok == 'true'
+        # Findings are the point, not a pass/fail; the report says what broke.
+        continue-on-error: true
+        run: npx playwright test -c playwright.overnight.config.ts
+
+      - name: Write the report
+        if: steps.cfg.outputs.ok == 'true'
+        run: |
+          node scripts/overnight-report.mjs --site "$STAGING_URL" \
+            --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          if [ "${{ steps.reach.outputs.ok }}" != "true" ]; then
+            printf '\n> [!CAUTION]\n> The staging site answered **%s** instead of 200, so no pages were tested. A 401 or 403 usually means the `VERCEL_AUTOMATION_BYPASS_SECRET` secret is wrong or out of date.\n' \
+              "${{ steps.reach.outputs.code }}" >> overnight-results/report.md
+          fi
+          cat overnight-results/report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: steps.cfg.outputs.ok == 'true'
+        with:
+          name: overnight-results
+          path: overnight-results/
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Post the report as an issue
+        if: steps.cfg.outputs.ok == 'true'
+        run: |
+          title="Overnight test report $(TZ=America/New_York date +%Y-%m-%d)"
+          url=$(gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body-file overnight-results/report.md)
+          echo "Report: $url"
+          echo "Report posted: $url" >> "$GITHUB_STEP_SUMMARY"
+        env:
+          GH_TOKEN: ${{ github.token }}
