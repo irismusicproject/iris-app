@@ -22,7 +22,7 @@ The app is built with Next.js on Vercel. Sign-in runs through Supabase. Only inv
 
 | Piece | Where | Notes |
 |-------|-------|-------|
-| Code | GitHub, `irismusicproject/iris-app` (public) | Merging to `main` deploys automatically. |
+| Code | GitHub, `irismusicproject/iris-app` (public) | `main` = finished work, on staging. `production` = released, on the live site (see Releasing). |
 | Hosting | Vercel | Live at https://app.irismusicproject.org |
 | Sign-in and data | Supabase | Invite-only; email and password, or an emailed code. |
 | Email sending | Resend | Sends from `no-reply@mail.irismusicproject.org`. |
@@ -190,9 +190,26 @@ Every pull request gets one advisory comment from Claude (`.github/workflows/cla
 - **Setup (Ryan, once):** add the repository secret `ANTHROPIC_API_KEY` under **Settings → Secrets and variables → Actions**. Until then, the workflow skips with a warning.
 - **To turn it off:** open **Actions → Claude PR review**, click **⋯**, and choose **Disable workflow**. Deleting the secret also stops it.
 
+## Releasing
+
+Two branches, two meanings:
+
+| Branch | Means | Database | Website |
+|---|---|---|---|
+| `main` | Finished: merged after CI passes | staging, updated automatically | the staging site (Vercel's `main` branch address) |
+| `production` | Released by Ryan | production | app.irismusicproject.org |
+
+**The handoff:** Lauren (or anyone) merges finished work to `main` when CI is green and notes it in issue #30. Ryan checks it on the staging site.
+
+**To release:** **Actions → Release → Run workflow**, then approve the **production** environment when GitHub asks. The workflow applies new migrations to production's database first, then moves `production` up to `main`, and Vercel publishes it. The run's summary lists what was released. Only this workflow moves `production`.
+
+**If a release goes wrong:** in Vercel, open **Deployments**, choose the previous production deployment, and click **Instant Rollback**.
+
+**One-time setup (Ryan):** in Vercel → **Settings → Git**, set **Production Branch** to `production`.
+
 ## Deploying
 
-Vercel deploys every merge to `main` automatically. Production needs these four environment variables, under Settings, then Environment Variables. Previews use staging's values instead:
+Vercel publishes the `production` branch to the live site and builds every other branch (including `main`) as a preview. Production needs these four environment variables, under Settings, then Environment Variables. Previews use staging's values instead:
 
 - `NEXT_PUBLIC_SUPABASE_URL`: the Supabase project URL
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: the Supabase publishable key
