@@ -6,54 +6,91 @@ import { createAdminClient } from "@/lib/supabase/admin";
 // and native apps trigger the same ones); this module delivers them. Email
 // first; push notifications can be added here later.
 //
-// Delivery, in order:
-//  1. RESEND_API_KEY set (production): sent through Resend.
-//  2. Local prototype (Supabase at 127.0.0.1): dropped into the local mail
-//     viewer (Mailpit), like sign-in emails.
-//  3. Otherwise: kept in the admin Outbox only.
+// Two separate things decide what happens (Ryan's side, Nov 22, 2026):
+//  - HOW email is sent: through Resend when RESEND_API_KEY is set, or the
+//    local mail viewer (Mailpit) when running the local prototype.
+//  - WHETHER queued notifications (No Program, deadline reminders) go out:
+//    only when NOTIFICATIONS_ENABLED=true. Until then they stay in the admin
+//    Outbox, marked "outbox only", and are never sent later.
+// Keeping them apart lets sign-in emails such as the welcome email
+// (lib/welcome-email.ts) use Resend while notifications stay off.
 
-const FROM = "Iris Music Project <no-reply@mail.irismusicproject.org>";
+const MAX_ATTEMPTS = 5;
 
-type Pending = { id: string; email: string; subject: string; body: string };
+/** Staging (Vercel previews) sends as "Iris (staging)" so test emails are easy to tell apart (README). */
+function fromAddress(): string {
+  return process.env.VERCEL_ENV === "preview"
+    ? "Iris (staging) <staging@mail.irismusicproject.org>"
+    : "Iris Music Project <no-reply@mail.irismusicproject.org>";
+}
 
-async function send(n: Pending): Promise<"email" | "outbox_only"> {
+function isLocal(): boolean {
+  return (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").startsWith("http://127.0.0.1");
+}
+
+/** Whether an email service is configured at all (Resend, or the local mail viewer). */
+export function canSendEmail(): boolean {
+  return Boolean(process.env.RESEND_API_KEY) || isLocal();
+}
+
+/** Sends one plain-text email now. Throws if no email service is configured or the send fails. */
+export async function sendEmail(m: { to: string; subject: string; text: string; idempotencyKey?: string }): Promise<void> {
   const resendKey = process.env.RESEND_API_KEY;
   if (resendKey) {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
-      headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json", "Idempotency-Key": `notification-${n.id}` },
-      body: JSON.stringify({ from: FROM, to: [n.email], subject: n.subject, text: n.body }),
+      headers: {
+        Authorization: `Bearer ${resendKey}`,
+        "Content-Type": "application/json",
+        ...(m.idempotencyKey ? { "Idempotency-Key": m.idempotencyKey } : {}),
+      },
+      body: JSON.stringify({ from: fromAddress(), to: [m.to], subject: m.subject, text: m.text }),
     });
     if (!res.ok) throw new Error(`Resend ${res.status}`);
-    return "email";
+    return;
   }
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-  if (supabaseUrl.startsWith("http://127.0.0.1")) {
+  if (isLocal()) {
+    const from = fromAddress().match(/^(.*) <(.*)>$/)!;
     const res = await fetch("http://127.0.0.1:54324/api/v1/send", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ From: { Email: "no-reply@mail.irismusicproject.org", Name: "Iris Music Project" }, To: [{ Email: n.email }], Subject: n.subject, Text: n.body }),
+      body: JSON.stringify({ From: { Email: from[2], Name: from[1] }, To: [{ Email: m.to }], Subject: m.subject, Text: m.text }),
     });
     if (!res.ok) throw new Error(`local mail viewer ${res.status}`);
-    return "email";
+    return;
   }
-  return "outbox_only";
+  throw new Error("no email service is configured");
 }
 
-/** Delivers queued notifications. Safe to call often; each is sent once. */
+type Pending = { id: string; email: string; subject: string; body: string; attempts: number };
+
+function notificationsOn(): boolean {
+  return process.env.NOTIFICATIONS_ENABLED === "true" || isLocal();
+}
+
+/** Delivers queued notifications. Safe to call often; each is sent once, and one that keeps failing stops after MAX_ATTEMPTS. */
 export async function deliverPending(limit = 50): Promise<{ sent: number; failed: number }> {
   const db = createAdminClient();
-  const { data } = await db.from("notification").select("id, email, subject, body").is("sent_at", null).order("created_at").limit(limit);
+  const { data } = await db.from("notification").select("id, email, subject, body, attempts")
+    .is("sent_at", null).lt("attempts", MAX_ATTEMPTS).order("created_at").limit(limit);
   let sent = 0;
   let failed = 0;
   for (const n of (data ?? []) as Pending[]) {
+    if (!notificationsOn()) {
+      await db.from("notification").update({ sent_at: new Date().toISOString(), delivery: "outbox_only", error: null }).eq("id", n.id).is("sent_at", null);
+      continue;
+    }
     try {
-      const delivery = await send(n);
-      await db.from("notification").update({ sent_at: new Date().toISOString(), delivery, error: null }).eq("id", n.id).is("sent_at", null);
+      await sendEmail({ to: n.email, subject: n.subject, text: n.body, idempotencyKey: `notification-${n.id}` });
+      await db.from("notification").update({ sent_at: new Date().toISOString(), delivery: "email", error: null }).eq("id", n.id).is("sent_at", null);
       sent++;
     } catch (e) {
       failed++;
-      await db.from("notification").update({ error: e instanceof Error ? e.message.slice(0, 300) : "failed" }).eq("id", n.id);
+      const attempts = n.attempts + 1;
+      const why = e instanceof Error ? e.message.slice(0, 250) : "failed";
+      await db.from("notification")
+        .update({ attempts, error: attempts >= MAX_ATTEMPTS ? `stopped after ${MAX_ATTEMPTS} tries: ${why}` : why })
+        .eq("id", n.id);
     }
   }
   return { sent, failed };
