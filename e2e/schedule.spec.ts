@@ -3,9 +3,10 @@ import { createClient } from "@supabase/supabase-js";
 import { SECRET_KEY, SUPABASE_URL } from "./helpers/env";
 import { createPerson, logIn, open } from "./helpers/people";
 
-// A month's schedule (DOMAIN-MODEL v0.12): the admin lead fills in the month,
-// any roster musician edits titles and rooms, the point person assigns
-// leaders, the admin lead marks a date "No Program". Made-up data only.
+// A month's schedule (DOMAIN-MODEL v0.18): the point person fills in the month
+// and sets leaders, a roster musician edits titles and rooms of drafts they
+// play in, the point person marks a draft date "No Program". The Admin Lead
+// no longer fills months (v0.18). Made-up data only.
 
 const db = () => createClient(SUPABASE_URL, SECRET_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
 
@@ -23,7 +24,7 @@ async function as(browser: import("@playwright/test").Browser, who: { email: str
   return page;
 }
 
-test("fill a month, musicians edit drafts, point person sets leaders, lead marks No Program", async ({ browser }) => {
+test("point person fills a month and sets leaders, musicians edit drafts, point person marks No Program", async ({ browser }) => {
   const run = Date.now() % 100000;
   const year = new Date().getFullYear() + 1;
   const month = `${year}-02`;
@@ -53,22 +54,23 @@ test("fill a month, musicians edit drafts, point person sets leaders, lead marks
 
   const path = `/residencies/${res.id}/month/${month}`;
 
-  // 1. The admin lead fills in February.
+  // 1. v0.18: the Admin Lead can't fill the month; the point person does.
   const leadPage = await as(browser, lead, path);
-  const fill = leadPage.getByRole("button", { name: /^Fill in February/ });
-  if (!(await fill.isVisible())) throw new Error(`No fill button. Page shows: ${(await leadPage.locator("main").innerText()).slice(0, 600)}`);
+  await expect(leadPage.getByRole("button", { name: /^Fill in/ })).toHaveCount(0);
+  const pointPage = await as(browser, point, path);
+  const fill = pointPage.getByRole("button", { name: /^Fill in February/ });
+  if (!(await fill.isVisible())) throw new Error(`No fill button. Page shows: ${(await pointPage.locator("main").innerText()).slice(0, 600)}`);
   await fill.click();
-  await expect(leadPage.getByRole("status")).toContainText(/Added \d+ programs/);
-  await leadPage.reload();
-  await expect(leadPage.getByRole("heading", { name: "Jam Band" })).toBeVisible();
-  await expect(leadPage.getByRole("heading", { name: "Lessons" })).toBeVisible();
-  await expect(leadPage.getByText("3:00 PM").first()).toBeVisible();
+  await expect(pointPage.getByRole("status")).toContainText(/Added \d+ programs/);
+  await pointPage.reload();
+  await expect(pointPage.getByRole("heading", { name: "Jam Band" })).toBeVisible();
+  await expect(pointPage.getByRole("heading", { name: "Lessons" })).toBeVisible();
+  await expect(pointPage.getByText("3:00 PM").first()).toBeVisible();
 
-  // 2. A roster musician edits a draft's title and room, but can't set
-  //    leaders, cancel or fill the month.
+  // 2. A roster musician edits a draft's title and room. They can't fill the
+  //    month, and (not being the date's leader) can't make it No Program.
   const musPage = await as(browser, mus, path);
   await expect(musPage.getByRole("button", { name: /^Fill in/ })).toHaveCount(0);
-  await expect(musPage.getByLabel(/^Leader for/)).toHaveCount(0);
   await expect(musPage.getByRole("button", { name: /No Program/ })).toHaveCount(0);
   const firstTitle = musPage.getByLabel(/^Title for Tuesday/).first();
   await firstTitle.fill("Jam Band: Motown");
@@ -80,7 +82,7 @@ test("fill a month, musicians edit drafts, point person sets leaders, lead marks
   await expect(musPage.getByLabel(/^Title for Tuesday/).first()).toHaveValue("Jam Band: Motown");
 
   // 3. The point person assigns the first date's leader.
-  const pointPage = await as(browser, point, path);
+  await pointPage.reload();
   const leaderSelect = pointPage.getByLabel(/^Leader for Tuesday/).first();
   if (!(await leaderSelect.isVisible()))
     throw new Error(`No leader menu for the point person. Page shows: ${(await pointPage.locator("main").innerText()).slice(0, 800)}`);
@@ -91,14 +93,16 @@ test("fill a month, musicians edit drafts, point person sets leaders, lead marks
   await pointPage.reload();
   await expect(pointPage.getByText("(leader)").first()).toBeVisible();
 
-  // 4. The admin lead marks the last Jam Band date "No Program".
-  await leadPage.reload();
-  await leadPage.waitForLoadState("networkidle");
-  const jamBlock = leadPage.locator("div", { has: leadPage.getByRole("heading", { name: "Jam Band" }) }).last();
+  // 4. The point person marks the last Jam Band date "No Program" (on drafts
+  //    that's the point person or the date's leader; the Admin Lead handles
+  //    published dates).
+  await pointPage.reload();
+  await pointPage.waitForLoadState("networkidle");
+  const jamBlock = pointPage.locator("div", { has: pointPage.getByRole("heading", { name: "Jam Band" }) }).last();
   await jamBlock.getByRole("button", { name: "More" }).last().click();
   await jamBlock.getByRole("button", { name: /Make .No Program./ }).last().click();
-  await leadPage.getByRole("button", { name: "Yes, No Program" }).click();
-  await expect(leadPage.getByText(/^Canceled ·/)).toHaveCount(1);
+  await pointPage.getByRole("button", { name: "Yes, No Program" }).click();
+  await expect(pointPage.getByText(/^Canceled ·/)).toHaveCount(1);
   const { count } = await d.from("session").select("id", { count: "exact", head: true }).eq("residency_id", res.id).eq("schedule_state", "canceled");
   expect(count).toBe(1);
 });
