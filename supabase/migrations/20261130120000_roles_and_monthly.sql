@@ -36,6 +36,17 @@ $$;
 revoke all on function public.is_playing(uuid) from public, anon;
 grant execute on function public.is_playing(uuid) to authenticated;
 
+-- Whether anyone is assigned to a session yet. SECURITY DEFINER so the
+-- session_assignment policies can use it without reading their own table
+-- (which would recurse).
+create function public.session_has_musicians(p_session uuid)
+returns boolean language sql stable security definer set search_path = ''
+as $$
+  select exists (select 1 from public.session_assignment where session_id = p_session);
+$$;
+revoke all on function public.session_has_musicians(uuid) from public, anon;
+grant execute on function public.session_has_musicians(uuid) to authenticated;
+
 -- The Admin Lead can still publish and make updated versions.
 create or replace function public.publish_month(p_residency uuid, p_site uuid, p_month date)
 returns uuid language plpgsql security definer set search_path = ''
@@ -198,8 +209,7 @@ create policy "session_assignment: musicians add to drafts they play in" on publ
     select 1 from public.session ss
     where ss.id = session_assignment.session_id and ss.schedule_state = 'draft'
       and (select public.is_on_current_roster(ss.residency_id))
-      and ((select public.is_playing(ss.id))
-           or not exists (select 1 from public.session_assignment x where x.session_id = ss.id))));
+      and ((select public.is_playing(ss.id)) or not (select public.session_has_musicians(ss.id)))));
 drop policy "session_assignment: remove from drafts" on public.session_assignment;
 create policy "session_assignment: remove from drafts" on public.session_assignment for delete to authenticated
   using (exists (
