@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useTransition } from "react";
+import { useActionState, useState, useTransition } from "react";
 import { Field } from "@/components/app-shell";
 import { buttonClass, FormError, inputClass } from "@/components/auth-card";
 import { ConfirmButton } from "@/components/confirm-button";
@@ -19,7 +19,10 @@ import {
   addRosterMember,
   addSeason,
   addStaffAssignment,
+  addStipend,
   endStaffAssignment,
+  removeStipend,
+  setContractRate,
   updateResidency,
   updateRosterMember,
   type SetupFormState,
@@ -257,5 +260,107 @@ export function EndStaffButton({ residencyId, assignmentId, name }: { residencyI
     >
       End
     </button>
+  );
+}
+
+// ---- Pay (admins only, v0.19): hourly rate and stipend payments ----
+
+export type PayContract = {
+  id: string;
+  hourly_rate: number;
+  stipend_installment: { id: string; kind: string; due_on: string; amount: number }[];
+};
+const STIPEND_KINDS = ["project_support", "admin_lead", "training", "other"];
+const kindLabel = (k: string) => k.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+
+export function PayEditor({
+  residencyId,
+  seasonId,
+  personId,
+  name,
+  contract,
+}: {
+  residencyId: string;
+  seasonId: string;
+  personId: string;
+  name: string;
+  contract: PayContract | null;
+}) {
+  const [rate, setRate] = useState(contract ? String(Number(contract.hourly_rate)) : "");
+  const [kind, setKind] = useState("project_support");
+  const [due, setDue] = useState("");
+  const [amount, setAmount] = useState("");
+  const [pending, start] = useTransition();
+  const [msg, setMsg] = useState<string | null>(null);
+  const run = (fn: () => Promise<SetupFormState>, ok: string, after?: () => void) =>
+    start(async () => {
+      const r = await fn();
+      setMsg(r.status === "error" ? (r.message ?? "Something went wrong.") : ok);
+      if (r.status !== "error") after?.();
+    });
+  const stipends = [...(contract?.stipend_installment ?? [])].sort((a, b) => a.due_on.localeCompare(b.due_on));
+  return (
+    <details className="w-full text-xs">
+      <summary className="cursor-pointer text-iris">
+        Pay: {contract ? `$${Number(contract.hourly_rate).toFixed(2)}/hr` : "rate not set"}
+        {stipends.length > 0 && ` · ${stipends.length} stipend payment${stipends.length === 1 ? "" : "s"}`}
+      </summary>
+      <div className="mt-2 flex flex-col gap-3 rounded-lg bg-iris-soft/60 p-3">
+        <form
+          className="flex flex-wrap items-center gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            run(() => setContractRate(residencyId, seasonId, personId, Number(rate)), "Rate saved.");
+          }}
+        >
+          <label htmlFor={`rate-${personId}`}>Hourly rate $</label>
+          <input id={`rate-${personId}`} inputMode="decimal" value={rate} onChange={(e) => setRate(e.target.value)} className={`${inputClass} w-24 py-1 text-xs`} />
+          <button disabled={pending} className={smallButton}>Save rate</button>
+        </form>
+        {contract ? (
+          <div>
+            <p className="font-medium">Stipend payments</p>
+            <ul className="mt-1 space-y-1">
+              {stipends.map((s) => (
+                <li key={s.id} className="flex flex-wrap items-center gap-2">
+                  {kindLabel(s.kind)} · ${Number(s.amount).toFixed(2)} · due {s.due_on}
+                  <ConfirmButton
+                    label="Remove"
+                    question="Remove this payment?"
+                    className="text-muted underline"
+                    onConfirm={() => run(() => removeStipend(residencyId, s.id), "Removed.")}
+                  />
+                </li>
+              ))}
+              {stipends.length === 0 && <li className="text-muted">None yet.</li>}
+            </ul>
+            <form
+              className="mt-2 flex flex-wrap items-center gap-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                run(() => addStipend(residencyId, contract.id, kind, due, Number(amount)), "Stipend payment added.", () => {
+                  setDue("");
+                  setAmount("");
+                });
+              }}
+            >
+              <select value={kind} onChange={(e) => setKind(e.target.value)} aria-label={`Stipend kind for ${name}`} className={`${inputClass} py-1 text-xs`}>
+                {STIPEND_KINDS.map((k) => (
+                  <option key={k} value={k}>{kindLabel(k)}</option>
+                ))}
+              </select>
+              <input type="date" value={due} onChange={(e) => setDue(e.target.value)} aria-label="Due on" className={`${inputClass} py-1 text-xs`} />
+              <span>$</span>
+              <input inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} aria-label="Amount" className={`${inputClass} w-24 py-1 text-xs`} />
+              <button disabled={pending} className={smallButton}>Add payment</button>
+            </form>
+          </div>
+        ) : (
+          <p className="text-muted">Save a rate first, then add stipend payments.</p>
+        )}
+        <p className="text-muted">Only {name} and admins see this. Point people never see pay.</p>
+        {msg && <p role="status" className="text-iris">{msg}</p>}
+      </div>
+    </details>
   );
 }

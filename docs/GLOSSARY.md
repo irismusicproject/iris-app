@@ -1,6 +1,6 @@
 # Iris App — Glossary (Languages 2 and 3)
 
-_Draft v0.11, November 22, 2026 (v0.11: monthly programs; v0.10: usual leader, calendar link; v0.9: documentation words from the CESLC workbook; v0.8: partner calendar layout from the Dec 2026 sample; "Lessons"; v0.7: D14, D15 settled; v0.6: D10, D11, D16 settled; "No Program" and roster words added; v0.5: D9, D13 settled: partner billing words added; v0.4: D2, D4, D6, D7, D8 settled; v0.3: D1, D3, D5 settled; schedule review and sending words added). Translates the words people use into the objects
+_Draft v0.12, November 22, 2026 (v0.12: Collab? Yes/No, hours approval and musician invoices; v0.11: monthly programs; v0.10: usual leader, calendar link; v0.9: documentation words from the CESLC workbook; v0.8: partner calendar layout from the Dec 2026 sample; "Lessons"; v0.7: D14, D15 settled; v0.6: D10, D11, D16 settled; "No Program" and roster words added; v0.5: D9, D13 settled: partner billing words added; v0.4: D2, D4, D6, D7, D8 settled; v0.3: D1, D3, D5 settled; schedule review and sending words added). Translates the words people use into the objects
 defined in DOMAIN-MODEL.md (Language 1), which is authoritative._
 
 - **Part A: Team language.** How Iris staff and musicians talk, and which object each word means.
@@ -92,8 +92,10 @@ enough context to tell which object it is.
 | "Notes" (scheduling tab) [WB] | `Session.internal_note` | Any roster musician, on drafts; never prints |
 | "My week" | The weekly documentation page | Due Tuesday 5 pm (D7) |
 | "resident co-facilitation" [WB] | `SessionReport.resident_involvement = co_facilitated` | Not an interaction type (D2) |
-| "Collab? = Yes" [WB], "collaborative" | `SessionReport.resident_involvement` ∈ {`co_facilitated`, `co_led`} | **Decided (D6)**. Recorded when documenting, not when scheduling |
-| "collaborative event" | A `Session` whose `SessionReport.resident_involvement` is `co_facilitated` or `co_led` | **Decided (D6)** |
+| "Collab? = Yes" [WB], "collaborative" | `SessionReport.resident_involvement = co_led` | **Decided (D6, revised v0.12):** Yes/No only; every Yes is stored and counted as co-led. Recorded when documenting, not when scheduling |
+| "collaborative event" | A `Session` whose `SessionReport.resident_involvement` is not `none` | **Decided (D6)** |
+| "collaborative target", "collab goal" | `Target(metric = collaborative_programs_per_musician)` for a `Season` | Default 2; the point person or an admin sets it per season (v0.12) |
+| "approve hours", "send hours back" | `TimeEntry.state` → `approved`, or back to `draft` with `returned_note` | Done by the point person (or an admin), per musician per week (v0.12) |
 | "interaction type", "program type" (in documentation) [WB] | `InteractionType` on `SessionReport` | The 2026 documentation list (D2). Chosen only when documenting |
 | "type of engagement" | `EngagementType` | For relationship-building activities |
 | "attendance" | `SessionReport.attendance` | Everyone present together: residents, staff, family, guests (**Decided, D15**). The target of 7 uses this |
@@ -188,6 +190,8 @@ internal notes, cancellation reasons or rates.
 | Printed | Source |
 |---|---|
 | "Bill To: Iris Music Project" + address | Fixed |
+| "From" | The musician's `Person.name` and email |
+| Invoice number, e.g. "AR-20261102" | Initials + `PayPeriod.starts_on` (v0.12) |
 | "For services from [start]–[end] (2-week period, Monday–Sunday)" | `PayPeriod` |
 | Lines by residency and category, stipends, adjustments | `InvoiceLine`s |
 | "TOTAL DUE" | `MusicianInvoice.total` |

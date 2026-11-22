@@ -91,7 +91,7 @@ D1: the review suggested "Ensemble Program"; the model uses `Residency`).
 | D3 | Pay comes from weekly `TimeEntry`, not from session documentation; the session leader documents | **Decided** (option A; leader documents) |
 | D4 | `Partner` / `Site` / `Location`; who receives community invoices | **Decided:** one invoice per contract (`PartnerAgreement`), per site, per month |
 | D5 | Roles: program leader per session; admin lead; point person | **Decided:** admin lead per residency season; core team = admins; review → publish → send flow (DOMAIN-MODEL, `CalendarExport`). Update Nov 22: point person = Iris staff, admin lead = contractor musician; all roster musicians edit draft titles, rooms and musicians (special events also date/time); point person assigns leaders |
-| D6 | Resident involvement levels; meaning of "collaborative event" | **Decided:** co-facilitated or co-led, recorded when documenting |
+| D6 | Resident involvement levels; meaning of "collaborative event" | **Decided:** recorded when documenting; Collab? Yes/No, every Yes counts as co-led (Nov 22); target per season, set by point person or admin |
 | D7 | Conflicting handbook deadlines | **Decided:** schedule 10th/15th; documentation + hours Tuesday 5 pm; cancellations 9 am (monthly reflection due date assumed) |
 | D8 | Semester vs. season | **Decided:** seasons per residency (`Season.kind`) |
 | D9 | Contract and pay components; partner billing basis | **Decided:** musician rate per contract; partners per hour or installments; billable hours = session + relationship building per site; admin-set rate, stipends, overhead, corporate invoice; overhead on hours + stipends |

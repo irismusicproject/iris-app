@@ -50,7 +50,7 @@ function seriesFromForm(form: FormData) {
   const kind = (String(form.get("kind") ?? "group_session") as SessionKind);
   const start = String(form.get("start_time") ?? "").trim();
   const minutesText = String(form.get("minutes") ?? "").trim();
-  const recurrence = form.get("recurrence") === "monthly" ? "monthly" : "weekly";
+  const recurrence: "weekly" | "monthly" = form.get("recurrence") === "monthly" ? "monthly" : "weekly";
   return {
     recurrence,
     week_of_month: recurrence === "monthly" ? Number(form.get("week_of_month")) || null : null,
@@ -336,6 +336,26 @@ export async function setCollaborationTarget(residencyId: string, seasonId: stri
   const { error } = await supabase
     .from("target")
     .upsert({ season_id: seasonId, metric: "collaborative_programs_per_musician", value }, { onConflict: "season_id,metric" });
+  if (error) return fail(error);
+  refresh(residencyId);
+  return ok;
+}
+
+// ---- Approving hours (point person or admin; v0.19) ----
+
+export async function approveWeek(residencyId: string, personId: string, week: string): Promise<ScheduleResult> {
+  await requirePerson();
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("approve_week", { p_person: personId, p_residency: residencyId, p_week: week });
+  if (error) return fail(error);
+  refresh(residencyId);
+  return ok;
+}
+
+export async function returnWeek(residencyId: string, personId: string, week: string, note: string): Promise<ScheduleResult> {
+  await requirePerson();
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("return_week", { p_person: personId, p_residency: residencyId, p_week: week, p_note: note });
   if (error) return fail(error);
   refresh(residencyId);
   return ok;

@@ -1,6 +1,6 @@
 # Iris App — Domain Model (Language 1: the code)
 
-_Draft v0.18, November 22, 2026 (v0.18: roles narrowed: the point person plans, the Admin Lead publishes and updates published dates, musicians edit drafts they play in and pick leaders; monthly programs. v0.17: "No Program" dates can be restored. v0.16: season view for the point person. v0.15: usual leaders, season reminders, private calendar links. v0.14: documentation from the CESLC workbook sample, weekly; musicians write draft notes; schedule laid out like the workbook tab. v0.13: people in a program can see each other's names, nothing else. v0.12: every roster musician edits draft titles, rooms and musicians; the point person assigns leaders. v0.11: `Partner`, `Site`, `Location` built; see section 1. v0.10: scheduled relationship building (e.g. Lessons) and the partner calendar layout; v0.9: partner permission for resident names confirmed; v0.8: decisions D14 and D15 settled: residents and attendance; v0.7: decisions D10, D11 and D16 settled: events, extras, absences, substitutes and the roster; v0.6: both D9 billing details confirmed; v0.5: decisions D9 and D13 settled: partner billing and version 1 scope; v0.4: decisions D2, D4, D6, D7 and D8 settled; v0.3: decisions D1, D3 and D5 settled, including how a month's schedule is reviewed, published and sent; v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
+_Draft v0.19, November 22, 2026 (v0.19: musician hours and invoices built: hours entered on My week, the point person approves, admins set rates and stipends, invoices per two-week pay period; "Collab?" is Yes/No and every Yes counts as co-led; the collaboration target is set per season by the point person or an admin. v0.18: roles narrowed: the point person plans, the Admin Lead publishes and updates published dates, musicians edit drafts they play in and pick leaders; monthly programs. v0.17: "No Program" dates can be restored. v0.16: season view for the point person. v0.15: usual leaders, season reminders, private calendar links. v0.14: documentation from the CESLC workbook sample, weekly; musicians write draft notes; schedule laid out like the workbook tab. v0.13: people in a program can see each other's names, nothing else. v0.12: every roster musician edits draft titles, rooms and musicians; the point person assigns leaders. v0.11: `Partner`, `Site`, `Location` built; see section 1. v0.10: scheduled relationship building (e.g. Lessons) and the partner calendar layout; v0.9: partner permission for resident names confirmed; v0.8: decisions D14 and D15 settled: residents and attendance; v0.7: decisions D10, D11 and D16 settled: events, extras, absences, substitutes and the roster; v0.6: both D9 billing details confirmed; v0.5: decisions D9 and D13 settled: partner billing and version 1 scope; v0.4: decisions D2, D4, D6, D7 and D8 settled; v0.3: decisions D1, D3 and D5 settled, including how a month's schedule is reviewed, published and sent; v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
 app's objects. GLOSSARY.md translates the team's language (Language 2) and
 our partner-facing language (Language 3) into these objects._
 
@@ -257,11 +257,16 @@ contract, so a musician working in two regions can have two rates.
 | `person_id`, `season_id` | → | Unique together |
 | `hourly_rate` | money | Flat rate, prep time included |
 | `estimated_weekly_hours` | number | |
-| `stipends` | list of `{kind, amount, installments: [{due_on, amount}]}` | `kind`: `project_support`, `admin_lead`, `training`, `other` |
+| `stipends` | list of `StipendInstallment {kind, due_on, amount}` | `kind`: `project_support`, `admin_lead`, `training`, `other`. Built v0.19 as one row per payment |
 | `signed_on` | date | |
 | `status` | enum | `draft`, `sent`, `signed`, `ended` |
 
 W-2 employees have no `Contract`. They are paid through payroll.
+
+**Built (v0.19, decided by Lauren Nov 22, 2026):** admins set each
+contractor's hourly rate and stipend payments on the program page, per
+season. Only the musician and admins can see a contract; **the point person
+never sees pay.** `signed_on` and `status` are not built yet.
 
 ---
 
@@ -535,7 +540,7 @@ The documentation of one `Session`, written by its **leader**. **Decided (D3):**
 | `actual_minutes` | int | Length, pre-filled from the schedule; used for billable session hours (D9). An in-app timer may come later |
 | `attendance` | int | **Everyone present**: residents, staff, family and guests, counted together (D15) |
 | `interaction_type_id` | → InteractionType | Chosen by the leader when documenting (D2) |
-| `resident_involvement` | enum `ResidentInvolvement` | `none`, `co_facilitated`, `co_led`. What actually happened. **Decided (D6):** a "collaborative event" is a session documented as `co_facilitated` or `co_led`; `co_led` also counts toward the handbook's per-semester target |
+| `resident_involvement` | enum `ResidentInvolvement` | `none`, `co_facilitated`, `co_led`. What actually happened. **Revised v0.19 (Lauren, Nov 22, 2026):** the leader answers "Collab?" Yes or No only; **Yes is stored as `co_led`** and every Yes counts as collaborative and toward the season's target. `co_facilitated` is kept for older records but no longer offered |
 | `notes` | text | No health information |
 | `submitted_at` | datetime | |
 
@@ -545,7 +550,7 @@ Approval (`state`, `approved_by`, `approved_at`) comes later.
 week"** page (Monday–Sunday) showing the programs they led, their
 relationship-building activities, and the month's reflection, due Tuesday
 5 pm the following week (D7). The workbook's "Collab?" column is
-`resident_involvement`: No / Yes, co-facilitated / Yes, co-led.
+`resident_involvement`: No / Yes (v0.19).
 
 **Invariants:** exists only for sessions that are not canceled and are in
 the past. Locked once `approved`; corrections go through an admin and are
@@ -573,7 +578,7 @@ One logged instance of relationship building with one or more residents
 | `minutes` | int | **Required** (decided Nov 22, 2026): billed per site (D9) and pre-fills weekly hours |
 | `collaborative` | bool | The workbook's "Collab?" (decided Nov 22, 2026) |
 | `resident_ids` | → Resident (many) | All at `site_id`. At least one, except **Assumption:** a hallway concert may have none (played for whoever is there) |
-| `session_id` | → Session | Optional: the scheduled `relationship_building` session it happened in (e.g. that Tuesday's Lessons) |
+| `session_id` | → Session | Optional: the scheduled `relationship_building` session it happened in. **Not asked on the form (v0.19, Lauren removed "part of a scheduled lesson")** |
 | `prepares_session_id` | → Session | Optional: planning a co-led session (handbook: ≥5 meetings) |
 | `note` | text | One sentence. **No health information** |
 | `state` | enum | `submitted`, `approved` |
@@ -617,11 +622,22 @@ Hours a musician worked in one week, for one `Residency`, in one category.
 
 **Invariant:** unique per person × residency × week × category. The app
 flags a week when submitted hours differ sharply from documented sessions
-and activities.
+and activities (not built yet).
+
+**Built (v0.19, decided by Lauren Nov 22, 2026):** musicians enter hours on
+**My week**, pre-filled from the programs they played (Programs), special
+events (Concerts) and logged relationship building, and submit them with
+their documentation. The **point person approves** each musician's week for
+their program, or sends it back with a note (`returned_note`). Approved
+hours are locked. Admins can also approve.
 
 ### `PayPeriod`
 A two-week, Monday–Sunday period. Attributes: `starts_on`, `ends_on`,
 `pay_date`.
+
+**Assumption (v0.19):** periods are counted every 14 days from the
+`Setting` `pay_period_anchor` (Monday, November 2, 2026), not stored as rows.
+`pay_date` is not built yet. Lauren to confirm the real anchor date.
 
 ### `PayAdjustment`
 A one-off payment outside hourly pay and stipends: special pay, an extra
@@ -649,6 +665,10 @@ invoice to Iris).
 **Calculation:** approved `TimeEntry` hours in the period × `Contract.hourly_rate`
 (per residency), + stipend installments due in the period, + approved
 `PayAdjustment`s. Only `employment_type = contractor_1099`.
+
+**Built (v0.19):** "My invoices" shows each pay period's invoice, computed
+live (not stored yet, so `state` isn't built), with a PDF billed to Iris
+Music Project. `PayAdjustment`s are not included yet.
 
 ### `PartnerAgreement`
 A contract under which Iris charges a `Partner` for services at one or more
@@ -734,8 +754,8 @@ A goal set by an admin.
 |---|---|---|
 | `scope` | enum + id | `residency`, `roster_member` (per musician) |
 | `season_id` | → Season | |
-| `metric` | enum | `avg_attendance` (default 7, handbook; counts everyone present, D15), `co_led_sessions_per_musician` (default 2 per semester, handbook), `relationship_minutes_per_week`, `sessions_by_model_type`, `other` |
-| `value` | number | Admins can change targets at any time from the admin view; changes are logged in `AuditLog` |
+| `metric` | enum | `avg_attendance` (default 7, handbook; counts everyone present, D15), `co_led_sessions_per_musician` (default 2 per semester, handbook; built v0.19 as `collaborative_programs_per_musician`, per season), `relationship_minutes_per_week`, `sessions_by_model_type`, `other` |
+| `value` | number | Admins can change targets at any time from the admin view; changes are logged in `AuditLog`. **v0.19 (Lauren, Nov 22, 2026):** the collaboration target is also set by the **point person**, on the season view, because it varies by project |
 
 ### `SpecialProject`
 A one-time, mission-aligned initiative proposed and funded outside regular
@@ -764,6 +784,7 @@ Admin-editable rules from the handbook, so compliance is data.
 | `documentation_and_time_due` | **One deadline** for `SessionReport`s, `RelationshipActivity` logs and `TimeEntry` hours: **Tuesday 17:00 of the following week** |
 | `cancellation_notice_time` | 09:00 the same day, for illness or emergency |
 | `max_musician_absences_per_season` | Set by admins; **no default yet**. Passing it warns the Admin Lead and point person (D11) |
+| `pay_period_anchor` | A Monday that starts a pay period; **assumed** 2026-11-02 (v0.19) |
 
 **Assumption (D7):** a `MonthlyReflection` is due by the same Tuesday
 17:00 deadline in the week after the month ends.

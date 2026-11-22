@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { requirePerson } from "@/lib/auth";
-import { getResidencyNames } from "@/lib/residency-access";
+import { getResidencyAccess, getResidencyNames } from "@/lib/residency-access";
 import { createClient } from "@/lib/supabase/server";
 import {
   RESIDENCY_STATUS_LABELS,
@@ -19,6 +19,8 @@ import {
   AddSiteForm,
   AddStaffForm,
   EndStaffButton,
+  PayEditor,
+  type PayContract,
   ResidencyForm,
   RosterMemberActions,
 } from "../forms";
@@ -45,7 +47,7 @@ export default async function ResidencyPage({ params }: { params: Promise<{ id: 
   if (!residency) notFound();
 
   const today = new Date().toISOString().slice(0, 10);
-  const names = await getResidencyNames(id);
+  const [names, access] = await Promise.all([getResidencyNames(id), getResidencyAccess(id, isAdmin)]);
   const nameOf = (pid: string) => names.get(pid) ?? "Someone";
   const [{ data: siteRows }, { data: seasonRows }, { data: staffRows }] = await Promise.all([
     supabase.from("residency_site").select("site(id, display_name, city)").eq("residency_id", id),
@@ -66,14 +68,23 @@ export default async function ResidencyPage({ params }: { params: Promise<{ id: 
 
   // Admin-only pick lists.
   let otherSites: { id: string; label: string }[] = [];
-  let people: { id: string; name: string; isAdmin: boolean }[] = [];
+  let people: { id: string; name: string; isAdmin: boolean; contractor: boolean }[] = [];
   if (isAdmin) {
     const [{ data: ps }, { data: pp }] = await Promise.all([
       supabase.from("site").select("id, display_name").eq("partner_id", residency.partner_id).eq("active", true).order("display_name"),
-      supabase.from("person").select("id, name, system_roles").eq("active", true).order("name"),
+      supabase.from("person").select("id, name, system_roles, employment_type").eq("active", true).order("name"),
     ]);
     otherSites = (ps ?? []).filter((s) => !sites.some((x) => x.id === s.id)).map((s) => ({ id: s.id, label: s.display_name }));
-    people = (pp ?? []).map((p) => ({ id: p.id, name: p.name, isAdmin: (p.system_roles as string[]).includes("admin") }));
+    people = (pp ?? []).map((p) => ({ id: p.id, name: p.name, isAdmin: (p.system_roles as string[]).includes("admin"), contractor: p.employment_type === "contractor_1099" }));
+  }
+  // Pay (admins only; RLS also hides other people's contracts).
+  const contracts = new Map<string, PayContract>();
+  if (isAdmin && seasons.length) {
+    const { data: cs } = await supabase
+      .from("contract")
+      .select("id, person_id, season_id, hourly_rate, stipend_installment(id, kind, due_on, amount)")
+      .in("season_id", seasons.map((s) => s.id));
+    for (const c of cs ?? []) contracts.set(`${c.season_id}:${c.person_id}`, c as unknown as PayContract);
   }
 
   const card = "mt-8 rounded-xl border border-border bg-surface p-5 sm:p-6";
@@ -89,6 +100,9 @@ export default async function ResidencyPage({ params }: { params: Promise<{ id: 
       <div className="mt-4 flex flex-wrap gap-2 text-sm">
         <Link href={`/residencies/${id}/month`} className="rounded-full bg-iris px-4 py-2 font-medium text-white hover:bg-iris-strong dark:text-background">Schedule</Link>
         <Link href={`/residencies/${id}/season`} className="rounded-full border border-border px-4 py-2 hover:bg-iris-soft">Season</Link>
+        {access.isPointPerson && (
+          <Link href={`/residencies/${id}/hours`} className="rounded-full border border-border px-4 py-2 hover:bg-iris-soft">Hours to approve</Link>
+        )}
       </div>
 
       <section className={card}>
@@ -156,6 +170,15 @@ export default async function ResidencyPage({ params }: { params: Promise<{ id: 
                         name={nameOf(m.person_id)}
                         isCore={m.is_core}
                         isAdminLead={m.is_admin_lead}
+                      />
+                    )}
+                    {isAdmin && people.find((p) => p.id === m.person_id)?.contractor && (
+                      <PayEditor
+                        residencyId={id}
+                        seasonId={s.id}
+                        personId={m.person_id}
+                        name={nameOf(m.person_id)}
+                        contract={contracts.get(`${s.id}:${m.person_id}`) ?? null}
                       />
                     )}
                   </li>

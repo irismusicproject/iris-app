@@ -20,6 +20,7 @@ export function AppShell({
             <Link href="/dashboard" className={nav}>Home</Link>
             <Link href="/residencies" className={nav}>Programs</Link>
             <Link href="/documentation" className={nav}>My week</Link>
+            <Link href="/invoices" className={nav}>My invoices</Link>
             {isAdmin && <Link href="/admin/people" className={nav}>People</Link>}
             {isAdmin && <Link href="/admin/partners" className={nav}>Partners</Link>}
             <Link href="/account/profile" className={nav}>My profile</Link>
