@@ -1052,6 +1052,9 @@ isOneToOne: false
 "may_change_approved":
 { Args: Record<PropertyKey, never>; Returns: boolean
                            },
+"merge_person":
+{ Args: { "p_end_sessions"?: boolean,"p_from": string,"p_into": string }; Returns: undefined
+                           },
 "missing_work":
 { Args: { "p_residency": string,"p_week": string }; Returns: {
               "documented_minutes": number,"hours_state": string,"person_id": string,"undocumented": number
