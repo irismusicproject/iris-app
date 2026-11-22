@@ -69,7 +69,7 @@ enough context to tell which object it is.
 | "point person", "designated Iris staff member" [CH] | `StaffAssignment.role = point_person` | |
 | "admin", "core team", "core salaried team" | `Person.system_roles ∋ admin` | Sees and does everything across every residency, with its own admin view (D5). In scheduling talk, "the admin" usually means the **admin lead**; check context |
 | "sub", "substitute", "Musician Absent" [WB] | `SessionAssignment.status` = `substitute` / `absent` | Recorded by the absent musician; any active person; joins the roster (D11, D16) |
-| "No Program" | A canceled `Session` (any reason; e.g. a planned absence before the 10th, D11, or a holiday) | Prints as "No Program" on the partner calendar |
+| "No Program" | A canceled `Session` (any reason; e.g. a planned absence before the 10th, D11, or a holiday) | Prints as "No Program" on the partner calendar. Can be restored as a draft (v0.17) |
 | "Lessons" (on a schedule) | A `Series`/`Session` with `kind = relationship_building`, often without a set time | Documented as `RelationshipActivity` records, not a session report |
 | "missed sessions" | A musician's `absent` assignments and musician-reason cancellations in a season | Warning past `Setting.max_musician_absences_per_season` (D11) |
 | "resident" | `Resident` | First name + last initial; added by musicians as they work (D14) |

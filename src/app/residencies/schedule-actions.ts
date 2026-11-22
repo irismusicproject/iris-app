@@ -213,6 +213,21 @@ export async function cancelSession(residencyId: string, sessionId: string, reas
   return ok;
 }
 
+/** Restore a "No Program" date: back to a draft with its musicians and leader (v0.17). */
+export async function restoreSession(residencyId: string, sessionId: string): Promise<ScheduleResult> {
+  await requirePerson();
+  const supabase = await createClient();
+  const { error, count } = await supabase
+    .from("session")
+    .update({ schedule_state: "draft", cancellation_reason: null, canceled_at: null }, { count: "exact" })
+    .eq("id", sessionId)
+    .eq("schedule_state", "canceled");
+  if (error) return fail(error);
+  if (!count) return { status: "error", message: "Only the admin lead, point person or an admin can restore a date." };
+  refresh(residencyId);
+  return ok;
+}
+
 export async function addOneTimeSession(residencyId: string, timeZone: string, _prev: ScheduleResult, form: FormData): Promise<ScheduleResult> {
   await requirePerson();
   const e: Record<string, string> = {};

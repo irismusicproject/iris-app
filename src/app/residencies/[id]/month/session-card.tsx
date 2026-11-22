@@ -13,6 +13,7 @@ import {
   addMusician,
   cancelSession,
   removeMusician,
+  restoreSession,
   setLeader,
   setSessionNote,
   setSessionRoom,
@@ -161,7 +162,20 @@ export function SessionCard({
         )}
 
         {canceled ? (
-          <span />
+          canSchedule ? (
+            <span className="col-span-2 lg:col-span-1">
+              <ConfirmButton
+                disabled={pending}
+                className={small}
+                label="Restore"
+                question={`Bring ${session.dayLabel} back as a draft?`}
+                confirmLabel="Yes, restore"
+                onConfirm={() => run(() => restoreSession(residencyId, session.id), "Restored as a draft. Find a sub or update it under More.")}
+              />
+            </span>
+          ) : (
+            <span />
+          )
         ) : (
           <button type="button" className={`${small} col-span-2 justify-self-start lg:col-span-1`} aria-expanded={open} onClick={() => setOpen((o) => !o)}>
             {open ? "Less" : "More"}
