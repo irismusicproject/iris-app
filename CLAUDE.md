@@ -125,6 +125,24 @@ We're building a **web prototype** at app.irismusicproject.org first, and
 **Android and iPhone apps** later. Build now so the native apps can reuse
 the same backend:
 
+- **The phone app (decided by Ryan, Nov 22, 2026)** lives in `mobile/`: an
+  Expo app for musicians in the field only (no admin features), for Android
+  first, then iPhone and iPad from the same code. It talks to Supabase
+  directly, through the same rules as the website, and imports
+  `src/shared` as `@shared/...`. Its own checks run in
+  `.github/workflows/mobile.yml`; Vercel skips website builds when only
+  `mobile/` changed (`vercel.json`).
+- **Database changes must not break phones in the field.** Phones keep
+  running an older app for days or weeks. So never rename or remove a
+  table, column, function or enum value the phone app uses in one step:
+  **expand, then contract**. Add the new one and keep the old working; remove
+  the old one in a later release, after the `min_app_version` setting
+  (`docs/OFFLINE-SPEC.md`) has moved past every app that needs it.
+- **Database types** live in `src/shared/database.types.ts`, generated from the
+  migrations. After changing a migration, run `npm run db:types` (needs the
+  local Supabase), or commit the `database-types` artifact from the CI run.
+  CI fails while the file is out of date.
+
 - **Rules live in Supabase, not in page code.** Business rules and
   permissions are Row Level Security policies and database functions, so
   every client (web or native) gets the same behavior. Pages only display
@@ -193,7 +211,7 @@ with **[Lauren's side]** or **[Ryan's side]**.
   merge into, or open a pull request against `production`.
 - **Pull `main`** before starting any task, and again before merging.
 - **Merge only when** the build, lint and type checks pass and the Vercel
-  preview deploys.
+  preview deploys (or Vercel skipped it because only `mobile/` changed).
 - **Previews use the staging database**, which holds fake data only (README,
   "Staging database"). Put realistic test data in `supabase/seed.sql`, never
   in production.
