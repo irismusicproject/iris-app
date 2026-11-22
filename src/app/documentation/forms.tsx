@@ -42,6 +42,9 @@ export function ReportRow({
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
   const [done, setDone] = useState(!!r);
+  // The length comes from the program (set by the point person or an admin,
+  // v0.20). The leader only changes it when the session ran longer or shorter.
+  const [editLength, setEditLength] = useState(!!r && r.minutes !== session.scheduledMinutes);
 
   return (
     <li className="py-4">
@@ -53,7 +56,7 @@ export function ReportRow({
       </div>
       <p className="text-sm text-muted">{session.day}{session.time ? ` · ${session.time}` : ""} · {session.place}</p>
       <form
-        className="mt-3 grid gap-3 sm:grid-cols-[6rem_1fr_1fr_6rem]"
+        className="mt-3 grid gap-3 sm:grid-cols-[6rem_1fr_8rem]"
         onSubmit={(ev) => {
           ev.preventDefault();
           start(async () => {
@@ -61,7 +64,7 @@ export function ReportRow({
               attendance: Number(attendance),
               interactionTypeId: typeId,
               involvement,
-              minutes: Number(minutes),
+              minutes: editLength ? Number(minutes) : session.scheduledMinutes,
               notes,
             });
             if (res.status === "saved") { setDone(true); setMsg("Saved."); } else setMsg(res.message ?? "Something went wrong.");
@@ -84,15 +87,38 @@ export function ReportRow({
             <option value="co_led">Yes</option>
           </select>
         </Field>
-        <Field label="Minutes">
-          <input inputMode="numeric" value={minutes} onChange={(e) => setMinutes(e.target.value)} required className={inputClass} />
-        </Field>
-        <div className="sm:col-span-4">
+        <div className="text-sm sm:col-span-3">
+          {editLength ? (
+            <div className="flex flex-wrap items-end gap-3">
+              <Field label="How long it actually ran (minutes)">
+                <input inputMode="numeric" value={minutes} onChange={(e) => setMinutes(e.target.value)} required className={`${inputClass} w-28`} />
+              </Field>
+              <button
+                type="button"
+                className="pb-2 text-xs text-muted underline"
+                onClick={() => {
+                  setEditLength(false);
+                  setMinutes(String(session.scheduledMinutes));
+                }}
+              >
+                Use the usual {session.scheduledMinutes} min
+              </button>
+            </div>
+          ) : (
+            <p>
+              Length: <strong>{session.scheduledMinutes} min</strong>{" "}
+              <button type="button" className="ml-1 text-xs text-iris underline" onClick={() => setEditLength(true)}>
+                Ran longer or shorter?
+              </button>
+            </p>
+          )}
+        </div>
+        <div className="sm:col-span-3">
           <Field label="Notes (optional)" hint="Music and group engagement only. No health information.">
             <input value={notes} onChange={(e) => setNotes(e.target.value)} className={inputClass} />
           </Field>
         </div>
-        <div className="flex items-center gap-3 sm:col-span-4">
+        <div className="flex items-center gap-3 sm:col-span-3">
           <button disabled={pending} className={small}>{pending ? "Saving..." : done ? "Update" : "Save"}</button>
           {msg && <span role="status" className="text-xs text-iris">{msg}</span>}
         </div>

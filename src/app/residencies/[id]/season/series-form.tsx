@@ -57,7 +57,11 @@ export function SeriesForm({
           <Field label={timeOptional ? "Time (optional)" : "Time"} error={e?.start_time}>
             <input name="start_time" type="time" required={!timeOptional} defaultValue={series?.start_time?.slice(0, 5) ?? ""} className={inputClass} />
           </Field>
-          <Field label={timeOptional ? "Minutes (optional)" : "Minutes"} error={e?.minutes}>
+          <Field
+            label={timeOptional ? "Minutes (optional)" : "Length (minutes)"}
+            error={e?.minutes}
+            hint={timeOptional ? undefined : "Musicians won't retype it when documenting. Changing it updates every date not yet documented."}
+          >
             <input name="minutes" type="number" min={5} max={600} step={5} required={!timeOptional} defaultValue={series?.minutes ?? (timeOptional ? "" : 45)} className={inputClass} />
           </Field>
         </div>
