@@ -1,0 +1,122 @@
+name: Claude PR review
+
+# Advisory only (Ryan, Nov 2026). On every pull request, Claude reads the
+# change and posts ONE plain-language comment checking it against CLAUDE.md
+# and docs/DOMAIN-MODEL.md. It never blocks merging: it is not a required
+# check, and the review step can't fail the run. Each push updates the same
+# comment. Uses Anthropic API credit per run. See README, "Automated PR review".
+#
+# Turn it off: Actions -> Claude PR review -> "..." -> Disable workflow,
+# or delete the ANTHROPIC_API_KEY repository secret (the run then skips).
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+# A new push replaces a review still running for the same pull request.
+concurrency:
+  group: claude-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    # Never on pull requests from forks (the repository is public).
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Is this set up?
+        id: cfg
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::warning::No ANTHROPIC_API_KEY repository secret yet (README, Automated PR review). Skipping the review."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+      - uses: actions/checkout@v4
+        if: steps.cfg.outputs.ok == 'true'
+        with:
+          fetch-depth: 1
+
+      - name: Review the pull request
+        if: steps.cfg.outputs.ok == 'true'
+        # Advice only: a failed or timed-out review never fails the run.
+        continue-on-error: true
+        uses: anthropics/claude-code-action@v1.0.286
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # The job's own short-lived token, limited to the permissions above,
+          # so the Claude GitHub App doesn't need to be installed.
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          allow_fork_prs: "false"
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+
+            You are the advisory reviewer for iris-app, the internal web app
+            of Iris Music Project (a small nonprofit). The PR branch is
+            checked out in the working directory. Read CLAUDE.md and
+            docs/DOMAIN-MODEL.md first (docs/GLOSSARY.md as needed), then the
+            change: `gh pr view ${{ github.event.pull_request.number }} --json title,body,files`
+            and `gh pr diff ${{ github.event.pull_request.number }}`.
+            You are reading only. Don't edit files, run the app, or install anything.
+
+            Check the change against these project rules:
+            1. Database permissions. Every new table has Row Level Security
+               enabled, and its grants and policies match DOMAIN-MODEL.md
+               section 7 ("Permissions"). Business rules and permissions live
+               in Supabase (RLS policies, database functions), not page code.
+            2. Names. No table, column, type, variable, route, API field or
+               file is named with "program", "programme", "community" or
+               "ensemble". Those words may appear only in UI labels and
+               generated documents, through the mappings in docs/GLOSSARY.md.
+            3. Domain model. No object, attribute, relationship or enum value
+               that docs/DOMAIN-MODEL.md doesn't define.
+            4. Privacy and secrets. No real people's data (resident names,
+               musicians' contact details, hours, pay, exports), nothing that
+               identifies a resident, no resident health information, no
+               secrets, keys or `.env` files. Test and seed data must be
+               obviously made up.
+            5. Migrations. A file under supabase/migrations/ that the PR
+               modifies, renames or deletes (status other than "added" in the
+               file list) is a migration already on main: it must be fixed
+               with a new migration instead. New migrations should add, not
+               break (no dropping or renaming a column the live code uses).
+            6. Tests. New tables come with permission tests in supabase/tests/,
+               and new screens with browser tests in e2e/. Lauren's prototype
+               PRs often arrive without tests by design (CLAUDE.md, "Division
+               of labor"), so phrase this as a to-do for Ryan's side, not a
+               fault.
+            7. Docs. Changes to the model (new objects, attributes, enum
+               values, decisions) update docs/DOMAIN-MODEL.md and/or
+               docs/GLOSSARY.md in the same PR, with the draft version note
+               bumped.
+            Also mention any clear bug or security problem you notice, but
+            don't comment on style or taste. How a feature looks and works
+            is Lauren's call.
+
+            Write for a reader who is not a professional developer: brief,
+            plain words, constructive. Rank findings by severity, most serious
+            first, labeled "Must fix", "Should fix" or "To-do for Ryan's side".
+            For each, name the file (and line if useful), say what's wrong in
+            one or two sentences, and suggest the fix. Don't pad: if a rule
+            doesn't apply, skip it. If nothing turns up, say "No issues found."
+            and list in one line which checks you ran.
+
+            Post exactly ONE comment, and nothing else. Start its body with
+            the line "### Claude PR review (advisory)" and end it with the
+            line "_Advice only; this check never blocks merging._". Post it
+            with this command, which updates the previous review comment if
+            there is one:
+              gh pr comment ${{ github.event.pull_request.number }} --edit-last --create-if-none --body "<your review>"
+          claude_args: |
+            --max-turns 30
+            --allowedTools "Read,Glob,Grep,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*)"

@@ -180,6 +180,16 @@ GitHub applies migrations. **Don't paste migrations into the SQL Editor.** While
 3. **Build staging's tables.** Open **Actions → Database migrations → Run workflow**, choose **build-staging**, and run it. It applies every migration plus the fake data to staging only.
 4. **Tell the tool what production already has.** Production's first migrations were run by hand. Open **Actions → Database migrations → Run workflow**, choose **mark-applied**, and enter the versions already run on production, for example `20261121120000 20261122120000`. Approve the run. Its last step should show nothing pending.
 
+## Automated PR review
+
+Every pull request gets one advisory comment from Claude (`.github/workflows/claude-review.yml`). It checks the change against `CLAUDE.md` and `docs/DOMAIN-MODEL.md`: permissions on new tables, forbidden names, privacy, edited migrations, missing tests and docs. Each push updates the same comment.
+
+- **It never blocks merging.** It isn't a required check, and a failed review doesn't fail the run. Treat it as a second pair of eyes, not a gate.
+- **It costs Anthropic API credit** on every run (each push to a pull request).
+- **It skips pull requests from forks.**
+- **Setup (Ryan, once):** add the repository secret `ANTHROPIC_API_KEY` under **Settings → Secrets and variables → Actions**. Until then, the workflow skips with a warning.
+- **To turn it off:** open **Actions → Claude PR review**, click **⋯**, and choose **Disable workflow**. Deleting the secret also stops it.
+
 ## Deploying
 
 Vercel deploys every merge to `main` automatically. Production needs these four environment variables, under Settings, then Environment Variables. Previews use staging's values instead:
