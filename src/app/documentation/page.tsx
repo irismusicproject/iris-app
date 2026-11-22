@@ -359,8 +359,9 @@ export default async function MyWeek({ searchParams }: { searchParams: Promise<{
           <section className={card}>
             <h2 className="text-lg font-semibold">Hours and submit</h2>
             <p className="mt-1 text-sm text-muted">
-              Your timesheet for this week. Numbers are pre-filled from the programs you played and the relationship building you
-              logged; adjust them (prep, set-up, the 15 minutes before and after programs), then submit your week in one step.
+              Your timesheet for this week, calculated from your documentation: the programs you played, special events, and your
+              relationship building. Log the 15 minutes before and after a program as relationship building. To change a number,
+              fix the documentation, then submit your week in one step.
             </p>
             <div className="mt-4">
               {(() => {
