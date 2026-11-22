@@ -202,3 +202,99 @@ export function validateSeries(input: SeriesInput): Record<string, string> {
 export function playingLeaders(assignments: Pick<SessionAssignment, "role" | "status">[]): number {
   return assignments.filter((a) => a.role === "leader" && a.status !== "absent").length;
 }
+
+// ---- Form validation for program setup (residency, season, roster, staff) ----
+// Same shape as place.ts: FormData in, { ok, value } or { ok: false, errors } out.
+
+type Result<T> = { ok: true; value: T } | { ok: false; errors: Record<string, string> };
+type Errors = Record<string, string>;
+const text = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
+const isDate = (v: string) => /^\d{4}-\d{2}-\d{2}$/.test(v);
+const isUuid = (v: string) => /^[0-9a-f-]{36}$/i.test(v);
+
+function requiredText(f: FormData, k: string, label: string, e: Errors, max = 200) {
+  const v = text(f, k);
+  if (!v) e[k] = `Enter ${label}.`;
+  else if (v.length > max) e[k] = `Use ${max} characters or fewer.`;
+  return v;
+}
+function optionalDate(f: FormData, k: string, e: Errors) {
+  const v = text(f, k);
+  if (v && !isDate(v)) e[k] = "Enter a valid date.";
+  return v || null;
+}
+function requiredDate(f: FormData, k: string, label: string, e: Errors) {
+  const v = text(f, k);
+  if (!isDate(v)) e[k] = `Enter ${label}.`;
+  return v;
+}
+function requiredId(f: FormData, k: string, label: string, e: Errors) {
+  const v = text(f, k);
+  if (!isUuid(v)) e[k] = `Pick ${label}.`;
+  return v;
+}
+
+export type ResidencyInput = Omit<Residency, "id">;
+
+export function validateResidency(f: FormData, partnerId?: string): Result<ResidencyInput> {
+  const e: Errors = {};
+  const partner_id = partnerId ?? requiredId(f, "partner_id", "a partner", e);
+  const name = requiredText(f, "name", "a name", e);
+  const display_name = text(f, "display_name") || (name ? `Iris Music Project at ${name}` : "");
+  if (display_name.length > 200) e.display_name = "Use 200 characters or fewer.";
+  const status = (text(f, "status") || "planned") as ResidencyStatus;
+  if (!RESIDENCY_STATUSES.includes(status)) e.status = "Pick a status.";
+  const started_on = optionalDate(f, "started_on", e);
+  const ended_on = optionalDate(f, "ended_on", e);
+  if (started_on && ended_on && ended_on < started_on) e.ended_on = "The end date must be after the start date.";
+  if (Object.keys(e).length) return { ok: false, errors: e };
+  return { ok: true, value: { partner_id, name, display_name, status, started_on, ended_on } };
+}
+
+export type SeasonInput = Omit<Season, "id" | "residency_id">;
+
+export function validateSeason(f: FormData): Result<SeasonInput> {
+  const e: Errors = {};
+  const name = requiredText(f, "name", "a name, e.g. \"Spring 2027\"", e);
+  const starts_on = requiredDate(f, "starts_on", "a start date", e);
+  const ends_on = requiredDate(f, "ends_on", "an end date", e);
+  if (isDate(starts_on) && isDate(ends_on) && ends_on < starts_on) e.ends_on = "The end date must be after the start date.";
+  const kind = (text(f, "kind") || "season") as SeasonKind;
+  if (!SEASON_KINDS.includes(kind)) e.kind = "Pick a kind.";
+  if (Object.keys(e).length) return { ok: false, errors: e };
+  return { ok: true, value: { name, starts_on, ends_on, kind } };
+}
+
+export type RosterMemberInput = { person_id: string; is_core: boolean; is_admin_lead: boolean; joined_on: string };
+
+export function validateRosterMember(f: FormData): Result<RosterMemberInput> {
+  const e: Errors = {};
+  const person_id = requiredId(f, "person_id", "a musician", e);
+  const joined_on = text(f, "joined_on") || new Date().toISOString().slice(0, 10);
+  if (!isDate(joined_on)) e.joined_on = "Enter a valid date.";
+  if (Object.keys(e).length) return { ok: false, errors: e };
+  return {
+    ok: true,
+    value: { person_id, is_core: f.get("is_core") === "on", is_admin_lead: f.get("is_admin_lead") === "on", joined_on },
+  };
+}
+
+export type StaffAssignmentInput = { person_id: string; role: StaffRole; starts_on: string };
+
+export function validateStaffAssignment(f: FormData): Result<StaffAssignmentInput> {
+  const e: Errors = {};
+  const person_id = requiredId(f, "person_id", "a staff member", e);
+  const role = (text(f, "role") || "point_person") as StaffRole;
+  if (!STAFF_ROLES.includes(role)) e.role = "Pick a role.";
+  const starts_on = text(f, "starts_on") || new Date().toISOString().slice(0, 10);
+  if (!isDate(starts_on)) e.starts_on = "Enter a valid date.";
+  if (Object.keys(e).length) return { ok: false, errors: e };
+  return { ok: true, value: { person_id, role, starts_on } };
+}
+
+export const RESIDENCY_STATUS_LABELS: Record<ResidencyStatus, string> = {
+  planned: "Planned",
+  active: "Active",
+  paused: "Paused",
+  ended: "Ended",
+};
