@@ -155,6 +155,35 @@ export async function resetCalendarLink(): Promise<DocResult> {
 // ---- Weekly hours (DOMAIN-MODEL section 5, v0.19) ----
 
 /** Save a week's hours for one program; with submit, send them to the point person. */
+/**
+ * "Submit my week" (v0.21): saves every program's hours for the week and, when
+ * submitting, sends them all to the point person at once. The database
+ * refuses while a program the musician led that week is undocumented.
+ */
+export async function saveWeek(
+  week: string,
+  programs: { residencyId: string; hours: { categoryId: string; hours: number }[] }[],
+  submit: boolean,
+): Promise<DocResult> {
+  const { person } = await requirePerson();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(week) || programs.some((p) => !isId(p.residencyId))) return { status: "error", message: "Pick a week." };
+  if (submit) {
+    const supabase = await createClient();
+    const missing: string[] = [];
+    for (const p of programs) {
+      const { data } = await supabase.rpc("undocumented_led_sessions", { p_person: person.id, p_residency: p.residencyId, p_week: week });
+      for (const s of (data ?? []) as { title: string; starts_at: string }[])
+        missing.push(`${s.title} (${new Date(s.starts_at).toLocaleDateString("en-US", { timeZone: "America/New_York", weekday: "short", month: "short", day: "numeric" })})`);
+    }
+    if (missing.length) return { status: "error", message: `Document ${missing.join(", ")} first, then submit your week.` };
+  }
+  for (const p of programs) {
+    const r = await saveHours(p.residencyId, week, p.hours, submit);
+    if (r.status === "error") return r;
+  }
+  return { status: "saved" };
+}
+
 export async function saveHours(
   residencyId: string,
   week: string,

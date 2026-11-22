@@ -1,6 +1,6 @@
 # Iris App — Domain Model (Language 1: the code)
 
-_Draft v0.20, November 22, 2026 (v0.20: program length set once by the point person or an admin; leaders change it only if a session ran longer or shorter. v0.19: musician hours and invoices built: hours entered on My week, the point person approves, admins set rates and stipends, invoices per two-week pay period; "Collab?" is Yes/No and every Yes counts as co-led; the collaboration target is set per season by the point person or an admin. v0.18: roles narrowed: the point person plans, the Admin Lead publishes and updates published dates, musicians edit drafts they play in and pick leaders; monthly programs. v0.17: "No Program" dates can be restored. v0.16: season view for the point person. v0.15: usual leaders, season reminders, private calendar links. v0.14: documentation from the CESLC workbook sample, weekly; musicians write draft notes; schedule laid out like the workbook tab. v0.13: people in a program can see each other's names, nothing else. v0.12: every roster musician edits draft titles, rooms and musicians; the point person assigns leaders. v0.11: `Partner`, `Site`, `Location` built; see section 1. v0.10: scheduled relationship building (e.g. Lessons) and the partner calendar layout; v0.9: partner permission for resident names confirmed; v0.8: decisions D14 and D15 settled: residents and attendance; v0.7: decisions D10, D11 and D16 settled: events, extras, absences, substitutes and the roster; v0.6: both D9 billing details confirmed; v0.5: decisions D9 and D13 settled: partner billing and version 1 scope; v0.4: decisions D2, D4, D6, D7 and D8 settled; v0.3: decisions D1, D3 and D5 settled, including how a month's schedule is reviewed, published and sent; v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
+_Draft v0.21, November 22, 2026 (v0.21: less double entry for musicians: usual type per program, usual relationship-building lengths, "Same as last time", one "Submit my week"; detailed one-to-one notes and a daily Word document per site. v0.20: program length set once by the point person or an admin; leaders change it only if a session ran longer or shorter. v0.19: musician hours and invoices built: hours entered on My week, the point person approves, admins set rates and stipends, invoices per two-week pay period; "Collab?" is Yes/No and every Yes counts as co-led; the collaboration target is set per season by the point person or an admin. v0.18: roles narrowed: the point person plans, the Admin Lead publishes and updates published dates, musicians edit drafts they play in and pick leaders; monthly programs. v0.17: "No Program" dates can be restored. v0.16: season view for the point person. v0.15: usual leaders, season reminders, private calendar links. v0.14: documentation from the CESLC workbook sample, weekly; musicians write draft notes; schedule laid out like the workbook tab. v0.13: people in a program can see each other's names, nothing else. v0.12: every roster musician edits draft titles, rooms and musicians; the point person assigns leaders. v0.11: `Partner`, `Site`, `Location` built; see section 1. v0.10: scheduled relationship building (e.g. Lessons) and the partner calendar layout; v0.9: partner permission for resident names confirmed; v0.8: decisions D14 and D15 settled: residents and attendance; v0.7: decisions D10, D11 and D16 settled: events, extras, absences, substitutes and the roster; v0.6: both D9 billing details confirmed; v0.5: decisions D9 and D13 settled: partner billing and version 1 scope; v0.4: decisions D2, D4, D6, D7 and D8 settled; v0.3: decisions D1, D3 and D5 settled, including how a month's schedule is reviewed, published and sent; v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
 app's objects. GLOSSARY.md translates the team's language (Language 2) and
 our partner-facing language (Language 3) into these objects._
 
@@ -97,6 +97,7 @@ Manors, Mather Tysons, Winter Growth Olney). Belongs to exactly one `Partner`.
 | `care_levels` | set of enum | `independent`, `assisted`, `memory_care`, `skilled_nursing`, `adult_day`, `affordable_housing`, `other` |
 | `address`, `city`, `state`, `timezone` | text | Timezone matters: sites span ET, CT and MST (Tucson) |
 | `active` | bool | |
+| `detailed_relationship_notes` | bool | **v0.21 (Lauren, Nov 22, 2026):** the partner wants a written note on each one-to-one. Admins switch it on per site. There, a `RelationshipActivity.note` can be a paragraph (up to 3,000 characters), and a **daily Word document** of that site's relationship building can be downloaded: musicians get their own visits, the point person and admins get everyone's. Still no health information |
 
 **Multi-building partners (decided by Ryan, Nov 2026).** There is no object between `Partner` and `Site`. A partner with several buildings, such as CESLC, is one `Partner` with one `Site` per building that has its own care level or calendar (independent living, assisted living, memory care…). How near the buildings are to each other (walking distance, a short drive, farther) is not stored; each `Site` has an address and time zone, and distance can be derived later if pay or scheduling needs it. A `Residency` may span several `Site`s.
 
@@ -315,6 +316,7 @@ it doesn't happen. Its `Session`s happen.
 | `recurrence` | rule | **Weekly** on chosen weekdays (e.g. Wednesdays 11:00, 120 minutes), or **monthly** on the 1st–4th of one weekday (`week_of_month`, e.g. the 4th Monday at 1:30; v0.18). Monthly programs print under Regular programming. Time and length are **optional** for `relationship_building` |
 | `default_personnel` | → Person (many) | Must be on the current roster |
 | `default_leader_id` | → Person | Optional **usual leader** (v0.15): made leader on every date when a month is filled in. Weekly programs without one are left for the point person |
+| `default_interaction_type_id` | → InteractionType | Optional **usual type** (v0.21, Lauren, Nov 22, 2026), set by the point person or an admin. Pre-selected when the leader documents; the leader can change it, so the type is still chosen when documenting (D2) |
 | `active_from`, `active_until` | date | |
 
 ### `Session`
@@ -580,8 +582,20 @@ One logged instance of relationship building with one or more residents
 | `resident_ids` | → Resident (many) | All at `site_id`. At least one, except **Assumption:** a hallway concert may have none (played for whoever is there) |
 | `session_id` | → Session | Optional: the scheduled `relationship_building` session it happened in. **Not asked on the form (v0.19, Lauren removed "part of a scheduled lesson")** |
 | `prepares_session_id` | → Session | Optional: planning a co-led session (handbook: ≥5 meetings) |
-| `note` | text | One sentence. **No health information** |
+| `note` | text | One sentence (500 characters), or a paragraph at a `Site` with `detailed_relationship_notes` (v0.21). **No health information** |
 | `state` | enum | `submitted`, `approved` |
+
+**Faster logging (v0.21):** Minutes are filled from the program's usual
+length for the type (`ActivityLength`); after logging, the date, site and
+type stay for the next visit; **Same as last time** copies the musician's
+last activity (site, type, length, collaboration, residents).
+
+### `ActivityLength`
+The usual minutes for one kind of relationship building in one `Residency`
+(v0.21, Lauren, Nov 22, 2026). Set by the point person or an admin on the
+Season page; fills Minutes on the log form. Attributes: `residency_id`,
+`kind` (`one_to_one`, `mini_group`, `hallway_concert`), `minutes`. Unique per
+residency and kind.
 
 ### `EngagementType`
 **Not in version 1** (decided Nov 22, 2026): the activity's `kind` is
@@ -630,6 +644,11 @@ events (Concerts) and logged relationship building, and submit them with
 their documentation. The **point person approves** each musician's week for
 their program, or sends it back with a note (`returned_note`). Approved
 hours are locked. Admins can also approve.
+
+**Submit my week (v0.21, Lauren, Nov 22, 2026):** one button submits the
+week's hours for every program at once. The database refuses while a
+program the musician led that week (and that has happened) has no
+`SessionReport`.
 
 ### `PayPeriod`
 A two-week, Monday–Sunday period. Attributes: `starts_on`, `ends_on`,

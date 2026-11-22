@@ -124,6 +124,8 @@ export type Series = {
   /** weekly, or monthly on the Nth (1-4) weekday (v0.18). */
   recurrence: "weekly" | "monthly";
   week_of_month: number | null;
+  /** Usual type: pre-selected when the leader documents (v0.21). */
+  default_interaction_type_id: string | null;
 };
 
 export const WEEK_OF_MONTH_LABELS: Record<number, string> = { 1: "1st", 2: "2nd", 3: "3rd", 4: "4th" };

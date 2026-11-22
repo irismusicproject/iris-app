@@ -18,11 +18,13 @@ import {
   AddSeasonForm,
   AddSiteForm,
   AddStaffForm,
+  DailyNotesDownload,
   EndStaffButton,
   PayEditor,
   type PayContract,
   ResidencyForm,
   RosterMemberActions,
+  SiteDetailedNotesToggle,
 } from "../forms";
 
 export const metadata = { title: "Program · Iris Music Project" };
@@ -50,7 +52,7 @@ export default async function ResidencyPage({ params }: { params: Promise<{ id: 
   const [names, access] = await Promise.all([getResidencyNames(id), getResidencyAccess(id, isAdmin)]);
   const nameOf = (pid: string) => names.get(pid) ?? "Someone";
   const [{ data: siteRows }, { data: seasonRows }, { data: staffRows }] = await Promise.all([
-    supabase.from("residency_site").select("site(id, display_name, city)").eq("residency_id", id),
+    supabase.from("residency_site").select("site(id, display_name, city, detailed_relationship_notes)").eq("residency_id", id),
     supabase
       .from("season")
       .select("*, roster_member(*)")
@@ -62,7 +64,7 @@ export default async function ResidencyPage({ params }: { params: Promise<{ id: 
       .eq("residency_id", id)
       .order("starts_on", { ascending: false }),
   ]);
-  const sites = (siteRows ?? []).map((r) => r.site as unknown as { id: string; display_name: string; city: string | null }).filter(Boolean);
+  const sites = (siteRows ?? []).map((r) => r.site as unknown as { id: string; display_name: string; city: string | null; detailed_relationship_notes: boolean }).filter(Boolean);
   const seasons = (seasonRows ?? []) as SeasonRow[];
   const staff = ((staffRows ?? []) as StaffRow[]).filter((s) => !s.ends_on || s.ends_on > today);
 
@@ -109,7 +111,13 @@ export default async function ResidencyPage({ params }: { params: Promise<{ id: 
         <h2 className="text-lg font-semibold">Sites</h2>
         <ul className="mt-3 space-y-1 text-sm">
           {sites.map((s) => (
-            <li key={s.id}>{s.display_name}{s.city ? <span className="text-muted"> · {s.city}</span> : null}</li>
+            <li key={s.id} className="flex flex-col gap-1.5 py-1">
+              <span>{s.display_name}{s.city ? <span className="text-muted"> · {s.city}</span> : null}</span>
+              {isAdmin && <SiteDetailedNotesToggle residencyId={id} siteId={s.id} on={s.detailed_relationship_notes} />}
+              {s.detailed_relationship_notes && (isAdmin || access.isPointPerson) && (
+                <DailyNotesDownload siteId={s.id} siteName={s.display_name} defaultDate={today} />
+              )}
+            </li>
           ))}
           {sites.length === 0 && <li className="text-muted">No sites yet.</li>}
         </ul>

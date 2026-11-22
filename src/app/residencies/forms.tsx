@@ -23,6 +23,7 @@ import {
   endStaffAssignment,
   removeStipend,
   setContractRate,
+  setSiteDetailedNotes,
   updateResidency,
   updateRosterMember,
   type SetupFormState,
@@ -362,5 +363,40 @@ export function PayEditor({
         {msg && <p role="status" className="text-iris">{msg}</p>}
       </div>
     </details>
+  );
+}
+
+// ---- Detailed one-to-one notes per site (v0.21) ----
+
+export function SiteDetailedNotesToggle({ residencyId, siteId, on }: { residencyId: string; siteId: string; on: boolean }) {
+  const [pending, start] = useTransition();
+  const [checked, setChecked] = useState(on);
+  return (
+    <label className="flex items-center gap-2 text-xs">
+      <input
+        type="checkbox"
+        checked={checked}
+        disabled={pending}
+        onChange={(e) => {
+          const next = e.target.checked;
+          setChecked(next);
+          start(async () => {
+            const r = await setSiteDetailedNotes(residencyId, siteId, next);
+            if (r.status === "error") setChecked(!next);
+          });
+        }}
+      />
+      Detailed one-to-one notes + daily Word document
+    </label>
+  );
+}
+
+export function DailyNotesDownload({ siteId, siteName, defaultDate }: { siteId: string; siteName: string; defaultDate: string }) {
+  return (
+    <form action={`/relationship-notes/${siteId}`} method="get" className="flex flex-wrap items-center gap-2 text-xs">
+      <span>Word document for a day:</span>
+      <input type="date" name="date" defaultValue={defaultDate} required aria-label={`Day for ${siteName}`} className={`${inputClass} py-1 text-xs`} />
+      <button className={smallButton}>Download</button>
+    </form>
   );
 }

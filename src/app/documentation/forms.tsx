@@ -11,7 +11,7 @@ import {
   type ActivityKind,
   type ResidentInvolvement,
 } from "@/shared/domain/documentation";
-import { createCalendarLink, deleteActivity, logActivity, resetCalendarLink, saveHours, saveReflection, saveSessionReport, type DocResult } from "./actions";
+import { createCalendarLink, deleteActivity, logActivity, resetCalendarLink, saveReflection, saveWeek, saveSessionReport, type DocResult } from "./actions";
 
 const small = "rounded-full border border-border px-3 py-1 text-xs hover:bg-iris-soft disabled:opacity-60";
 type Option = { id: string; label: string };
@@ -29,13 +29,15 @@ export function ReportRow({
     title: string;
     place: string;
     scheduledMinutes: number;
+    /** The program's usual type, pre-selected (v0.21). */
+    usualTypeId?: string;
     report: { attendance: number; interactionTypeId: string; involvement: ResidentInvolvement; minutes: number; notes: string } | null;
   };
   types: Option[];
 }) {
   const r = session.report;
   const [attendance, setAttendance] = useState(r ? String(r.attendance) : "");
-  const [typeId, setTypeId] = useState(r?.interactionTypeId ?? "");
+  const [typeId, setTypeId] = useState(r?.interactionTypeId ?? session.usualTypeId ?? "");
   const [involvement, setInvolvement] = useState<ResidentInvolvement>(r?.involvement ?? "none");
   const [minutes, setMinutes] = useState(String(r?.minutes ?? session.scheduledMinutes));
   const [notes, setNotes] = useState(r?.notes ?? "");
@@ -128,8 +130,13 @@ export function ReportRow({
 }
 
 // ---- Log a relationship-building activity ----
+// v0.21: the usual length per type (set by the point person) fills Minutes;
+// the date and site stay after each log so several one-to-ones in a day are
+// quick; "Same as last time" copies the last activity. Sites with detailed
+// notes get a paragraph note for the partner's daily document.
 
-type Program = { id: string; name: string; sites: Option[] };
+type Program = { id: string; name: string; sites: (Option & { detailedNotes?: boolean })[] };
+export type LastActivity = { residencyId: string; siteId: string; kind: ActivityKind; minutes: number; collaborative: boolean; residentIds: string[] };
 
 const initial: DocResult = { status: "idle" };
 
@@ -139,26 +146,58 @@ export function ActivityForm({
   defaultDate,
   minDate,
   maxDate,
+  lengths = {},
+  last = null,
 }: {
   programs: Program[];
   residents: { id: string; siteId: string; name: string }[];
   defaultDate: string;
   minDate: string;
   maxDate: string;
+  /** Usual minutes per type, per program (residency id). */
+  lengths?: Record<string, Partial<Record<ActivityKind, number>>>;
+  last?: LastActivity | null;
 }) {
   const [state, action, pending] = useActionState(logActivity, initial);
   const [residencyId, setResidencyId] = useState(programs[0]?.id ?? "");
   const program = programs.find((p) => p.id === residencyId);
   const [siteId, setSiteId] = useState(program?.sites[0]?.id ?? "");
   const [kind, setKind] = useState<ActivityKind>("one_to_one");
+  const usual = (rid: string, k: ActivityKind) => (lengths[rid]?.[k] ? String(lengths[rid]![k]) : "");
+  const [minutes, setMinutes] = useState(usual(residencyId, "one_to_one"));
+  const [date, setDate] = useState(defaultDate);
+  const [collab, setCollab] = useState("no");
+  const [picked, setPicked] = useState<string[]>([]);
+  const [seen, setSeen] = useState(state.savedAt);
+  if (state.savedAt !== seen) {
+    // Logged: clear who and how long, keep program, site, type and date.
+    setSeen(state.savedAt);
+    setPicked([]);
+    setCollab("no");
+    setMinutes(usual(residencyId, kind));
+  }
   const siteResidents = useMemo(() => residents.filter((r) => r.siteId === siteId), [residents, siteId]);
+  const detailed = !!program?.sites.find((x) => x.id === siteId)?.detailedNotes;
+  const lastUsable = last && programs.some((p) => p.id === last.residencyId && p.sites.some((x) => x.id === last.siteId));
   const e = state.errors;
   return (
-    <form
-      action={action}
-      key={state.savedAt ?? 0}
-      className="flex flex-col gap-4"
-    >
+    <form action={action} key={state.savedAt ?? 0} className="flex flex-col gap-4">
+      {lastUsable && (
+        <button
+          type="button"
+          className={`${small} self-start`}
+          onClick={() => {
+            setResidencyId(last!.residencyId);
+            setSiteId(last!.siteId);
+            setKind(last!.kind);
+            setMinutes(String(last!.minutes));
+            setCollab(last!.collaborative ? "yes" : "no");
+            setPicked(last!.residentIds);
+          }}
+        >
+          Same as last time
+        </button>
+      )}
       <div className="grid gap-4 sm:grid-cols-2">
         {programs.length > 1 && (
           <Field label="Program">
@@ -168,6 +207,8 @@ export function ActivityForm({
               onChange={(ev) => {
                 setResidencyId(ev.target.value);
                 setSiteId(programs.find((p) => p.id === ev.target.value)?.sites[0]?.id ?? "");
+                setMinutes(usual(ev.target.value, kind));
+                setPicked([]);
               }}
               className={inputClass}
             >
@@ -177,24 +218,33 @@ export function ActivityForm({
         )}
         {programs.length === 1 && <input type="hidden" name="residency_id" value={residencyId} />}
         <Field label="Site" error={e?.site_id}>
-          <select name="site_id" value={siteId} onChange={(ev) => setSiteId(ev.target.value)} className={inputClass}>
-            {program?.sites.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+          <select name="site_id" value={siteId} onChange={(ev) => { setSiteId(ev.target.value); setPicked([]); }} className={inputClass}>
+            {program?.sites.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
           </select>
         </Field>
         <Field label="Date" error={e?.occurred_on}>
-          <input name="occurred_on" type="date" defaultValue={defaultDate} min={minDate} max={maxDate} required className={inputClass} />
+          <input name="occurred_on" type="date" value={date} onChange={(ev) => setDate(ev.target.value)} min={minDate} max={maxDate} required className={inputClass} />
         </Field>
         <Field label="Type" error={e?.kind}>
-          <select name="kind" value={kind} onChange={(ev) => setKind(ev.target.value as ActivityKind)} className={inputClass}>
+          <select
+            name="kind"
+            value={kind}
+            onChange={(ev) => {
+              const k = ev.target.value as ActivityKind;
+              setKind(k);
+              if (usual(residencyId, k)) setMinutes(usual(residencyId, k));
+            }}
+            className={inputClass}
+          >
             {ACTIVITY_KINDS.map((k) => <option key={k} value={k}>{ACTIVITY_KIND_LABELS[k]}</option>)}
           </select>
         </Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Minutes" error={e?.minutes}>
-            <input name="minutes" inputMode="numeric" required className={inputClass} />
+            <input name="minutes" inputMode="numeric" value={minutes} onChange={(ev) => setMinutes(ev.target.value)} required className={inputClass} />
           </Field>
           <Field label="Collab?">
-            <select name="collaborative" defaultValue="no" className={inputClass}>
+            <select name="collaborative" value={collab} onChange={(ev) => setCollab(ev.target.value)} className={inputClass}>
               <option value="no">No</option>
               <option value="yes">Yes</option>
             </select>
@@ -210,7 +260,14 @@ export function ActivityForm({
           <div className="mt-2 flex flex-wrap gap-2">
             {siteResidents.map((r) => (
               <label key={r.id} className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-sm">
-                <input type="checkbox" name="resident_id" value={r.id} /> {r.name}
+                <input
+                  type="checkbox"
+                  name="resident_id"
+                  value={r.id}
+                  checked={picked.includes(r.id)}
+                  onChange={(ev) => setPicked((cur) => (ev.target.checked ? [...cur, r.id] : cur.filter((x) => x !== r.id)))}
+                />{" "}
+                {r.name}
               </label>
             ))}
           </div>
@@ -225,10 +282,16 @@ export function ActivityForm({
           </Field>
         </div>
       </fieldset>
-      <Field label="One-sentence note (optional)" hint="No health information.">
-        <input name="note" maxLength={500} className={inputClass} />
-      </Field>
-      {state.status === "saved" && !pending && <p role="status" className="text-sm text-iris">Logged.</p>}
+      {detailed ? (
+        <Field label="Note for the partner (optional)" hint="A few sentences on what you did together; goes in the day's document for this site. No health information.">
+          <textarea name="note" maxLength={3000} rows={4} className={inputClass} />
+        </Field>
+      ) : (
+        <Field label="One-sentence note (optional)" hint="No health information.">
+          <input name="note" maxLength={500} className={inputClass} />
+        </Field>
+      )}
+      {state.status === "saved" && !pending && <p role="status" className="text-sm text-iris">Logged. Date and site are kept for the next one.</p>}
       {!pending && <FormError message={state.message} />}
       <button type="submit" disabled={pending} className={`${buttonClass} self-start`}>
         {pending ? "Saving..." : "Log activity"}
@@ -338,75 +401,96 @@ export function CalendarLinkCard({ feedUrl }: { feedUrl: string | null }) {
   );
 }
 
-// ---- Weekly hours for one program (timesheet) ----
+// ---- The week's hours, every program, one submit (v0.21) ----
 
-export function HoursCard({
-  residencyId,
-  programName,
-  week,
-  categories,
-  initial,
-  prefill,
-  state,
-  returnedNote,
-}: {
+export type WeekHoursProgram = {
   residencyId: string;
-  programName: string | null;
-  week: string;
-  categories: { id: string; name: string; description: string | null }[];
+  programName: string;
   initial: Record<string, number>;
   prefill: Record<string, number>;
   state: "draft" | "submitted" | "approved" | null;
   returnedNote: string | null;
+};
+
+export function WeekHours({
+  week,
+  categories,
+  programs,
+  toDocument,
+}: {
+  week: string;
+  categories: { id: string; name: string; description: string | null }[];
+  programs: WeekHoursProgram[];
+  /** Programs this musician led this week that still need documenting. */
+  toDocument: string[];
 }) {
-  const start = (id: string) => String(initial[id] ?? prefill[id] ?? 0);
-  const [values, setValues] = useState<Record<string, string>>(() => Object.fromEntries(categories.map((c) => [c.id, start(c.id)])));
+  const startValue = (p: WeekHoursProgram, id: string) => String(p.initial[id] ?? p.prefill[id] ?? 0);
+  const [values, setValues] = useState<Record<string, Record<string, string>>>(() =>
+    Object.fromEntries(programs.map((p) => [p.residencyId, Object.fromEntries(categories.map((c) => [c.id, startValue(p, c.id)]))])),
+  );
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
-  const locked = state === "submitted" || state === "approved";
-  const total = categories.reduce((n, c) => n + (Number(values[c.id]) || 0), 0);
+  const open = programs.filter((p) => p.state !== "submitted" && p.state !== "approved");
+  const sum = (rid: string) => categories.reduce((n, c) => n + (Number(values[rid]?.[c.id]) || 0), 0);
+  const total = open.reduce((n, p) => n + sum(p.residencyId), 0);
   const save = (submit: boolean) =>
     startTransition(async () => {
-      const r = await saveHours(residencyId, week, categories.map((c) => ({ categoryId: c.id, hours: Number(values[c.id]) || 0 })), submit);
-      setMsg(r.status === "error" ? r.message ?? "Something went wrong." : submit ? "Submitted to the point person." : "Saved.");
+      const r = await saveWeek(
+        week,
+        open.map((p) => ({ residencyId: p.residencyId, hours: categories.map((c) => ({ categoryId: c.id, hours: Number(values[p.residencyId]?.[c.id]) || 0 })) })),
+        submit,
+      );
+      setMsg(r.status === "error" ? r.message ?? "Something went wrong." : submit ? "Your week is submitted to the point person." : "Saved.");
     });
   return (
-    <div className="flex flex-col gap-3">
-      {programName && <h3 className="font-medium">{programName}</h3>}
-      {returnedNote && state === "draft" && (
-        <p className="rounded-lg border border-brand-orange/60 p-2 text-sm"><strong>Sent back by the point person:</strong> {returnedNote}</p>
-      )}
-      <div className="grid gap-3 sm:grid-cols-3">
-        {categories.map((c) => (
-          <Field key={c.id} label={c.name} hint={prefill[c.id] !== undefined && initial[c.id] === undefined ? `Pre-filled from your schedule and logs` : undefined}>
-            <input
-              inputMode="decimal"
-              value={values[c.id]}
-              disabled={locked}
-              onChange={(e) => setValues((v) => ({ ...v, [c.id]: e.target.value }))}
-              aria-label={`${c.name} hours`}
-              className={inputClass}
+    <div className="flex flex-col gap-6">
+      {programs.map((p) => {
+        const locked = p.state === "submitted" || p.state === "approved";
+        return (
+          <div key={p.residencyId} className="flex flex-col gap-3">
+            {programs.length > 1 && <h3 className="font-medium">{p.programName}</h3>}
+            {p.returnedNote && p.state === "draft" && (
+              <p className="rounded-lg border border-brand-orange/60 p-2 text-sm"><strong>Sent back by the point person:</strong> {p.returnedNote}</p>
+            )}
+            <div className="grid gap-3 sm:grid-cols-3">
+              {categories.map((c) => (
+                <Field key={c.id} label={c.name} hint={p.prefill[c.id] !== undefined && p.initial[c.id] === undefined ? "Pre-filled from your schedule and logs" : undefined}>
+                  <input
+                    inputMode="decimal"
+                    value={values[p.residencyId]?.[c.id] ?? ""}
+                    disabled={locked}
+                    onChange={(e) => setValues((v) => ({ ...v, [p.residencyId]: { ...v[p.residencyId], [c.id]: e.target.value } }))}
+                    aria-label={`${programs.length > 1 ? `${p.programName} ` : ""}${c.name} hours`}
+                    className={inputClass}
+                  />
+                </Field>
+              ))}
+            </div>
+            <p className="text-sm">
+              Total: <strong>{sum(p.residencyId).toFixed(2)} hours</strong>
+              <span className="ml-2 rounded-full bg-iris-soft px-2 py-0.5 text-xs">
+                {p.state === "approved" ? "Approved" : p.state === "submitted" ? "Submitted, waiting for approval" : "Not submitted yet"}
+              </span>
+            </p>
+          </div>
+        );
+      })}
+      {open.length > 0 && (
+        <div className="flex flex-col gap-2 border-t border-border pt-4">
+          {toDocument.length > 0 && (
+            <p className="text-sm text-brand-orange">Before you submit, document: {toDocument.join(", ")}.</p>
+          )}
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" disabled={pending} className={small} onClick={() => save(false)}>Save draft</button>
+            <ConfirmButton
+              disabled={pending || toDocument.length > 0}
+              className={buttonClass}
+              label="Submit my week"
+              question={`Submit your documentation and ${total.toFixed(2)} hours for this week?`}
+              confirmLabel="Yes, submit"
+              onConfirm={() => save(true)}
             />
-          </Field>
-        ))}
-      </div>
-      <p className="text-sm">
-        Total: <strong>{total.toFixed(2)} hours</strong>
-        <span className="ml-2 rounded-full bg-iris-soft px-2 py-0.5 text-xs">
-          {state === "approved" ? "Approved" : state === "submitted" ? "Submitted, waiting for approval" : "Not submitted yet"}
-        </span>
-      </p>
-      {!locked && (
-        <div className="flex flex-wrap items-center gap-2">
-          <button type="button" disabled={pending} className={small} onClick={() => save(false)}>Save draft</button>
-          <ConfirmButton
-            disabled={pending}
-            className={buttonClass}
-            label="Submit hours"
-            question={`Submit ${total.toFixed(2)} hours for this week?`}
-            confirmLabel="Yes, submit"
-            onConfirm={() => save(true)}
-          />
+          </div>
         </div>
       )}
       {msg && <p role="status" className="text-sm text-iris">{msg}</p>}

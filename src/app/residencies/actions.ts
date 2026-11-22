@@ -177,3 +177,14 @@ export async function removeStipend(residencyId: string, stipendId: string): Pro
   revalidatePath(`/residencies/${residencyId}`);
   return { status: "saved" };
 }
+
+// ---- Detailed one-to-one notes per site (admins; v0.21) ----
+
+export async function setSiteDetailedNotes(residencyId: string, siteId: string, on: boolean): Promise<SetupFormState> {
+  await requireAdmin();
+  const supabase = await createClient();
+  const { error } = await supabase.from("site").update({ detailed_relationship_notes: on }).eq("id", siteId);
+  if (error) return { status: "error", message: dbMessage(error, "site") };
+  revalidatePath(`/residencies/${residencyId}`);
+  return { status: "saved" };
+}

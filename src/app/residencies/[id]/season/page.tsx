@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { recurrenceLabel, SESSION_KIND_LABELS, type Series, type SessionKind } from "@/shared/domain/scheduling";
 import { formatDay, formatMonth, formatTime, localDateTime } from "@/shared/domain/time";
 import { AddOneTimeForm } from "../month/month-controls";
-import { CollaborationTargetForm, FillSeasonButton, SeasonLeaderSelect } from "./season-controls";
+import { ActivityLengthsForm, CollaborationTargetForm, FillSeasonButton, SeasonLeaderSelect } from "./season-controls";
 import { SeriesForm } from "./series-form";
 
 // Season view (DOMAIN-MODEL v0.16): the whole semester at a glance, for the
@@ -68,7 +68,7 @@ export default async function SeasonPage({ params, searchParams }: { params: Pro
     );
   }
 
-  const [{ data: seriesRows }, { data: sessionRows }, { data: siteRows }, { data: targetRow }] = await Promise.all([
+  const [{ data: seriesRows }, { data: sessionRows }, { data: siteRows }, { data: targetRow }, { data: typeRows }, { data: lengthRows }] = await Promise.all([
     supabase
       .from("series")
       .select("*, series_default_person(person_id)")
@@ -82,8 +82,16 @@ export default async function SeasonPage({ params, searchParams }: { params: Pro
       .lte("starts_at", new Date(Date.parse(`${season.ends_on}T00:00:00Z`) + 2 * 86_400_000).toISOString()),
     supabase.from("residency_site").select("site(display_name, timezone, location(id, display_name, active))").eq("residency_id", id),
     supabase.from("target").select("value").eq("season_id", season.id).eq("metric", "collaborative_programs_per_musician").maybeSingle(),
+    supabase.from("interaction_type").select("id, name").eq("active", true).order("sort_order"),
+    supabase.from("activity_length").select("kind, minutes").eq("residency_id", id),
   ]);
   const collabTarget = targetRow?.value ?? 2; // handbook default
+  const types = (typeRows ?? []).map((t) => ({ id: t.id, label: t.name }));
+  const usualLengths = Object.fromEntries((lengthRows ?? []).map((l) => [l.kind as string, l.minutes as number]));
+  const lengthText = ["one_to_one", "mini_group", "hallway_concert"]
+    .filter((k) => usualLengths[k])
+    .map((k) => `${k === "one_to_one" ? "One-to-one" : k === "mini_group" ? "Mini-group" : "Hallway concert"} ${usualLengths[k]} min`)
+    .join(" · ");
   type SiteRow = { site: { display_name: string; timezone: string; location: { id: string; display_name: string; active: boolean }[] } | null };
   const sites = ((siteRows ?? []) as unknown as SiteRow[]).map((r) => r.site!).filter(Boolean);
   const rooms = sites.flatMap((st) => st.location.filter((l) => l.active).map((l) => ({ id: l.id, label: sites.length > 1 ? `${st.display_name} · ${l.display_name}` : l.display_name })));
@@ -172,6 +180,7 @@ export default async function SeasonPage({ params, searchParams }: { params: Pro
                           defaultPeople={s.series_default_person.map((x) => x.person_id)}
                           rooms={rooms}
                           musicians={musicians}
+                          types={types}
                         />
                       </div>
                     </details>
@@ -192,9 +201,21 @@ export default async function SeasonPage({ params, searchParams }: { params: Pro
         {access.canSchedule && rooms.length > 0 && (
           <details className="mt-4 border-t border-border pt-4">
             <summary className="cursor-pointer text-sm font-medium text-iris">Add a weekly or monthly program</summary>
-            <div className="mt-4"><SeriesForm residencyId={id} rooms={rooms} musicians={musicians} /></div>
+            <div className="mt-4"><SeriesForm residencyId={id} rooms={rooms} musicians={musicians} types={types} /></div>
           </details>
         )}
+      </section>
+
+      <section className={card}>
+        <h2 className="text-lg font-semibold">Usual relationship-building lengths</h2>
+        <p className="mt-1 text-sm text-muted">Fills in Minutes when musicians log relationship building; they change it only when it was different.</p>
+        <div className="mt-3">
+          {access.canSchedule ? (
+            <ActivityLengthsForm key={JSON.stringify(usualLengths)} residencyId={id} values={usualLengths} />
+          ) : (
+            <p className="text-sm">{lengthText || "Not set; musicians enter minutes each time."}</p>
+          )}
+        </div>
       </section>
 
       <section className={card}>

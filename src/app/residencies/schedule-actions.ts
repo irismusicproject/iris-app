@@ -63,6 +63,7 @@ function seriesFromForm(form: FormData) {
     active_from: String(form.get("active_from") ?? ""),
     active_until: String(form.get("active_until") ?? "") || null,
     default_leader_id: isId(String(form.get("default_leader_id") ?? "")) ? String(form.get("default_leader_id")) : null,
+    default_interaction_type_id: isId(String(form.get("default_interaction_type_id") ?? "")) ? String(form.get("default_interaction_type_id")) : null,
   };
 }
 
@@ -336,6 +337,22 @@ export async function setCollaborationTarget(residencyId: string, seasonId: stri
   const { error } = await supabase
     .from("target")
     .upsert({ season_id: seasonId, metric: "collaborative_programs_per_musician", value }, { onConflict: "season_id,metric" });
+  if (error) return fail(error);
+  refresh(residencyId);
+  return ok;
+}
+
+// ---- Usual relationship-building lengths (point person or admin; v0.21) ----
+
+export async function setActivityLengths(residencyId: string, lengths: { kind: string; minutes: number }[]): Promise<ScheduleResult> {
+  await requirePerson();
+  const rows = lengths.filter((l) => ["one_to_one", "mini_group", "hallway_concert"].includes(l.kind) && l.minutes);
+  if (rows.some((l) => !Number.isInteger(l.minutes) || l.minutes < 1 || l.minutes > 600)) return { status: "error", message: "Enter minutes from 1 to 600." };
+  if (!rows.length) return ok;
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("activity_length")
+    .upsert(rows.map((l) => ({ residency_id: residencyId, kind: l.kind, minutes: l.minutes })), { onConflict: "residency_id,kind" });
   if (error) return fail(error);
   refresh(residencyId);
   return ok;

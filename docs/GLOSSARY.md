@@ -1,6 +1,6 @@
 # Iris App — Glossary (Languages 2 and 3)
 
-_Draft v0.12, November 22, 2026 (v0.12: Collab? Yes/No, hours approval and musician invoices; v0.11: monthly programs; v0.10: usual leader, calendar link; v0.9: documentation words from the CESLC workbook; v0.8: partner calendar layout from the Dec 2026 sample; "Lessons"; v0.7: D14, D15 settled; v0.6: D10, D11, D16 settled; "No Program" and roster words added; v0.5: D9, D13 settled: partner billing words added; v0.4: D2, D4, D6, D7, D8 settled; v0.3: D1, D3, D5 settled; schedule review and sending words added). Translates the words people use into the objects
+_Draft v0.13, November 22, 2026 (v0.13: usual type and lengths, Submit my week, daily one-to-one notes document; v0.12: Collab? Yes/No, hours approval and musician invoices; v0.11: monthly programs; v0.10: usual leader, calendar link; v0.9: documentation words from the CESLC workbook; v0.8: partner calendar layout from the Dec 2026 sample; "Lessons"; v0.7: D14, D15 settled; v0.6: D10, D11, D16 settled; "No Program" and roster words added; v0.5: D9, D13 settled: partner billing words added; v0.4: D2, D4, D6, D7, D8 settled; v0.3: D1, D3, D5 settled; schedule review and sending words added). Translates the words people use into the objects
 defined in DOMAIN-MODEL.md (Language 1), which is authoritative._
 
 - **Part A: Team language.** How Iris staff and musicians talk, and which object each word means.
@@ -85,6 +85,10 @@ enough context to tell which object it is.
 | "mini-group session" (2–8 residents) [WB] | `RelationshipActivity(kind = mini_group)` | |
 | "hallway concert" | `RelationshipActivity(kind = hallway_concert)` | Relationship building, not a program type (decided Nov 22, 2026) |
 | "Collab?" on a relationship-building log [WB] | `RelationshipActivity.collaborative` | Yes/No |
+| "usual type" (of a program) | `Series.default_interaction_type_id` | Pre-selected when documenting (v0.13) |
+| "usual length" (one-to-one, mini-group, hallway concert) | `ActivityLength.minutes` | Fills Minutes on the log form (v0.13) |
+| "Submit my week" | Submitting the week's `TimeEntry` rows for every program | Only once every program the musician led is documented (v0.13) |
+| "one-to-one notes", "daily notes for the partner" | `RelationshipActivity.note` at a `Site` with `detailed_relationship_notes`; the daily Word document | One day, one site (v0.13) |
 | "monthly program", "4th Monday concert" | `Series` with monthly recurrence (`week_of_month` 1–4) | Prints under Regular programming (v0.18) |
 | "usual leader" | `Series.default_leader_id` | Auto-fills each date's leader; otherwise the point person assigns |
 | "calendar link", "add Iris to my calendar" | `CalendarFeed` | Private; on "My week" |
