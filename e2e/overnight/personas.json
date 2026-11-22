@@ -1,0 +1,56 @@
+{
+  "_comment": "Test accounts on STAGING only (scripts/staging-accounts.mjs creates them; e2e/overnight uses them). Made-up names, example.com emails. One shared password from the STAGING_TEST_PASSWORD secret.",
+  "personas": [
+    {
+      "key": "admin",
+      "label": "Admin",
+      "name": "Ada Admin (test)",
+      "employment_type": "employee_w2",
+      "system_roles": ["admin"],
+      "active": true
+    },
+    {
+      "key": "point-person",
+      "label": "Point person",
+      "name": "Pia Point (test)",
+      "employment_type": "employee_w2",
+      "active": true,
+      "staff_role": "point_person"
+    },
+    {
+      "key": "admin-lead",
+      "label": "Admin Lead musician",
+      "name": "Lee Lead (test)",
+      "employment_type": "contractor_1099",
+      "instruments": ["violin"],
+      "active": true,
+      "roster": { "is_core": true, "is_admin_lead": true }
+    },
+    {
+      "key": "musician",
+      "label": "Musician",
+      "name": "Mo Musician (test)",
+      "employment_type": "contractor_1099",
+      "instruments": ["guitar"],
+      "active": true,
+      "roster": { "is_core": true, "is_admin_lead": false }
+    },
+    {
+      "key": "substitute",
+      "label": "Substitute",
+      "name": "Sid Sub (test)",
+      "employment_type": "contractor_1099",
+      "instruments": ["clarinet"],
+      "active": true,
+      "roster": { "is_core": false, "is_admin_lead": false }
+    },
+    {
+      "key": "deactivated",
+      "label": "Deactivated person",
+      "name": "Dee Deactivated (test)",
+      "employment_type": "contractor_1099",
+      "instruments": ["trumpet"],
+      "active": false
+    }
+  ]
+}

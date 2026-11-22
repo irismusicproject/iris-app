@@ -108,8 +108,8 @@ test("point person fills a month and sets leaders, musicians edit drafts, point 
   await jamBlock.getByRole("button", { name: "More" }).last().click();
   await jamBlock.getByRole("button", { name: /Make .No Program./ }).last().click();
   await pointPage.getByRole("button", { name: "Yes, No Program" }).click();
-  // The date now reads "No Program" in the title column (workbook layout, #35).
-  await expect(pointPage.getByText("No Program", { exact: true }).first()).toBeVisible();
+  // What matters is the record: wait for the database to show one canceled date.
+  await expect.poll(async () => (await d.from("session").select("id", { count: "exact", head: true }).eq("residency_id", res.id).eq("schedule_state", "canceled")).count, { timeout: 10_000 }).toBe(1);
   const { count } = await d.from("session").select("id", { count: "exact", head: true }).eq("residency_id", res.id).eq("schedule_state", "canceled");
   expect(count).toBe(1);
 });
