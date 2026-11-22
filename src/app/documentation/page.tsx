@@ -360,8 +360,8 @@ export default async function MyWeek({ searchParams }: { searchParams: Promise<{
             <h2 className="text-lg font-semibold">Hours and submit</h2>
             <p className="mt-1 text-sm text-muted">
               Your timesheet for this week, calculated from your documentation: the programs you played, special events, and your
-              relationship building. Log the 15 minutes before and after a program as relationship building. To change a number,
-              fix the documentation, then submit your week in one step.
+              relationship building. Set-up and the 15 minutes before and after a program aren&apos;t paid. To change a number, fix the
+              documentation, then submit your week in one step.
             </p>
             <div className="mt-4">
               {(() => {

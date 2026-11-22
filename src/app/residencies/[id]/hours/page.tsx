@@ -102,7 +102,7 @@ export default async function HoursPage({ params, searchParams }: { params: Prom
         </nav>
       </div>
       <p className="mt-2 text-sm text-muted">
-        Due from musicians Tuesday 5 pm. Each line shows the hours entered and what the schedule and logs show. Entered hours can be higher (prep, set-up, the 15 minutes before and after). Approved hours go on contractors&apos; invoices and are locked.
+        Due from musicians Tuesday 5 pm. Hours are calculated from each musician&apos;s documentation (set-up and the 15 minutes before and after programs aren&apos;t paid); each line lists what they come from. Approved hours go on contractors&apos; invoices and are locked.
       </p>
 
       {people.length === 0 && <p className="mt-6 text-muted">No hours entered for this week yet.</p>}
