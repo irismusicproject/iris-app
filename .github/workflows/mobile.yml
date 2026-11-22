@@ -1,0 +1,62 @@
+name: Phone app and database types
+
+# Keeps the website, the phone app (mobile/) and the database in step:
+#  - database-types: rebuilds src/shared/database.types.ts from the migrations
+#    and fails if the committed copy is out of date. Both apps type-check
+#    against that file, so a migration that breaks either one turns CI red.
+#  - phone-app: type-checks the phone app (which also reads src/shared) and
+#    audits its packages.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  database-types:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.122.1
+      - name: Start a throwaway database with every migration
+        run: supabase db start
+      - name: Generate the database types
+        run: supabase gen types typescript --local --schema public > /tmp/database.types.ts
+      - uses: actions/upload-artifact@v4
+        with:
+          name: database-types
+          path: /tmp/database.types.ts
+          retention-days: 7
+      - name: The committed copy must match
+        run: |
+          if ! diff -q /tmp/database.types.ts src/shared/database.types.ts >/dev/null 2>&1; then
+            echo "::error::src/shared/database.types.ts is out of date. Run 'npm run db:types' (needs the local Supabase), or download this run's database-types artifact and commit it as src/shared/database.types.ts."
+            diff -u src/shared/database.types.ts /tmp/database.types.ts | head -80 || true
+            exit 1
+          fi
+
+  phone-app:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - run: npm ci
+      - name: Type check (the phone app and the shared folder it imports)
+        run: npx tsc --noEmit
+      - name: Audit the phone app's packages (fails on high or critical)
+        run: npm audit --omit=dev --audit-level=high

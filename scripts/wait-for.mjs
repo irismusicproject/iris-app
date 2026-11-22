@@ -44,6 +44,8 @@ function check() {
     const v = json.statuses.find((s) => s.context === "Vercel");
     if (!v) return ["pending", "Vercel hasn't reported on this commit yet"];
     if (v.state === "success") return ["success", v.target_url];
+    // vercel.json skips website builds when only mobile/ changed; that counts as done.
+    if (/ignored|skipped|canceled/i.test(v.description ?? "")) return ["success", `skipped: ${v.description}`];
     if (v.state === "failure" || v.state === "error") return ["failure", `${v.description ?? ""} ${v.target_url}`];
     return ["pending", v.description ?? "building"];
   }

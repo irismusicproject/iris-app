@@ -1,6 +1,7 @@
 import { Redirect } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { isValidEmail } from "@shared/auth/password";
 import { useSession } from "@/lib/session";
 import { isConfigured, supabase } from "@/lib/supabase";
 import { colors } from "@/lib/theme";
@@ -18,7 +19,8 @@ export default function SignIn() {
   if (session) return <Redirect href="/" />;
 
   async function signIn() {
-    if (!email.trim() || !password) return setMessage("Enter your email and password.");
+    // Same rule as the website: src/shared/auth/password.ts.
+    if (!isValidEmail(email.trim()) || !password) return setMessage("Enter your email and password.");
     setBusy(true);
     setMessage(null);
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
