@@ -81,7 +81,12 @@ test("fill a month, musicians edit drafts, point person sets leaders, lead marks
 
   // 3. The point person assigns the first date's leader.
   const pointPage = await as(browser, point, path);
-  await pointPage.getByLabel(/^Leader for Tuesday/).first().selectOption({ label: "Mira" });
+  const leaderSelect = pointPage.getByLabel(/^Leader for Tuesday/).first();
+  if (!(await leaderSelect.isVisible()))
+    throw new Error(`No leader menu for the point person. Page shows: ${(await pointPage.locator("main").innerText()).slice(0, 800)}`);
+  const options = await leaderSelect.locator("option").allInnerTexts();
+  if (!options.includes("Mira")) throw new Error(`Leader options: ${JSON.stringify(options)}, disabled: ${await leaderSelect.isDisabled()}`);
+  await leaderSelect.selectOption({ label: "Mira" });
   await expect(pointPage.getByText("Leader set.")).toBeVisible();
   await pointPage.reload();
   await expect(pointPage.getByText("(leader)").first()).toBeVisible();
