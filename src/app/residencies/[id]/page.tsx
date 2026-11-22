@@ -92,12 +92,15 @@ export default async function ResidencyPage({ params }: { params: Promise<{ id: 
   }
 
   // Community contacts per building, and Iris staff phone and email (v0.26).
-  const [{ data: contactRows }, { data: staffDir }] = await Promise.all([
+  const [{ data: contactRows }, { data: staffDir }, { data: rosterContactRows }] = await Promise.all([
     sites.length
       ? supabase.from("partner_contact_site").select("site_id, partner_contact(id, name, title, email, phone, active)").in("site_id", sites.map((x) => x.id))
       : Promise.resolve({ data: [] }),
     supabase.rpc("staff_directory"),
+    // Roster musicians' phone and instruments, for the program's people (v0.27).
+    supabase.rpc("residency_roster_contacts", { p_residency: id }),
   ]);
+  const rosterInfo = new Map(((rosterContactRows ?? []) as { person_id: string; phone: string | null; instruments: string[] }[]).map((r) => [r.person_id, r]));
   const contactsBySite = new Map<string, SiteContact[]>();
   for (const r of (contactRows ?? []) as unknown as { site_id: string; partner_contact: (SiteContact & { active: boolean }) | null }[]) {
     if (!r.partner_contact?.active) continue;
@@ -197,9 +200,20 @@ export default async function ResidencyPage({ params }: { params: Promise<{ id: 
                 {members.map((m) => (
                   <li key={m.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
                     <span>
-                      {nameOf(m.person_id)}
+                      <span className="font-medium">{nameOf(m.person_id)}</span>
                       {m.is_admin_lead && <span className={badge}>Admin lead</span>}
                       {!m.is_core && <span className={badge}>Occasional / sub</span>}
+                      {(rosterInfo.get(m.person_id)?.instruments.length || rosterInfo.get(m.person_id)?.phone) && (
+                        <span className="mt-0.5 block text-xs text-muted">
+                          {rosterInfo.get(m.person_id)!.instruments.join(", ")}
+                          {rosterInfo.get(m.person_id)!.instruments.length > 0 && rosterInfo.get(m.person_id)!.phone ? " · " : ""}
+                          {rosterInfo.get(m.person_id)!.phone && (
+                            <a href={`tel:${rosterInfo.get(m.person_id)!.phone!.replace(/[^\d+]/g, "")}`} className="text-iris hover:underline">
+                              {rosterInfo.get(m.person_id)!.phone}
+                            </a>
+                          )}
+                        </span>
+                      )}
                     </span>
                     {isAdmin && !ended && (
                       <RosterMemberActions
