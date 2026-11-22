@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { CancellationReason, SessionKind } from "@/shared/domain/scheduling";
 import { formatDay, formatMonth, formatTime, isMonth, localDateTime, monthWindow, shiftMonth } from "@/shared/domain/time";
 import { AddOneTimeForm, FillMonthButton } from "../month-controls";
+import { PublishPanel } from "../publish-panel";
 import { SessionCard, type CardSession } from "../session-card";
 
 // A month's schedule for one site, laid out like the partner calendar
@@ -191,6 +192,21 @@ export default async function MonthPage({
 
       {access.canSchedule && (
         <div className="mt-5"><FillMonthButton residencyId={id} month={month} monthLabel={monthLabel} /></div>
+      )}
+
+      {sessions.length > 0 && (
+        <PublishPanel
+          residencyId={id}
+          siteId={site.id}
+          siteName={site.display_name}
+          month={month}
+          monthLabel={monthLabel}
+          latest={latest ? { version: latest.version, state: latest.state } : null}
+          isPointPerson={access.isPointPerson}
+          canSchedule={access.canSchedule}
+          draftCount={drafts}
+          needLeader={needLeader}
+        />
       )}
 
       {sessions.length === 0 && <p className="mt-6 text-muted">Nothing scheduled at {site.display_name} for {monthLabel} yet.</p>}

@@ -229,3 +229,47 @@ export async function addOneTimeSession(residencyId: string, timeZone: string, _
   refresh(residencyId);
   return ok;
 }
+
+// ---- Review and publish (DOMAIN-MODEL section 3, "Publishing a month") ----
+
+function publishFail(error: { code?: string; message: string }): ScheduleResult {
+  const m = error.message;
+  if (m.includes("leader")) return { status: "error", message: `Can't publish yet: ${m.replace(/^.*?(\d+ group session)/, "$1")}.` };
+  if (m.includes("reviewed first") || m.includes("mark this month reviewed")) return { status: "error", message: "The point person needs to mark this month reviewed first." };
+  if (m.includes("already been reviewed")) return { status: "error", message: "This month is already reviewed." };
+  if (m.includes("already published")) return { status: "error", message: "This month is already published. Download an updated version instead." };
+  if (m.includes("only the point person")) return { status: "error", message: "Only the point person or an admin can mark a month reviewed." };
+  return fail(error);
+}
+
+export async function markMonthReviewed(residencyId: string, siteId: string, month: string): Promise<ScheduleResult> {
+  await requirePerson();
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("mark_month_reviewed", { p_residency: residencyId, p_site: siteId, p_month: `${month}-01` });
+  if (error) return publishFail(error);
+  refresh(residencyId);
+  return ok;
+}
+
+export async function publishMonth(residencyId: string, siteId: string, month: string): Promise<ScheduleResult> {
+  await requirePerson();
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("publish_month", { p_residency: residencyId, p_site: siteId, p_month: `${month}-01` });
+  if (error) return publishFail(error);
+  refresh(residencyId);
+  return ok;
+}
+
+export async function newCalendarVersion(residencyId: string, siteId: string, month: string, feedback: string): Promise<ScheduleResult> {
+  await requirePerson();
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("new_calendar_version", {
+    p_residency: residencyId,
+    p_site: siteId,
+    p_month: `${month}-01`,
+    p_partner_feedback: feedback.trim() || null,
+  });
+  if (error) return publishFail(error);
+  refresh(residencyId);
+  return ok;
+}
