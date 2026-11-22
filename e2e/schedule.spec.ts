@@ -25,6 +25,8 @@ async function as(browser: import("@playwright/test").Browser, who: { email: str
 }
 
 test("point person fills a month and sets leaders, musicians edit drafts, point person marks No Program", async ({ browser }) => {
+  // Three people log in and the month is filled twice over; give it more than the default 60 s.
+  test.setTimeout(180_000);
   const run = Date.now() % 100000;
   const year = new Date().getFullYear() + 1;
   const month = `${year}-02`;
