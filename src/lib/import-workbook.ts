@@ -3,7 +3,7 @@ import readXlsxFile from "read-excel-file/node";
 import writeXlsxFile from "write-excel-file/node";
 import { IMPORT_TABS, type RawImport, type TabKey } from "@/shared/domain/import";
 
-// Reads and writes the admin import spreadsheet (v0.29).
+// Reads and writes the admin import spreadsheet (v0.30).
 
 function cellText(v: unknown): string {
   if (v === null || v === undefined) return "";

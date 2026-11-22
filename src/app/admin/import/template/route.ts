@@ -1,7 +1,7 @@
 import { getViewer } from "@/lib/auth";
 import { importTemplate } from "@/lib/import-workbook";
 
-// The import template (admins, v0.29): headers plus made-up example rows.
+// The import template (admins, v0.30): headers plus made-up example rows.
 export const runtime = "nodejs";
 
 export async function GET() {

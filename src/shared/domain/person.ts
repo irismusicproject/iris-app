@@ -24,7 +24,7 @@ export type Person = {
   job_title: string | null;
   active: boolean;
   certified_on: string | null; // ISO date
-  /** When the invite was last sent; null = added but not invited yet (v0.29). */
+  /** When the invite was last sent; null = added but not invited yet (v0.30). */
   invited_at: string | null;
   created_at: string;
   updated_at: string;

@@ -3,7 +3,7 @@ import { requireAdmin } from "@/lib/auth";
 import { IMPORT_TABS } from "@/shared/domain/import";
 import { ImportForm } from "./import-form";
 
-// Import (admins, v0.29): set up people, buildings, programs, seasons,
+// Import (admins, v0.30): set up people, buildings, programs, seasons,
 // rosters and weekly programs from one spreadsheet, without inviting anyone.
 export const metadata = { title: "Import · Iris Music Project" };
 

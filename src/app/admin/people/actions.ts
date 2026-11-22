@@ -33,7 +33,7 @@ export async function addPerson(_prev: PersonFormState, form: FormData): Promise
   const parsed = validateNewPerson(form);
   if (!parsed.ok) return { status: "error", errors: parsed.errors };
   const p = parsed.value;
-  // v0.29: admins can add someone without emailing them yet.
+  // v0.30: admins can add someone without emailing them yet.
   const sendInvite = form.get("send_invite") === "on";
 
   const admin = createAdminClient();
@@ -65,7 +65,7 @@ export async function addPerson(_prev: PersonFormState, form: FormData): Promise
 }
 
 /**
- * Invite someone an admin added earlier without an invite (v0.29). Their
+ * Invite someone an admin added earlier without an invite (v0.30). Their
  * account already exists, so this sends the "set your password" email; they
  * can also sign in with "Email me a code instead".
  */

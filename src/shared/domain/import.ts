@@ -1,4 +1,4 @@
-// Admin import (DOMAIN-MODEL v0.29): set up people, buildings, programs,
+// Admin import (DOMAIN-MODEL v0.30): set up people, buildings, programs,
 // seasons, rosters and weekly programs from one spreadsheet, before anyone
 // is invited. This file defines the spreadsheet's tabs and columns and
 // checks it. Native apps can import it.

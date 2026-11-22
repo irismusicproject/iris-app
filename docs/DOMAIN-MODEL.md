@@ -1,6 +1,6 @@
 # Iris App — Domain Model (Language 1: the code)
 
-_Draft v0.30, November 22, 2026 (v0.30: a point person who also plays in their program may approve their own hours. v0.29: admins add people without inviting them, and set up people, buildings, programs, rosters and weekly programs from one spreadsheet. v0.28: answers to Ryan's nine scheduling questions; permissions table brought up to date. v0.27: roster musicians' phone and instruments shown to the program's people. v0.26: community contacts per building built; staff phone and email on program pages and a staff directory on Home; links on Home. v0.25: answers to the schema review: subs, leaders, locked after review, history after a season. v0.24: shared relationship-building logs; the documented building; pay only for documented hours; deadline reminders and No Program emails through one outbox; Follow-up page with missing work and metrics; staff roles. v0.23: overhead switched on or off on the contract; stipend lines can be left off each month; custom invoices typed by hand. v0.22: community invoices built; billable hours are now per musician and count once the point person approves the week (revises D9); drafts live, sent invoices frozen; admins only. v0.21: less double entry for musicians: usual type per program, usual relationship-building lengths, "Same as last time", one "Submit my week"; detailed one-to-one notes and a daily Word document per site. v0.20: program length set once by the point person or an admin; leaders change it only if a session ran longer or shorter. v0.19: musician hours and invoices built: hours entered on My week, the point person approves, admins set rates and stipends, invoices per two-week pay period; "Collab?" is Yes/No and every Yes counts as co-led; the collaboration target is set per season by the point person or an admin. v0.18: roles narrowed: the point person plans, the Admin Lead publishes and updates published dates, musicians edit drafts they play in and pick leaders; monthly programs. v0.17: "No Program" dates can be restored. v0.16: season view for the point person. v0.15: usual leaders, season reminders, private calendar links. v0.14: documentation from the CESLC workbook sample, weekly; musicians write draft notes; schedule laid out like the workbook tab. v0.13: people in a program can see each other's names, nothing else. v0.12: every roster musician edits draft titles, rooms and musicians; the point person assigns leaders. v0.11: `Partner`, `Site`, `Location` built; see section 1. v0.10: scheduled relationship building (e.g. Lessons) and the partner calendar layout; v0.9: partner permission for resident names confirmed; v0.8: decisions D14 and D15 settled: residents and attendance; v0.7: decisions D10, D11 and D16 settled: events, extras, absences, substitutes and the roster; v0.6: both D9 billing details confirmed; v0.5: decisions D9 and D13 settled: partner billing and version 1 scope; v0.4: decisions D2, D4, D6, D7 and D8 settled; v0.3: decisions D1, D3 and D5 settled, including how a month's schedule is reviewed, published and sent; v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
+_Draft v0.31, November 22, 2026 (v0.31: a point person who also plays in their program may approve their own hours. v0.30: admins add people without inviting them, and set up people, buildings, programs, rosters and weekly programs from one spreadsheet. v0.29: approved weeks are final; approval waits until the week's programs are documented. v0.28: answers to Ryan's nine scheduling questions; permissions table brought up to date. v0.27: roster musicians' phone and instruments shown to the program's people. v0.26: community contacts per building built; staff phone and email on program pages and a staff directory on Home; links on Home. v0.25: answers to the schema review: subs, leaders, locked after review, history after a season. v0.24: shared relationship-building logs; the documented building; pay only for documented hours; deadline reminders and No Program emails through one outbox; Follow-up page with missing work and metrics; staff roles. v0.23: overhead switched on or off on the contract; stipend lines can be left off each month; custom invoices typed by hand. v0.22: community invoices built; billable hours are now per musician and count once the point person approves the week (revises D9); drafts live, sent invoices frozen; admins only. v0.21: less double entry for musicians: usual type per program, usual relationship-building lengths, "Same as last time", one "Submit my week"; detailed one-to-one notes and a daily Word document per site. v0.20: program length set once by the point person or an admin; leaders change it only if a session ran longer or shorter. v0.19: musician hours and invoices built: hours entered on My week, the point person approves, admins set rates and stipends, invoices per two-week pay period; "Collab?" is Yes/No and every Yes counts as co-led; the collaboration target is set per season by the point person or an admin. v0.18: roles narrowed: the point person plans, the Admin Lead publishes and updates published dates, musicians edit drafts they play in and pick leaders; monthly programs. v0.17: "No Program" dates can be restored. v0.16: season view for the point person. v0.15: usual leaders, season reminders, private calendar links. v0.14: documentation from the CESLC workbook sample, weekly; musicians write draft notes; schedule laid out like the workbook tab. v0.13: people in a program can see each other's names, nothing else. v0.12: every roster musician edits draft titles, rooms and musicians; the point person assigns leaders. v0.11: `Partner`, `Site`, `Location` built; see section 1. v0.10: scheduled relationship building (e.g. Lessons) and the partner calendar layout; v0.9: partner permission for resident names confirmed; v0.8: decisions D14 and D15 settled: residents and attendance; v0.7: decisions D10, D11 and D16 settled: events, extras, absences, substitutes and the roster; v0.6: both D9 billing details confirmed; v0.5: decisions D9 and D13 settled: partner billing and version 1 scope; v0.4: decisions D2, D4, D6, D7 and D8 settled; v0.3: decisions D1, D3 and D5 settled, including how a month's schedule is reviewed, published and sent; v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
 app's objects. GLOSSARY.md translates the team's language (Language 2) and
 our partner-facing language (Language 3) into these objects._
 
@@ -216,7 +216,7 @@ Anyone who signs in: musicians, staff, volunteers. One record per human.
 | `job_title` | text | Org-chart title, e.g. "Director of Programs", "Musician in Residence 1". **Display only. Grants no permissions** |
 | `active` | bool | Deactivated people keep history and cannot sign in |
 | `certified_on` | date | Creative Aging Practitioner certification, if completed |
-| `invited_at` | datetime | **v0.29 (Lauren, Nov 22, 2026):** when the sign-in invite was last sent. Empty = an admin added them without inviting them yet (e.g. to set up rosters and schedules before roll-out). They can't sign in until invited; "Send invite" emails a link to set a password, and "Email me a code instead" also works once invited. Email is still required when adding; last name, phone and the rest are optional |
+| `invited_at` | datetime | **v0.30 (Lauren, Nov 22, 2026):** when the sign-in invite was last sent. Empty = an admin added them without inviting them yet (e.g. to set up rosters and schedules before roll-out). They can't sign in until invited; "Send invite" emails a link to set a password, and "Email me a code instead" also works once invited. Email is still required when adding; last name, phone and the rest are optional |
 
 **Rules (confirmed by Ryan, Nov 21, 2026; built in `supabase/migrations`):**
 - People are **deactivated, never deleted**. Deactivating blocks sign-in and hides all data from that person at once (R9.5).
@@ -697,8 +697,27 @@ program the musician led that week (and that has happened) has no
 hours are calculated from documentation: **Programs** = the documented
 length of each program they played (not absent), **Concerts** = the same
 for special events, **Relationship Building** = minutes of every log they
-logged or were added to. To change pay, fix the documentation. Approving a week refreshes its hours
+logged or were added to. Until the week is approved, pay changes by fixing the documentation. Approving a week refreshes its hours
 from documentation first (keeping the original submission time).
+
+**Approved weeks are final (v0.29, Ryan, Nov 22, 2026; M-Q2).**
+- Until the point person approves a week, musicians can still fix that
+  week's documentation after "Submit my week". Approval uses what's there at
+  that moment.
+- **A week is approved only when it's complete:** approval waits while a
+  program the musician played that week has no `SessionReport` yet, and names
+  the leader it's waiting for.
+- **After approval,** that week's documentation is final: its
+  `RelationshipActivity` logs (and who shares them), the `SessionReport`s of
+  programs anyone with an approved week played, who played them, and their
+  date, time, room, billable flag, length and "No Program" state. Titles and
+  notes stay editable. A program's length is final once the first approved
+  week includes it.
+- **Corrections** after approval are made by an admin; every change is
+  logged (`AuditLog`).
+- On screen, an approved week reads as approved.
+- **Later:** corrections recorded as an adjustment line in the next open pay
+  period, so an approved week and its invoice never change.
 
 ### `PayPeriod`
 A two-week, Monday–Sunday period. Attributes: `starts_on`, `ends_on`,
@@ -931,7 +950,7 @@ and next to the program's point person, for everyone signed in. This
 widens v0.13 (names only) for Iris staff; musicians' contact details stay
 private.
 
-### Import (v0.29)
+### Import (v0.30)
 Not an object: an admin page that sets up `Person`s (added without an
 invite), `Partner`s, `Site`s and rooms (`Location`s), `Residency`s with one
 `Season` each, point people (`StaffAssignment`), `RosterMember`s and weekly or
@@ -954,7 +973,7 @@ Resident-record **reads** are logged too.
 **Staff roles (v0.24, Lauren, Nov 22, 2026):** every Iris team member can be an
 admin (they see everything) and is also the point person for the programs
 they're directly responsible for; on other programs they may be a roster
-musician. Admins may approve their own hours. **v0.30 (Lauren, Nov 22,
+musician. Admins may approve their own hours. **v0.31 (Lauren, Nov 22,
 2026):** a point person can also be on the same program's roster, and may
 approve their own hours there, whether or not they're an admin.
 

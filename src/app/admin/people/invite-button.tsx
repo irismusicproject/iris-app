@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { ConfirmButton } from "@/components/confirm-button";
 import { sendInvite } from "./actions";
 
-/** Sends the sign-in invite to someone added without one (v0.29). */
+/** Sends the sign-in invite to someone added without one (v0.30). */
 export function InviteButton({ id, email, invitedAt }: { id: string; email: string; invitedAt: string | null }) {
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);

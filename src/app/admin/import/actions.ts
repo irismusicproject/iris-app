@@ -7,7 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { checkImport, type ImportPlan, type ImportProblem } from "@/shared/domain/import";
 
-// Admin import (v0.29): check the spreadsheet, then apply it. Everything is
+// Admin import (v0.30): check the spreadsheet, then apply it. Everything is
 // written with the admin's own session (Row Level Security decides), except
 // creating sign-in accounts for new people, which needs the server key and
 // sends no email. Running the same file again adds only what's missing.

@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   // The partner calendar PDF is rendered on the server with @react-pdf.
-  // The import spreadsheet (v0.29) is read and written on the server; loading
+  // The import spreadsheet (v0.30) is read and written on the server; loading
   // these from node_modules keeps their Node builds (bundling picks a browser one).
   serverExternalPackages: ["@react-pdf/renderer", "read-excel-file", "write-excel-file"],
   // Files the PDF reads at run time, so Vercel includes them.
