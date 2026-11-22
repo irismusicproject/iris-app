@@ -394,7 +394,8 @@ const ACTIONS = [
     else if (op === "send") { sql = `update public.custom_invoice set state='sent' where id='${x.id}'`; allowed = who === A; }
     else if (op === "pay") { sql = `update public.custom_invoice set state='paid' where id='${x.id}'`; allowed = who === A; }
     else if (op === "delete") { sql = `delete from public.custom_invoice where id='${x.id}'`; allowed = who === A && x.state === "draft"; }
-    else { sql = `update public.custom_invoice set total=total+1 where id='${x.id}'`; allowed = who === A && x.state === "draft"; }
+    // A total that no longer matches its lines is refused for everyone, drafts included (fix B8, migration 20261208).
+    else { sql = `update public.custom_invoice set total=total+1 where id='${x.id}'`; allowed = false; }
     history.push(`${NAME[who]} ${op}s a custom invoice (${x?.state ?? "new"})`);
     expect(`${NAME[who]} ${op}s a custom invoice (${x?.state ?? "new"})`, allowed, await as(who, sql), sql);
   }],

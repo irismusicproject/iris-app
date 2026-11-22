@@ -122,7 +122,7 @@ for (const [who, name] of [[P, "point person"], [Q, "other point person"], [O, "
 r = await as(P, `select * from public.audit_log where table_name='contract'`); check("point person can't read pay through the audit log", none(r), r);
 r = await su(`select count(*)::int as n from public.audit_log where table_name='contract'`); check("contract changes are logged (AuditLog)", r[0].n >= 5, r);
 r = await su(`select count(*)::int as n from public.audit_log where table_name='stipend_installment'`);
-knownBug("B4", "stipend installments are logged when created or changed (AuditLog: 'contracts')", r[0].n >= 3, r);
+check("[fixed B4, migration 20261208] stipend installments are logged when created or changed (AuditLog: 'contracts')", r[0].n >= 3, r);
 
 // ============================================================================
 // 3. Community contracts (admins only)
@@ -200,7 +200,7 @@ r = await as(Q, `select id from public.relationship_activity where residency_id=
 r = await as(O, `select * from public.relationship_activity_resident`); check("outsider sees no activity–resident links", none(r), r);
 // A musician on one roster moves their own activity into another program.
 r = await as(M1, `update public.relationship_activity set residency_id='${RES2}', site_id='${T1}' where id='${ACT_M1a}'`);
-knownBug("B6", "a musician can't move their activity into a program they aren't on (insert requires the current roster; update doesn't)", denied(r), r);
+check("[fixed B6, migration 20261208] a musician can't move their activity into a program they aren't on (insert requires the current roster; update doesn't)", denied(r), r);
 await su(`update public.relationship_activity set residency_id='${RES}', site_id='${S1}' where id='${ACT_M1a}'`);
 
 // ActivityLength and Target: the point person (and admins) set them (v0.19, v0.21).
@@ -376,11 +376,11 @@ r = await as(A, `update public.person set active=false where id='${X}'`); check(
 r = await as(X, `select * from public.contract`); check("deactivated: no contract", none(r), r);
 r = await as(X, `select * from public.resident`); check("deactivated: no residents", none(r), r);
 r = await as(X, `select * from public.session_report`); check("deactivated: no reports", none(r), r);
-r = await as(X, `select * from public.time_entry`); knownBug("B1", "deactivated person can't read their own hours ('hides all data from that person at once')", none(r), r);
-r = await as(X, `select * from public.relationship_activity`); knownBug("B1", "deactivated person can't read their own relationship-building log", none(r), r);
-I = await inv(X, X); knownBug("B1", "deactivated person can't read their own invoice (musician_invoice_lines skips the active check)", none(I), I.lines);
-r = await as(X, `update public.time_entry set hours=8 where person_id='${X}' and week_starting='${W2}'`); knownBug("B1", "deactivated person can't change their own draft hours", denied(r), r);
-r = await as(X, `delete from public.relationship_activity where id='${ACT_X2}'`); knownBug("B1", "deactivated person can't delete their own activity", denied(r), r);
+r = await as(X, `select * from public.time_entry`); check("[fixed B1, migration 20261208] deactivated person can't read their own hours ('hides all data from that person at once')", none(r), r);
+r = await as(X, `select * from public.relationship_activity`); check("[fixed B1, migration 20261208] deactivated person can't read their own relationship-building log", none(r), r);
+I = await inv(X, X); check("[fixed B1, migration 20261208] deactivated person can't read their own invoice (musician_invoice_lines skips the active check)", none(I), I.lines);
+r = await as(X, `update public.time_entry set hours=8 where person_id='${X}' and week_starting='${W2}'`); check("[fixed B1, migration 20261208] deactivated person can't change their own draft hours", denied(r), r);
+r = await as(X, `delete from public.relationship_activity where id='${ACT_X2}'`); check("[fixed B1, migration 20261208] deactivated person can't delete their own activity", denied(r), r);
 r = await as(X, `insert into public.time_entry (person_id,residency_id,week_starting,time_category_id,hours) values ('${X}','${RES}','${W2}','${CAT_RB}',1)`); check("deactivated: can't add hours", !r.ok, r);
 // Undo whatever X managed, so the billing story below stays on known numbers.
 await su(`update public.time_entry set hours=1.0 where person_id='${X}' and week_starting='${W2}'`);
@@ -455,7 +455,7 @@ r = await su(`select total, lines from public.partner_invoice where id='${INV1.i
 check("rate changes after sending leave the sent invoice alone", Number(r[0].total) === 828 && JSON.stringify(r[0].lines) === JSON.stringify(INV1.lines), r);
 B = await build(AG1, MAPLE); check("…while next month's draft would use the new rate", B.drafts[0].lines[0].unit_amount === 70, B.drafts[0].lines[0]);
 r = await as(A, `update public.partner_invoice_choice set excluded_stipend_ids='{}' where agreement_id='${AG1}' and month='${B.month}'`);
-knownBug("B3", "a month's invoice choices can't change once an invoice for that month is sent (v0.23 PartnerInvoiceChoice; only the app checks)", denied(r), r);
+check("[fixed B3, migration 20261208] a month's invoice choices can't change once an invoice for that month is sent (v0.23 PartnerInvoiceChoice; only the app checks)", denied(r), r);
 r = await as(A, `update public.partner_invoice set state='paid' where id='${INV1.id}' returning paid_at`); check("admin marks it paid; paid_at is stamped", r.ok && r.rows[0].paid_at !== null, r);
 r = await su(`select count(*)::int as n from public.audit_log where table_name='partner_invoice'`); check("sending and paying are logged", r[0].n >= 2, r);
 
@@ -478,7 +478,7 @@ check("the installment is billed once ($1,000)", B.drafts.flatMap((d) => d.lines
 check("contract invoice: stipends $250 + overhead 10% of ($1,000 + $250) = $375", ct[0].total === 375, ct[0].lines);
 check("each site invoice shows that site's hours against the contract", sites3.find((d) => d.siteId === S1).summary.hoursThisMonth === 6.5, sites3.map((d) => d.summary));
 r = await su(`select count(*)::int as n from public.audit_log where table_name='partner_installment'`);
-knownBug("B4", "partner installments are logged when created or changed (D9: 'every change is logged')", r[0].n > 0, r);
+check("[fixed B4, migration 20261208] partner installments are logged when created or changed (D9: 'every change is logged')", r[0].n > 0, r);
 
 // D4: a site can have several contracts (Hebrew Home has three for different services). Each
 // session falls under one contract (Session.partner_agreement_id), so a minute is billed once.
@@ -491,10 +491,10 @@ await must(A, `insert into public.partner_agreement_site values ('${AG_OLD}','${
 const mOld = await minutes(AG_OLD);
 knownBug("B2", "a contract bills only time in its own season (last season's contract bills this season's sessions)", mOld.get(S1, "programs", "approved_minutes") === 0, mOld.rows);
 r = await as(A, `insert into public.partner_invoice (agreement_id,kind,site_id,month,number,bill_to,lines,total) values ('${AG2}','site','${T1}','${B.month}','IMP-BAD','x','[]',0)`);
-knownBug("B7", "a site invoice can only be for one of its contract's sites (Birch's contract accepted an Elm Court invoice)", !r.ok, r);
+check("[fixed B7, migration 20261208] a site invoice can only be for one of its contract's sites (Birch's contract accepted an Elm Court invoice)", !r.ok, r);
 const nextMonth = monthOf(addDays(monthOf(addDays(PP, 1)), 40));
 r = await as(A, `insert into public.partner_invoice (agreement_id,kind,site_id,month,number,bill_to,lines,total) values ('${AG2}','site','${S2}','${nextMonth}','IMP-SUM','x','[{"description":"Programs","amount":121}]',999)`);
-knownBug("B8", "a stored invoice's total equals the sum of its lines (a $999 total over $121 of lines was accepted)", !r.ok, r);
+check("[fixed B8, migration 20261208] a stored invoice's total equals the sum of its lines (a $999 total over $121 of lines was accepted)", !r.ok, r);
 
 // ============================================================================
 // 12. Custom invoices (v0.23): admins only; draft → sent (frozen) → paid
@@ -506,7 +506,7 @@ r = await cust(A, customLinesTotal(lines), lines, "sent"); check("a custom invoi
 r = await cust(A, customLinesTotal(lines)); check("admin types a custom invoice: 2 × $150 + $40 = $340", r.ok && customLinesTotal(lines) === 340, r); const CU = r.rows?.[0]?.id;
 r = await as(A, `update public.custom_invoice set title='Holiday concerts', lines='${JSON.stringify([...lines, { description: "Music stands", quantity: 1, unit_amount: 20, amount: 20 }])}'::jsonb, total=360 where id='${CU}'`); check("a draft can change", r.ok && r.n === 1, r);
 r = await cust(A, 1); const CU_BAD = r.rows?.[0]?.id;
-knownBug("B8", "a custom invoice's total equals the sum of its lines (CustomInvoice.total 'Sum of lines'; $1 over $340 of lines was accepted)", !r.ok, r);
+check("[fixed B8, migration 20261208] a custom invoice's total equals the sum of its lines (CustomInvoice.total 'Sum of lines'; $1 over $340 of lines was accepted)", !r.ok, r);
 if (CU_BAD) await as(A, `delete from public.custom_invoice where id='${CU_BAD}'`);
 r = await cust(A, -50, [{ description: "Credit", quantity: null, unit_amount: null, amount: -50 }]); const CU_NEG = r.rows?.[0]?.id;
 question("Q7", "custom invoice totals can't go below zero (or are credits allowed?)", !r.ok, r);
