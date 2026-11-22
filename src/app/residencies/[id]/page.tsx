@@ -187,7 +187,7 @@ export default async function ResidencyPage({ params }: { params: Promise<{ id: 
       {isAdmin && (
         <section className={card}>
           <h2 className="text-lg font-semibold">Program details</h2>
-          <div className="mt-5"><ResidencyForm residency={residency} /></div>
+          <div className="mt-5"><ResidencyForm key={JSON.stringify(residency)} residency={residency} /></div>
         </section>
       )}
     </AppShell>

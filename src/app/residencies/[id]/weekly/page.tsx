@@ -84,6 +84,8 @@ export default async function WeeklyPage({ params }: { params: Promise<{ id: str
                 <summary className="cursor-pointer text-sm font-medium text-iris">Edit</summary>
                 <div className="mt-4">
                   <SeriesForm
+                    // Remount with the saved values after each save (a form resets to its starting values).
+                    key={JSON.stringify([s, s.series_default_person])}
                     residencyId={id}
                     series={s}
                     defaultPeople={s.series_default_person.map((p) => p.person_id)}
