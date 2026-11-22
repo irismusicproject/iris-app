@@ -32,10 +32,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: database-migrations
-  cancel-in-progress: false
-
 env:
   SUPABASE_CLI_VERSION: 2.122.1
 
@@ -46,6 +42,11 @@ jobs:
       || (github.event_name == 'workflow_dispatch' && inputs.task != 'mark-applied')
     runs-on: ubuntu-latest
     environment: staging
+    # One staging change at a time. A production job waiting for approval
+    # never holds up staging: they're separate queues.
+    concurrency:
+      group: database-staging
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
       - uses: supabase/setup-cli@v1
@@ -81,6 +82,9 @@ jobs:
     # The "production" environment requires an owner's approval before this
     # job starts, and is the only place production's connection string lives.
     environment: production
+    concurrency:
+      group: database-production
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
       - uses: supabase/setup-cli@v1
@@ -114,6 +118,9 @@ jobs:
     if: github.event_name == 'workflow_dispatch' && inputs.task == 'mark-applied'
     runs-on: ubuntu-latest
     environment: production
+    concurrency:
+      group: database-production
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
       - uses: supabase/setup-cli@v1
