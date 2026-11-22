@@ -162,6 +162,8 @@ GitHub applies migrations. **Don't paste migrations into the SQL Editor.** While
 2. **Merging to `main`** applies new migrations to **staging** automatically, plus the fake data in `supabase/seed.sql`.
 3. **Production** changes only when an owner (Ryan) runs **Actions → Database migrations → Run workflow → deploy-production** and approves it. Until then, new screens that need new tables won't work on the live site.
 
+**If staging gets out of step with `main`** (the staging update fails with "Remote migration versions not found in local migrations directory," usually because a migration changed after it reached staging), run **Actions → Database migrations → Run workflow → reset-staging**. It wipes staging's tables and rebuilds them from `main` plus the fake data. It can only reach staging. Afterward, rerun the "First admins" SQL in staging for anyone who needs an admin login there.
+
 **Rules for migrations:**
 - **Add, don't break.** When production is updated, the live code must keep working. To rename or remove a column, first add the new one, switch the code over, then drop the old one.
 - **Never edit a migration that has already run.** Fix it with a new migration.
