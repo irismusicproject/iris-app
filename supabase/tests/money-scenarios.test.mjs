@@ -244,6 +244,8 @@ r = await as(M2, `select * from public.undocumented_led_sessions('${L}','${RES}'
 r = await submit(M2, RES, W1); let H = await hoursOf(M2, RES, W1);
 check("M2 submits RES W1 (led nothing at RES): s1 isn't documented yet, so 0 h programs; hallway concert 20 min = 0.33 h", r.ok && H.Programs?.h === 0 && H["Relationship Building"]?.h === 0.33 && H.Programs?.state === "submitted", H);
 r = await submit(M2, RES2, W1); check("M2 can't submit RES2 W1 while r1 is undocumented", !r.ok, r);
+r = await as(P, `select public.approve_week('${M2}','${RES}','${W1}')`);
+check("approval waits while a program M2 played that week (s1) has no report yet, and names its leader", !r.ok && /waiting for documentation from Lee Lead/.test(r.err), r);
 r = await submit(W, RES, W1); H = await hoursOf(W, RES, W1); check("W submits W1 (no work that week: 0 h)", r.ok && Object.values(H).every((x) => x.h === 0), H);
 r = await submit(X, RES, W1); H = await hoursOf(X, RES, W1); check("X submits W1: one-to-one 25 min = 0.42 h", r.ok && H["Relationship Building"]?.h === 0.42, H);
 r = await as(M2, `update public.time_entry set hours=9 where person_id='${M2}' and residency_id='${RES}' and week_starting='${W1}'`); check("submitted hours can't be changed by the musician (0 rows)", denied(r), r);
@@ -524,23 +526,32 @@ for (const [who, name] of [[P, "point person"], [L, "admin lead"], [M1, "musicia
 r = await as(null, `select * from public.custom_invoice`); check("anon sees no custom invoices", none(r), r);
 
 // ============================================================================
-// 13. After approval: what can still move approved billable time? (QUESTION Q2)
+// 13. Approved weeks are final (v0.29, migration 20261213; was QUESTION Q2)
 // ============================================================================
+// Weeks approved above: L, M1 (W1, W2), M2 (RES W1, RES2 W1), X (W1), W (W1).
 const before = (await minutes(AG2)).get(S2, "relationship_building", "approved_minutes");
 r = await as(M1, `update public.relationship_activity set minutes=300 where id='${ACT_M1b}'`);
 const after = (await minutes(AG2)).get(S2, "relationship_building", "approved_minutes");
-question("Q2", "once the point person approves a week, the musician can't change that week's logged minutes (they rose from 45 to 300 with no new approval)", !r.ok && after === before, { r, before, after });
-await su(`update public.relationship_activity set minutes=45 where id='${ACT_M1b}'`);
+check("a musician can't change an activity's minutes in their approved week", !r.ok && after === before, { r, before, after });
 r = await logAct(M1, RES, S2, addDays(W2, 2), "one_to_one", 40);
-const after2 = (await minutes(AG2)).get(S2, "relationship_building", "approved_minutes");
-question("Q2", "an activity logged into an already-approved week waits for approval (it counted at once: 45 → 85)", after2 === before, { before, after2 });
-if (r.ok) { const d = await as(M1, `delete from public.relationship_activity where id='${r.rows[0].id}'`); question("Q2", "an activity in an approved week can't be deleted (it could, and the delete isn't logged)", denied(d), d); }
+check("…or log a new activity into it", !r.ok && /approved/.test(r.err), r);
+r = await as(M1, `delete from public.relationship_activity where id='${ACT_M1b}'`); check("…or delete one", !r.ok, r);
+r = await as(L, `insert into public.relationship_activity_musician values ('${ACT_L}','${M1}')`); check("…or share one with another musician", !r.ok, r);
+r = await as(M1, `update public.relationship_activity set occurred_on='${addDays(W2, 3)}' where id='${ACT_M1a}'`); check("…or move one into another approved week", !r.ok, r);
 r = await as(L, `update public.session_report set actual_minutes=120 where session_id='${s1}'`);
-question("Q2", "the leader can't change an approved week's program length (s1 60 → 120 doubled every musician's billed time)", denied(r), r);
-await su(`update public.session_report set actual_minutes=60 where session_id='${s1}'`);
-
+check("the leader can't change the length of a program in an approved week", !r.ok, r);
+r = await as(L, `update public.session_report set attendance=20 where session_id='${s1}'`); check("…or anything else in its report", !r.ok, r);
+const r2 = await as(P, `update public.session_assignment set status='absent' where session_id='${s1}' and person_id='${M2}'`);
+check("who played a program in an approved week can't change (point person included)", !r2.ok, r2);
+r = await as(P, `update public.session set billable=false where id='${s1}'`); check("…nor its billable flag", !r.ok, r);
+r = await as(P, `update public.session set starts_at=starts_at + interval '1 hour' where id='${s1}'`); check("…nor its date or time", !r.ok, r);
 r = await as(P, `update public.session set schedule_state='canceled', cancellation_reason='other' where id='${s5}'`);
-question("Q9", "a session that already happened and was documented can't be canceled afterwards (it can; its report stays but locks, and billing switches to the cancellation rule)", denied(r), r);
+check("a documented program in an approved week can't be made No Program", !r.ok, r);
+r = await as(P, `update public.session set internal_note='Ran well' where id='${s1}'`); check("notes stay editable", r.ok && r.n === 1, r);
+r = await as(A, `update public.session_report set actual_minutes=55 where session_id='${s1}'`); check("an admin can still correct an approved week", r.ok && r.n === 1, r);
+r = await su(`select count(*)::int as n from public.audit_log where table_name='session_report' and after->>'actual_minutes'='55'`); check("…and the correction is logged", r[0].n === 1, r);
+await su(`update public.session_report set actual_minutes=60 where session_id='${s1}'`);
+check("approved billable time didn't move", (await minutes(AG2)).get(S2, "relationship_building", "approved_minutes") === before, null);
 
 // ============================================================================
 // 14. Point people and pay (QUESTION Q1)
