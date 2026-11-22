@@ -181,8 +181,13 @@ with **[Lauren's side]** or **[Ryan's side]**.
 ## Working style
 
 - Small changes, one concern at a time, on a short-lived branch per task.
-  Open a pull request; keep it small. Merging to `main` deploys to the live
-  site at app.irismusicproject.org.
+  Open a pull request; keep it small. **Merging to `main` is the handoff to
+  Ryan:** it updates **staging** (database and the staging site), not the live
+  site. Merge when CI is green, then post one line in issue #30 saying what's
+  ready to look at. Lauren never needs Supabase or Vercel.
+- **Releases are Ryan's:** the live site (app.irismusicproject.org) follows the
+  `production` branch, which only the Release workflow moves. Never push to,
+  merge into, or open a pull request against `production`.
 - **Pull `main`** before starting any task, and again before merging.
 - **Merge only when** the build, lint and type checks pass and the Vercel
   preview deploys.
@@ -204,7 +209,7 @@ with **[Lauren's side]** or **[Ryan's side]**.
   tests for new tables and screens once Lauren approves a feature.
 - **Databases (Ryan owns these):** pull requests never touch a real database.
   Merging a migration to `main` updates **staging** automatically; **production**
-  gets it only when Ryan runs "deploy-production". Never edit a migration
+  gets it only when Ryan runs **Release** (database first, then the live site). Never edit a migration
   that's on `main`; fix it with a new one. Never tell anyone to paste a
   migration into the SQL Editor.
 - Claude may pull, commit, push and open pull requests without asking first
