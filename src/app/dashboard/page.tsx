@@ -54,22 +54,18 @@ export default async function Dashboard({
         Hi, {person.name.split(" ")[0]}
       </h1>
       <p className="mt-3 text-muted">
-        Schedules, session notes and time will live here.
+        Your Iris programs, documentation, hours and invoices.
       </p>
       <ul className="mt-6 space-y-2 text-sm">
         <li>
           <Link href="/residencies" className={link}>Programs</Link>: {isAdmin ? "set up programs, seasons, rosters and point persons" : "the programs you're part of"}
         </li>
-        {isAdmin && (
-          <li>
-            <Link href="/admin/people" className={link}>People</Link>: add, edit and deactivate staff and musicians
-          </li>
-        )}
-        {isAdmin && (
-          <li>
-            <Link href="/admin/partners" className={link}>Partners</Link>: partners, their sites, and the rooms within them
-          </li>
-        )}
+        <li>
+          <Link href="/documentation" className={link}>My week</Link>: document programs and relationship building, and submit your week
+        </li>
+        <li>
+          <Link href="/invoices" className={link}>My invoices</Link>: your invoice for each two-week pay period
+        </li>
         <li>
           <Link href="/account/profile" className={link}>My profile</Link>: your phone number and instruments
         </li>
@@ -77,6 +73,28 @@ export default async function Dashboard({
           <Link href="/account/password" className={link}>Set or change your password</Link>
         </li>
       </ul>
+      {isAdmin && (
+        <>
+          <h2 className="mt-8 text-sm font-semibold uppercase tracking-wide text-muted">Admin</h2>
+          <ul className="mt-2 space-y-2 text-sm">
+            <li>
+              <Link href="/admin/people" className={link}>People</Link>: add, edit and deactivate staff and musicians
+            </li>
+            <li>
+              <Link href="/admin/partners" className={link}>Partners</Link>: partners, their sites, and the rooms within them
+            </li>
+            <li>
+              <Link href="/admin/invoices" className={link}>Invoices</Link>: custom invoices, and each program&apos;s community invoices
+            </li>
+            <li>
+              <Link href="/admin/follow-up" className={link}>Follow-up</Link>: who still owes documentation or hours, across all programs
+            </li>
+            <li>
+              <Link href="/admin/notifications" className={link}>Outbox</Link>: every reminder and notice the app sends
+            </li>
+          </ul>
+        </>
+      )}
 
       <section className={card}>
         <h2 className="text-lg font-semibold">Photos and links</h2>
