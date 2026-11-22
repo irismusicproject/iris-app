@@ -72,6 +72,8 @@ export function SessionCard({
   roster,
   onRoster,
   canSchedule,
+  isAdminLead,
+  myId,
 }: {
   residencyId: string;
   timeZone: string;
@@ -79,7 +81,10 @@ export function SessionCard({
   rooms: Option[];
   roster: Option[];
   onRoster: boolean;
+  /** Point person or admin (v0.18). */
   canSchedule: boolean;
+  isAdminLead: boolean;
+  myId: string;
 }) {
   const [pending, start] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
@@ -89,7 +94,14 @@ export function SessionCard({
   const [reason, setReason] = useState<CancellationReason>("other");
   const isDraft = session.state === "draft";
   const canceled = session.state === "canceled";
-  const canEdit = isDraft && (onRoster || canSchedule);
+  // DOMAIN-MODEL v0.18: musicians edit drafts they play in; the point person
+  // and admins edit everything; the Admin Lead updates published dates.
+  const playingMe = session.assignments.some((a) => a.personId === myId && a.status !== "absent");
+  const canEdit = isDraft && (canSchedule || (onRoster && playingMe));
+  const canEditPublished = isAdminLead && session.state === "published";
+  const canEditDetails = canEdit || canEditPublished;
+  const canCancel = canSchedule || canEditPublished;
+  const canRestore = canSchedule || isAdminLead;
   const playing = session.assignments.filter((a) => a.status !== "absent");
   const leader = playing.find((a) => a.role === "leader");
   const notOnIt = roster.filter((r) => !session.assignments.some((a) => a.personId === r.id));
@@ -117,7 +129,7 @@ export function SessionCard({
             {CANCELED_FOR_ABSENCE_CALENDAR_TEXT}
             {session.cancellationReason && <span className="text-xs text-muted"> ({CANCELLATION_REASON_LABELS[session.cancellationReason]})</span>}
           </span>
-        ) : canEdit ? (
+        ) : canEditDetails ? (
           <input
             aria-label={`Title for ${session.dayLabel}`}
             value={title}
@@ -132,7 +144,7 @@ export function SessionCard({
 
         {canceled || session.kind !== "group_session" ? (
           <span className="text-sm text-muted">–</span>
-        ) : canSchedule ? (
+        ) : canEdit ? (
           <select
             aria-label={`Leader for ${session.dayLabel}`}
             value={leader?.personId ?? ""}
@@ -147,7 +159,7 @@ export function SessionCard({
           <span className={`text-sm ${leader ? "" : "text-brand-orange"}`}><span className="text-muted lg:hidden">Leader: </span>{leader?.name ?? "Not set"}</span>
         )}
 
-        {canEdit ? (
+        {canEditDetails ? (
           <input
             aria-label={`Notes for ${session.dayLabel}`}
             value={note}
@@ -162,7 +174,7 @@ export function SessionCard({
         )}
 
         {canceled ? (
-          canSchedule ? (
+          canRestore ? (
             <span className="col-span-2 lg:col-span-1">
               <ConfirmButton
                 disabled={pending}
@@ -212,9 +224,9 @@ export function SessionCard({
               </li>
             ))}
           </ul>
-          {canEdit && (
+          {canEditDetails && (
             <div className="flex flex-wrap items-center gap-2">
-              {notOnIt.length > 0 && (
+              {canEdit && notOnIt.length > 0 && (
                 <select
                   aria-label={`Add a musician to ${session.dayLabel}`}
                   value=""
@@ -235,7 +247,7 @@ export function SessionCard({
               >
                 {rooms.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
               </select>
-              {session.isSpecialEvent && (
+              {(session.isSpecialEvent || canSchedule || canEditPublished) && (
                 <form
                   className="flex flex-wrap items-center gap-2"
                   onSubmit={(e) => {
@@ -251,7 +263,7 @@ export function SessionCard({
               )}
             </div>
           )}
-          {canSchedule && (
+          {canCancel && (
             <div className="flex flex-wrap items-center gap-2">
               <select
                 aria-label={`Reason to cancel ${session.dayLabel}`}

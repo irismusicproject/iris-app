@@ -1,6 +1,6 @@
 # Iris App — Domain Model (Language 1: the code)
 
-_Draft v0.17, November 22, 2026 (v0.17: "No Program" dates can be restored. v0.16: season view for the point person. v0.15: usual leaders, season reminders, private calendar links. v0.14: documentation from the CESLC workbook sample, weekly; musicians write draft notes; schedule laid out like the workbook tab. v0.13: people in a program can see each other's names, nothing else. v0.12: every roster musician edits draft titles, rooms and musicians; the point person assigns leaders. v0.11: `Partner`, `Site`, `Location` built; see section 1. v0.10: scheduled relationship building (e.g. Lessons) and the partner calendar layout; v0.9: partner permission for resident names confirmed; v0.8: decisions D14 and D15 settled: residents and attendance; v0.7: decisions D10, D11 and D16 settled: events, extras, absences, substitutes and the roster; v0.6: both D9 billing details confirmed; v0.5: decisions D9 and D13 settled: partner billing and version 1 scope; v0.4: decisions D2, D4, D6, D7 and D8 settled; v0.3: decisions D1, D3 and D5 settled, including how a month's schedule is reviewed, published and sent; v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
+_Draft v0.18, November 22, 2026 (v0.18: roles narrowed: the point person plans, the Admin Lead publishes and updates published dates, musicians edit drafts they play in and pick leaders; monthly programs. v0.17: "No Program" dates can be restored. v0.16: season view for the point person. v0.15: usual leaders, season reminders, private calendar links. v0.14: documentation from the CESLC workbook sample, weekly; musicians write draft notes; schedule laid out like the workbook tab. v0.13: people in a program can see each other's names, nothing else. v0.12: every roster musician edits draft titles, rooms and musicians; the point person assigns leaders. v0.11: `Partner`, `Site`, `Location` built; see section 1. v0.10: scheduled relationship building (e.g. Lessons) and the partner calendar layout; v0.9: partner permission for resident names confirmed; v0.8: decisions D14 and D15 settled: residents and attendance; v0.7: decisions D10, D11 and D16 settled: events, extras, absences, substitutes and the roster; v0.6: both D9 billing details confirmed; v0.5: decisions D9 and D13 settled: partner billing and version 1 scope; v0.4: decisions D2, D4, D6, D7 and D8 settled; v0.3: decisions D1, D3 and D5 settled, including how a month's schedule is reviewed, published and sent; v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
 app's objects. GLOSSARY.md translates the team's language (Language 2) and
 our partner-facing language (Language 3) into these objects._
 
@@ -307,7 +307,7 @@ it doesn't happen. Its `Session`s happen.
 | `kind` | enum `SessionKind` | `group_session` (default) or `relationship_building` (e.g. "Lessons"). See below |
 | `title` | text | **Title only.** Never personnel or location (D12) |
 | `default_location_id` | → Location | Must be at one of the residency's sites |
-| `recurrence` | rule | Weekly on chosen weekdays, e.g. Wednesdays 11:00, 120 minutes. Time and length are **optional** for `relationship_building` |
+| `recurrence` | rule | **Weekly** on chosen weekdays (e.g. Wednesdays 11:00, 120 minutes), or **monthly** on the 1st–4th of one weekday (`week_of_month`, e.g. the 4th Monday at 1:30; v0.18). Monthly programs print under Regular programming. Time and length are **optional** for `relationship_building` |
 | `default_personnel` | → Person (many) | Must be on the current roster |
 | `default_leader_id` | → Person | Optional **usual leader** (v0.15): made leader on every date when a month is filled in. Weekly programs without one are left for the point person |
 | `active_from`, `active_until` | date | |
@@ -471,6 +471,15 @@ document). A month can have several versions as the partner gives feedback.
 | `file` | storage ref | |
 
 Built only from `published` sessions.
+
+**Who does what (v0.18, decided by Lauren Nov 22, 2026; supersedes the
+drafting rules below where they differ)**
+
+| Who | Can do |
+|---|---|
+| **Point person, admins** | Everything: set up weekly and monthly programs (in the season view), fill months and the season, add events, set leaders, "No Program" and restore, mark a month reviewed |
+| **Admin Lead** | Publish and download; update **published** dates after the partner's staff asks (time, room, title, notes, "No Program" or restore) and download the updated calendar; add one-time events. Not: fill months or the season, set up programs |
+| **Every roster musician** (Admin Lead included) | On **draft dates they play in**: title, notes, room, who plays, and **pick or swap the leader** (after the point person has set it); date and time of special events they play in |
 
 **Publishing a month (decided, D5, Nov 21, 2026; drafting updated Nov 22)**
 

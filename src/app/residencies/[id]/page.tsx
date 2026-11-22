@@ -89,7 +89,6 @@ export default async function ResidencyPage({ params }: { params: Promise<{ id: 
       <div className="mt-4 flex flex-wrap gap-2 text-sm">
         <Link href={`/residencies/${id}/month`} className="rounded-full bg-iris px-4 py-2 font-medium text-white hover:bg-iris-strong dark:text-background">Schedule</Link>
         <Link href={`/residencies/${id}/season`} className="rounded-full border border-border px-4 py-2 hover:bg-iris-soft">Season</Link>
-        <Link href={`/residencies/${id}/weekly`} className="rounded-full border border-border px-4 py-2 hover:bg-iris-soft">Weekly programs</Link>
       </div>
 
       <section className={card}>

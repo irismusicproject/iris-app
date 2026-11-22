@@ -50,7 +50,7 @@ export default async function MonthPage({
   params: Promise<{ id: string; month: string }>;
   searchParams: Promise<{ site?: string }>;
 }) {
-  const { isAdmin } = await requirePerson();
+  const { isAdmin, person } = await requirePerson();
   const { id, month } = await params;
   const { site: siteParam } = await searchParams;
   if (!/^[0-9a-f-]{36}$/i.test(id) || !isMonth(month)) notFound();
@@ -177,7 +177,7 @@ export default async function MonthPage({
   ).length;
 
   const card = "mt-6 rounded-xl border border-border bg-surface p-5 sm:p-6";
-  const cardProps = { residencyId: id, timeZone: tz, rooms, roster, onRoster: access.onRoster, canSchedule: access.canSchedule };
+  const cardProps = { residencyId: id, timeZone: tz, rooms, roster, onRoster: access.onRoster, canSchedule: access.canSchedule, isAdminLead: access.isAdminLead, myId: person.id };
 
   return (
     <AppShell isAdmin={isAdmin}>
@@ -205,9 +205,9 @@ export default async function MonthPage({
       </p>
       <p className="mt-2 text-sm text-muted">
         <Link href={`/residencies/${id}/season`} className="text-iris underline-offset-2 hover:underline">Season view</Link>
-        {" · "}
-        <Link href={`/residencies/${id}/weekly`} className="text-iris underline-offset-2 hover:underline">Weekly programs</Link>
-        {access.onRoster && !access.canSchedule && " · You can edit each date's title, notes, room and musicians while the month is a draft."}
+
+        {access.onRoster && !access.canSchedule && " · On draft dates you play in, you can edit the title, notes, room, musicians and leader."}
+        {access.isAdminLead && !access.canSchedule && " As admin lead, you publish the month and update published dates after partner feedback."}
       </p>
 
       {upcoming.length > 0 && (
@@ -242,7 +242,7 @@ export default async function MonthPage({
           monthLabel={monthLabel}
           latest={latest ? { version: latest.version, state: latest.state } : null}
           isPointPerson={access.isPointPerson}
-          canSchedule={access.canSchedule}
+          canSchedule={access.canSchedule || access.isAdminLead}
           draftCount={drafts}
           needLeader={needLeader}
         />
@@ -277,7 +277,7 @@ export default async function MonthPage({
         </section>
       )}
 
-      {access.canSchedule && (
+      {(access.canSchedule || access.isAdminLead) && (
         <section className={card}>
           <h2 className="text-lg font-semibold">Add a one-time program or special event</h2>
           <div className="mt-5">

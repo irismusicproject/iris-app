@@ -4,10 +4,11 @@ import { AppShell } from "@/components/app-shell";
 import { requirePerson } from "@/lib/auth";
 import { getResidencyAccess, getResidencyNames } from "@/lib/residency-access";
 import { createClient } from "@/lib/supabase/server";
-import { SESSION_KIND_LABELS, WEEKDAYS, type SessionKind } from "@/shared/domain/scheduling";
+import { recurrenceLabel, SESSION_KIND_LABELS, type Series, type SessionKind } from "@/shared/domain/scheduling";
 import { formatDay, formatMonth, formatTime, localDateTime } from "@/shared/domain/time";
 import { AddOneTimeForm } from "../month/month-controls";
 import { FillSeasonButton, SeasonLeaderSelect } from "./season-controls";
+import { SeriesForm } from "./series-form";
 
 // Season view (DOMAIN-MODEL v0.16): the whole semester at a glance, for the
 // point person (and Admin Lead, admins). Set a weekly program's leader for
@@ -15,18 +16,7 @@ import { FillSeasonButton, SeasonLeaderSelect } from "./season-controls";
 export const metadata = { title: "Season · Iris Music Project" };
 
 type SeasonRow = { id: string; name: string; starts_on: string; ends_on: string; roster_member: { person_id: string; left_on: string | null }[] };
-type SeriesRow = {
-  id: string;
-  kind: SessionKind;
-  title: string;
-  weekdays: number[];
-  start_time: string | null;
-  minutes: number | null;
-  default_leader_id: string | null;
-  active_from: string;
-  active_until: string | null;
-  series_default_person: { person_id: string }[];
-};
+type SeriesRow = Series & { series_default_person: { person_id: string }[] };
 type SessionRow = {
   id: string;
   series_id: string | null;
@@ -80,7 +70,7 @@ export default async function SeasonPage({ params, searchParams }: { params: Pro
   const [{ data: seriesRows }, { data: sessionRows }, { data: siteRows }] = await Promise.all([
     supabase
       .from("series")
-      .select("id, kind, title, weekdays, start_time, minutes, default_leader_id, active_from, active_until, series_default_person(person_id)")
+      .select("*, series_default_person(person_id)")
       .eq("residency_id", id)
       .order("active_from"),
     supabase
@@ -142,11 +132,11 @@ export default async function SeasonPage({ params, searchParams }: { params: Pro
       )}
 
       <section className={card}>
-        <h2 className="text-lg font-semibold">Weekly programs and leaders</h2>
+        <h2 className="text-lg font-semibold">Weekly and monthly programs</h2>
         <p className="mt-1 text-sm text-muted">
           {access.canSchedule
-            ? "Pick a leader for the whole season: they become the usual leader and lead every draft date from today on. Published months don't change."
-            : "Who usually leads each weekly program this season."}
+            ? "Set up the season's recurring programs. Pick a leader for the whole season: they become the usual leader and lead every draft date from today on. Published months don't change."
+            : "The season's recurring programs and who usually leads them."}
         </p>
         <div className="mt-4 divide-y divide-border">
           {series.map((s) => {
@@ -159,10 +149,25 @@ export default async function SeasonPage({ params, searchParams }: { params: Pro
                     {s.kind === "relationship_building" && <span className="ml-2 rounded-full border border-border px-2 py-0.5 text-xs font-normal">{SESSION_KIND_LABELS[s.kind]}</span>}
                   </p>
                   <p className="text-sm text-muted">
-                    {WEEKDAYS.filter((d) => s.weekdays.includes(d.value)).map((d) => d.label).join(", ")} · {time12(s.start_time)}
+                    {recurrenceLabel(s)} · {time12(s.start_time)}
                     {s.series_default_person.length ? ` · ${s.series_default_person.map((p) => nameOf(p.person_id).split(" ")[0]).join(", ")}` : ""}
                   </p>
                   {s.kind === "group_session" && open > 0 && <p className="text-xs text-brand-orange">{open} date{open === 1 ? "" : "s"} this season without a leader</p>}
+                  {access.canSchedule && (
+                    <details className="mt-2">
+                      <summary className="cursor-pointer text-xs font-medium text-iris">Edit program</summary>
+                      <div className="mt-3">
+                        <SeriesForm
+                          key={JSON.stringify(s)}
+                          residencyId={id}
+                          series={s}
+                          defaultPeople={s.series_default_person.map((x) => x.person_id)}
+                          rooms={rooms}
+                          musicians={musicians}
+                        />
+                      </div>
+                    </details>
+                  )}
                 </div>
                 {s.kind !== "group_session" ? (
                   <span className="text-sm text-muted">No leader needed</span>
@@ -174,8 +179,14 @@ export default async function SeasonPage({ params, searchParams }: { params: Pro
               </div>
             );
           })}
-          {series.length === 0 && <p className="py-3 text-sm text-muted">No weekly programs in this season yet.</p>}
+          {series.length === 0 && <p className="py-3 text-sm text-muted">No programs in this season yet.</p>}
         </div>
+        {access.canSchedule && rooms.length > 0 && (
+          <details className="mt-4 border-t border-border pt-4">
+            <summary className="cursor-pointer text-sm font-medium text-iris">Add a weekly or monthly program</summary>
+            <div className="mt-4"><SeriesForm residencyId={id} rooms={rooms} musicians={musicians} /></div>
+          </details>
+        )}
       </section>
 
       <section className={card}>

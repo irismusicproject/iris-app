@@ -50,7 +50,10 @@ function seriesFromForm(form: FormData) {
   const kind = (String(form.get("kind") ?? "group_session") as SessionKind);
   const start = String(form.get("start_time") ?? "").trim();
   const minutesText = String(form.get("minutes") ?? "").trim();
+  const recurrence = form.get("recurrence") === "monthly" ? "monthly" : "weekly";
   return {
+    recurrence,
+    week_of_month: recurrence === "monthly" ? Number(form.get("week_of_month")) || null : null,
     kind: SESSION_KINDS.includes(kind) ? kind : "group_session",
     title: String(form.get("title") ?? ""),
     default_location_id: String(form.get("default_location_id") ?? ""),
