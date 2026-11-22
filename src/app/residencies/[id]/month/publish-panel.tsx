@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { buttonClass, inputClass } from "@/components/auth-card";
+import { ConfirmButton } from "@/components/confirm-button";
 import { markMonthReviewed, newCalendarVersion, publishMonth, type ScheduleResult } from "../../schedule-actions";
 
 // Steps 3–5 of publishing a month (DOMAIN-MODEL section 3):
@@ -59,16 +60,16 @@ export function PublishPanel({
             {needLeader > 0 && ` ${needLeader} program${needLeader === 1 ? " still needs" : "s still need"} a leader.`}
           </p>
           {isPointPerson && (
-            <button
-              type="button"
-              disabled={pending}
-              className={`${buttonClass} mt-4`}
-              onClick={() => {
-                if (confirm(`Mark ${siteName}'s ${monthLabel} schedule as reviewed?`)) run(() => markMonthReviewed(residencyId, siteId, month));
-              }}
-            >
-              {pending ? "Saving..." : `Mark ${monthLabel} reviewed`}
-            </button>
+            <div className="mt-4">
+              <ConfirmButton
+                disabled={pending}
+                className={buttonClass}
+                label={pending ? "Saving..." : `Mark ${monthLabel} reviewed`}
+                question={`Mark ${siteName}'s ${monthLabel} schedule as reviewed?`}
+                confirmLabel="Yes, reviewed"
+                onConfirm={() => run(() => markMonthReviewed(residencyId, siteId, month))}
+              />
+            </div>
           )}
         </>
       )}
@@ -80,17 +81,16 @@ export function PublishPanel({
             calendar to email to the partner (cc the point person).
           </p>
           {canSchedule && (
-            <button
-              type="button"
-              disabled={pending}
-              className={`${buttonClass} mt-4`}
-              onClick={() => {
-                if (confirm(`Publish ${monthLabel} at ${siteName}? Musicians will treat it as final.`))
-                  run(() => publishMonth(residencyId, siteId, month), download);
-              }}
-            >
-              {pending ? "Publishing..." : "Publish and download"}
-            </button>
+            <div className="mt-4">
+              <ConfirmButton
+                disabled={pending}
+                className={buttonClass}
+                label={pending ? "Publishing..." : "Publish and download"}
+                question={`Publish ${monthLabel} at ${siteName}? Musicians will treat it as final.`}
+                confirmLabel="Yes, publish"
+                onConfirm={() => run(() => publishMonth(residencyId, siteId, month), download)}
+              />
+            </div>
           )}
         </>
       )}

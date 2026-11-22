@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { inputClass } from "@/components/auth-card";
+import { ConfirmButton } from "@/components/confirm-button";
 import {
   CANCELLATION_REASON_LABELS,
   CANCELLATION_REASONS,
@@ -246,17 +247,14 @@ export function SessionCard({
               >
                 {CANCELLATION_REASONS.map((r) => <option key={r} value={r}>{CANCELLATION_REASON_LABELS[r]}</option>)}
               </select>
-              <button
-                type="button"
+              <ConfirmButton
                 disabled={pending}
                 className={small}
-                onClick={() => {
-                  if (confirm(`Mark ${session.dayLabel} as "No Program"? This can't be undone; add a new program if plans change.`))
-                    run(() => cancelSession(residencyId, session.id, reason));
-                }}
-              >
-                Make “No Program”
-              </button>
+                label="Make “No Program”"
+                question={`Mark ${session.dayLabel} as “No Program”? This can't be undone.`}
+                confirmLabel="Yes, No Program"
+                onConfirm={() => run(() => cancelSession(residencyId, session.id, reason), "Marked “No Program”.")}
+              />
             </div>
           )}
         </div>

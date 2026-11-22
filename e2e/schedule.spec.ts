@@ -95,8 +95,9 @@ test("fill a month, musicians edit drafts, point person sets leaders, lead marks
   await leadPage.reload();
   await leadPage.waitForLoadState("networkidle");
   const jamBlock = leadPage.locator("div", { has: leadPage.getByRole("heading", { name: "Jam Band" }) }).last();
-  leadPage.once("dialog", (dlg) => dlg.accept());
-  await jamBlock.getByRole("button", { name: /No Program/ }).last().click();
+  await jamBlock.getByRole("button", { name: "More" }).last().click();
+  await jamBlock.getByRole("button", { name: /Make .No Program./ }).last().click();
+  await leadPage.getByRole("button", { name: "Yes, No Program" }).click();
   await expect(leadPage.getByText(/^Canceled ·/)).toHaveCount(1);
   const { count } = await d.from("session").select("id", { count: "exact", head: true }).eq("residency_id", res.id).eq("schedule_state", "canceled");
   expect(count).toBe(1);

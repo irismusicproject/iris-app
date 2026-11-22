@@ -3,6 +3,7 @@
 import { useActionState, useMemo, useState, useTransition } from "react";
 import { Field } from "@/components/app-shell";
 import { buttonClass, FormError, inputClass } from "@/components/auth-card";
+import { ConfirmButton } from "@/components/confirm-button";
 import {
   ACTIVITY_KIND_LABELS,
   ACTIVITY_KINDS,
@@ -225,17 +226,15 @@ export function ActivityForm({
 export function DeleteActivityButton({ id, label }: { id: string; label: string }) {
   const [pending, start] = useTransition();
   return (
-    <button
-      type="button"
+    <ConfirmButton
       disabled={pending}
-      aria-label={`Delete ${label}`}
+      ariaLabel={`Delete ${label}`}
       className={small}
-      onClick={() => {
-        if (confirm(`Delete this activity (${label})?`)) start(async () => { await deleteActivity(id); });
-      }}
-    >
-      Delete
-    </button>
+      label="Delete"
+      question="Delete this activity?"
+      confirmLabel="Yes, delete"
+      onConfirm={() => start(async () => { await deleteActivity(id); })}
+    />
   );
 }
 
@@ -310,16 +309,14 @@ export function CalendarLinkCard({ feedUrl }: { feedUrl: string | null }) {
           </ul>
           <p className="text-xs text-muted">
             Keep this link to yourself: anyone with it can see your Iris schedule.{" "}
-            <button
-              type="button"
+            <ConfirmButton
               disabled={pending}
               className="underline underline-offset-2"
-              onClick={() => {
-                if (confirm("Make a new link? The old one stops working, so you'll need to subscribe again.")) start(async () => { await resetCalendarLink(); setCopied(false); });
-              }}
-            >
-              Make a new link
-            </button>
+              label="Make a new link"
+              question="Make a new link? The old one stops working; you'll subscribe again."
+              confirmLabel="Yes, new link"
+              onConfirm={() => start(async () => { await resetCalendarLink(); setCopied(false); })}
+            />
           </p>
         </>
       )}
