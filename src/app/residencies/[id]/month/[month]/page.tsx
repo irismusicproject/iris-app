@@ -8,7 +8,7 @@ import type { CancellationReason, SessionKind } from "@/shared/domain/scheduling
 import { formatDay, formatMonth, formatTime, isMonth, localDateTime, monthWindow, shiftMonth } from "@/shared/domain/time";
 import { AddOneTimeForm, FillMonthButton } from "../month-controls";
 import { PublishPanel } from "../publish-panel";
-import { SessionCard, type CardSession } from "../session-card";
+import { ScheduleHeader, SessionCard, type CardSession } from "../session-card";
 
 // A month's schedule for one site, laid out like the partner calendar
 // (docs/GLOSSARY.md Part B): special events, then one block per weekly
@@ -30,6 +30,7 @@ type SessionRow = {
   schedule_state: "draft" | "published" | "canceled";
   cancellation_reason: CancellationReason | null;
   public_note: string | null;
+  internal_note: string | null;
   location: { site_id: string; display_name: string } | null;
   series: { title: string; weekdays: number[]; start_time: string | null } | null;
   session_assignment: {
@@ -89,7 +90,7 @@ export default async function MonthPage({
     supabase
       .from("session")
       .select(
-        "id, series_id, kind, title, location_id, starts_at, has_set_time, is_special_event, schedule_state, cancellation_reason, public_note, location(site_id, display_name), series(title, weekdays, start_time), session_assignment(id, person_id, role, status)",
+        "id, series_id, kind, title, location_id, starts_at, has_set_time, is_special_event, schedule_state, cancellation_reason, public_note, internal_note, location(site_id, display_name), series(title, weekdays, start_time), session_assignment(id, person_id, role, status)",
       )
       .eq("residency_id", id)
       .gte("starts_at", w.from)
@@ -129,6 +130,7 @@ export default async function MonthPage({
       state: s.schedule_state,
       cancellationReason: s.cancellation_reason,
       publicNote: s.public_note,
+      internalNote: s.internal_note,
       assignments: s.session_assignment
         .map((a) => ({ id: a.id, personId: a.person_id, name: firstName(nameOf(a.person_id)), role: a.role, status: a.status }))
         .sort((a, b) => Number(b.role === "leader") - Number(a.role === "leader") || a.name.localeCompare(b.name)),
@@ -187,7 +189,7 @@ export default async function MonthPage({
       </p>
       <p className="mt-2 text-sm text-muted">
         <Link href={`/residencies/${id}/weekly`} className="text-iris underline-offset-2 hover:underline">Weekly programs</Link>
-        {access.onRoster && !access.canSchedule && " · You can edit titles, rooms and musicians on drafts."}
+        {access.onRoster && !access.canSchedule && " · You can edit each date's title, notes, room and musicians while the month is a draft."}
       </p>
 
       {access.canSchedule && (
@@ -214,23 +216,25 @@ export default async function MonthPage({
       {special.length > 0 && (
         <section className={card}>
           <h2 className="text-lg font-semibold">Special events</h2>
-          <ul className="divide-y divide-border">{special.map((s) => <SessionCard key={s.id} session={toCard(s, false)} {...cardProps} />)}</ul>
+          <div className="mt-3"><ScheduleHeader /></div>
+          <ul>{special.map((s) => <SessionCard key={s.id} session={toCard(s, false)} {...cardProps} />)}</ul>
         </section>
       )}
 
       {(blocks.length > 0 || others.length > 0) && (
         <section className={card}>
           <h2 className="text-lg font-semibold">Regular programming</h2>
+          <div className="mt-3"><ScheduleHeader /></div>
           {blocks.map((b) => (
             <div key={b[0].series_id} className="mt-4 border-t border-border pt-3 first:border-t-0">
               <h3 className="text-sm font-semibold text-muted">{b[0].series?.title}</h3>
-              <ul className="divide-y divide-border">{b.map((s) => <SessionCard key={s.id} session={toCard(s, true)} {...cardProps} />)}</ul>
+              <ul>{b.map((s) => <SessionCard key={s.id} session={toCard(s, true)} {...cardProps} />)}</ul>
             </div>
           ))}
           {others.length > 0 && (
             <div className="mt-4 border-t border-border pt-3">
               <h3 className="text-sm font-semibold text-muted">Other programs</h3>
-              <ul className="divide-y divide-border">{others.map((s) => <SessionCard key={s.id} session={toCard(s, true)} {...cardProps} />)}</ul>
+              <ul>{others.map((s) => <SessionCard key={s.id} session={toCard(s, true)} {...cardProps} />)}</ul>
             </div>
           )}
         </section>

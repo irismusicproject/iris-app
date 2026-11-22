@@ -1,6 +1,6 @@
 # Iris App — Glossary (Languages 2 and 3)
 
-_Draft v0.8, November 21, 2026 (v0.8: partner calendar layout from the Dec 2026 sample; "Lessons"; v0.7: D14, D15 settled; v0.6: D10, D11, D16 settled; "No Program" and roster words added; v0.5: D9, D13 settled: partner billing words added; v0.4: D2, D4, D6, D7, D8 settled; v0.3: D1, D3, D5 settled; schedule review and sending words added). Translates the words people use into the objects
+_Draft v0.9, November 22, 2026 (v0.9: documentation words from the CESLC workbook; v0.8: partner calendar layout from the Dec 2026 sample; "Lessons"; v0.7: D14, D15 settled; v0.6: D10, D11, D16 settled; "No Program" and roster words added; v0.5: D9, D13 settled: partner billing words added; v0.4: D2, D4, D6, D7, D8 settled; v0.3: D1, D3, D5 settled; schedule review and sending words added). Translates the words people use into the objects
 defined in DOMAIN-MODEL.md (Language 1), which is authoritative._
 
 - **Part A: Team language.** How Iris staff and musicians talk, and which object each word means.
@@ -83,6 +83,10 @@ enough context to tell which object it is.
 | "relationship building", "relationship-building activities" | `RelationshipActivity` (the logged instance); `TimeCategory` "Relationship Building" (the hours) | |
 | "one-to-ones" (former term) [CH] | `RelationshipActivity(kind = one_to_one)` | Logged after it happens; never on partner calendars (D2) |
 | "mini-group session" (2–8 residents) [WB] | `RelationshipActivity(kind = mini_group)` | |
+| "hallway concert" | `RelationshipActivity(kind = hallway_concert)` | Relationship building, not a program type (decided Nov 22, 2026) |
+| "Collab?" on a relationship-building log [WB] | `RelationshipActivity.collaborative` | Yes/No |
+| "Notes" (scheduling tab) [WB] | `Session.internal_note` | Any roster musician, on drafts; never prints |
+| "My week" | The weekly documentation page | Due Tuesday 5 pm (D7) |
 | "resident co-facilitation" [WB] | `SessionReport.resident_involvement = co_facilitated` | Not an interaction type (D2) |
 | "Collab? = Yes" [WB], "collaborative" | `SessionReport.resident_involvement` ∈ {`co_facilitated`, `co_led`} | **Decided (D6)**. Recorded when documenting, not when scheduling |
 | "collaborative event" | A `Session` whose `SessionReport.resident_involvement` is `co_facilitated` or `co_led` | **Decided (D6)** |

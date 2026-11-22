@@ -26,7 +26,7 @@ const ok: ScheduleResult = { status: "saved" };
 function fail(error: { code?: string; message: string }): ScheduleResult {
   const m = error.message;
   if (error.code === "42501") {
-    if (m.includes("musicians can change")) return { status: "error", message: "Musicians can change a draft's title, room and musicians (and a special event's date and time)." };
+    if (m.includes("musicians can change")) return { status: "error", message: "Musicians can change a draft's title, room, notes and musicians (and a special event's date and time)." };
     return { status: "error", message: "You don't have permission to make that change." };
   }
   if (error.code === "23514") {
@@ -108,6 +108,19 @@ export async function setSessionTitle(residencyId: string, sessionId: string, ti
   if (!t || t.length > 200) return { status: "error", message: "Enter a title (200 characters or fewer)." };
   const supabase = await createClient();
   const { error, count } = await supabase.from("session").update({ title: t }, { count: "exact" }).eq("id", sessionId);
+  if (error) return fail(error);
+  if (!count) return { status: "error", message: "This program is no longer a draft, so it can't be changed here." };
+  refresh(residencyId);
+  return ok;
+}
+
+/** Internal notes ("Ben off"); never print. Any roster musician on drafts (v0.14). */
+export async function setSessionNote(residencyId: string, sessionId: string, note: string): Promise<ScheduleResult> {
+  await requirePerson();
+  const n = note.trim();
+  if (n.length > 2000) return { status: "error", message: "Keep notes under 2,000 characters." };
+  const supabase = await createClient();
+  const { error, count } = await supabase.from("session").update({ internal_note: n || null }, { count: "exact" }).eq("id", sessionId);
   if (error) return fail(error);
   if (!count) return { status: "error", message: "This program is no longer a draft, so it can't be changed here." };
   refresh(residencyId);

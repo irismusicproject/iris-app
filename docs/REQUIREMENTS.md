@@ -103,7 +103,7 @@ after the program. The form is pre-filled from the schedule.
 
 - **R4.1 (P1)** Fields:
   - **Program type**: chosen by the session leader from the 2026
-    documentation list (Music Instructional Programs, Lecture/Discussion,
+    documentation list (Music Instructional Program, Lecture/Discussion,
     Interdisciplinary Program, Open Rehearsal, Performance, Other). Not set
     on the schedule (D2)
   - **Collaboration**: none, co-facilitated or co-led (D6). Not set on the

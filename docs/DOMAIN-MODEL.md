@@ -1,6 +1,6 @@
 # Iris App — Domain Model (Language 1: the code)
 
-_Draft v0.13, November 22, 2026 (v0.13: people in a program can see each other's names, nothing else. v0.12: every roster musician edits draft titles, rooms and musicians; the point person assigns leaders. v0.11: `Partner`, `Site`, `Location` built; see section 1. v0.10: scheduled relationship building (e.g. Lessons) and the partner calendar layout; v0.9: partner permission for resident names confirmed; v0.8: decisions D14 and D15 settled: residents and attendance; v0.7: decisions D10, D11 and D16 settled: events, extras, absences, substitutes and the roster; v0.6: both D9 billing details confirmed; v0.5: decisions D9 and D13 settled: partner billing and version 1 scope; v0.4: decisions D2, D4, D6, D7 and D8 settled; v0.3: decisions D1, D3 and D5 settled, including how a month's schedule is reviewed, published and sent; v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
+_Draft v0.14, November 22, 2026 (v0.14: documentation from the CESLC workbook sample, weekly; musicians write draft notes; schedule laid out like the workbook tab. v0.13: people in a program can see each other's names, nothing else. v0.12: every roster musician edits draft titles, rooms and musicians; the point person assigns leaders. v0.11: `Partner`, `Site`, `Location` built; see section 1. v0.10: scheduled relationship building (e.g. Lessons) and the partner calendar layout; v0.9: partner permission for resident names confirmed; v0.8: decisions D14 and D15 settled: residents and attendance; v0.7: decisions D10, D11 and D16 settled: events, extras, absences, substitutes and the roster; v0.6: both D9 billing details confirmed; v0.5: decisions D9 and D13 settled: partner billing and version 1 scope; v0.4: decisions D2, D4, D6, D7 and D8 settled; v0.3: decisions D1, D3 and D5 settled, including how a month's schedule is reviewed, published and sent; v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
 app's objects. GLOSSARY.md translates the team's language (Language 2) and
 our partner-facing language (Language 3) into these objects._
 
@@ -276,7 +276,7 @@ pages' list, kept for organization-wide stats and evaluation:
 
 | Starting value | `model_type` |
 |---|---|
-| Music Instructional Programs | `small_group` |
+| Music Instructional Program | `small_group` |
 | Lecture/Discussion | `small_group` |
 | Interdisciplinary Program | `small_group` |
 | Open Rehearsal | `performance` |
@@ -447,9 +447,14 @@ contractor (`RosterMember.is_admin_lead`).
    The Admin Lead (or point person, or an admin) adds one-time sessions
    and special events.
 2. **Musicians edit the draft.** Every musician on the residency's current
-   roster can edit any draft session in that residency: its **title**,
-   **room**, and **who plays** (adding or removing roster musicians as
-   participants). For **special events** they can also change the **date
+   roster can edit any draft session in that residency: its **title**
+   (each date has its own, e.g. this week's theme), **internal notes**
+   (e.g. "Ben off", never printed; v0.14), **room**, and **who plays**
+   (adding or removing roster musicians as participants). Titles are typed
+   without musicians' names; the calendar adds "with [first names]" (D12).
+   The schedule screen is laid out like the workbook scheduling tab: Day,
+   Time, Program Title, Program Leader, Notes. Titles lock when the month is
+   published (decided Nov 22, 2026). For **special events** they can also change the **date
    and time**. They can't set leaders, cancel, or change anything else.
    **Assumption:** creating new special events stays with the Admin Lead,
    point person and admins.
@@ -481,13 +486,20 @@ The documentation of one `Session`, written by its **leader**. **Decided (D3):**
 |---|---|---|
 | `session_id` | → Session | One report per session |
 | `author_id` | → Person | The session leader (or an admin) |
-| `actual_start`, `actual_end` | datetime | From the in-app timer or entered by hand |
+| `actual_minutes` | int | Length, pre-filled from the schedule; used for billable session hours (D9). An in-app timer may come later |
 | `attendance` | int | **Everyone present**: residents, staff, family and guests, counted together (D15) |
 | `interaction_type_id` | → InteractionType | Chosen by the leader when documenting (D2) |
 | `resident_involvement` | enum `ResidentInvolvement` | `none`, `co_facilitated`, `co_led`. What actually happened. **Decided (D6):** a "collaborative event" is a session documented as `co_facilitated` or `co_led`; `co_led` also counts toward the handbook's per-semester target |
 | `notes` | text | No health information |
-| `state` | enum | `due`, `submitted`, `approved` |
-| `submitted_at`, `approved_by`, `approved_at` | | |
+| `submitted_at` | datetime | |
+
+Approval (`state`, `approved_by`, `approved_at`) comes later.
+
+**Documented weekly (decided Nov 22, 2026).** Each musician has a **"My
+week"** page (Monday–Sunday) showing the programs they led, their
+relationship-building activities, and the month's reflection, due Tuesday
+5 pm the following week (D7). The workbook's "Collab?" column is
+`resident_involvement`: No / Yes, co-facilitated / Yes, co-led.
 
 **Invariants:** exists only for sessions that are not canceled and are in
 the past. Locked once `approved`; corrections go through an admin and are
@@ -511,18 +523,18 @@ One logged instance of relationship building with one or more residents
 | `site_id` | → Site | Required. One of the residency's sites; needed because relationship-building time is billed per site (D9) |
 | `occurred_on` | date | |
 | `location_id` | → Location | Optional; must be at `site_id` |
-| `kind` | enum | `one_to_one`, `mini_group` (2–8 residents), `co_facilitation_prep`, `other` |
-| `engagement_type_id` | → EngagementType | Admin-managed list (e.g. conversation, lesson, rehearsal, music for comfort, planning) |
-| `minutes` | int | |
-| `resident_ids` | → Resident (many, ≥1) | All at `site_id` |
+| `kind` | enum | `one_to_one`, `mini_group` (2–8 residents), `hallway_concert` (decided Nov 22, 2026) |
+| `minutes` | int | **Required** (decided Nov 22, 2026): billed per site (D9) and pre-fills weekly hours |
+| `collaborative` | bool | The workbook's "Collab?" (decided Nov 22, 2026) |
+| `resident_ids` | → Resident (many) | All at `site_id`. At least one, except **Assumption:** a hallway concert may have none (played for whoever is there) |
 | `session_id` | → Session | Optional: the scheduled `relationship_building` session it happened in (e.g. that Tuesday's Lessons) |
 | `prepares_session_id` | → Session | Optional: planning a co-led session (handbook: ≥5 meetings) |
 | `note` | text | One sentence. **No health information** |
 | `state` | enum | `submitted`, `approved` |
 
 ### `EngagementType`
-Admin-managed, versioned list used by `RelationshipActivity.engagement_type_id`.
-Attributes: `name`, `description`, `active`.
+**Not in version 1** (decided Nov 22, 2026): the activity's `kind` is
+enough for now. May return later as an admin-managed list.
 
 ### `MonthlyReflection`
 A musician's monthly narrative for one `Residency`. **In version 1 (D13).**
@@ -727,7 +739,7 @@ Permissions come from **relationships**, not job titles.
 | Approve a residency's reports, activities and time | Current `StaffAssignment.role = point_person` |
 | Edit draft and published sessions; publish a month and download its partner calendar (after review) | `RosterMember.is_admin_lead` (current season); the current point person; admins |
 | Mark a month's draft schedule reviewed | Current `StaffAssignment.role = point_person`; admins |
-| Edit a draft session's title, room and who plays (participants); for special events also date and time | Any current `RosterMember` of the residency |
+| Edit a draft session's title, internal notes, room and who plays (participants); for special events also date and time | Any current `RosterMember` of the residency |
 | See the **names** (only) of the people on a program's rosters and staff | Anyone who can see that residency: its current roster, its Iris staff, admins (decided by Lauren, Nov 22, 2026). Email, phone and the rest of `Person` stay private |
 | Assign session leaders | The current point person and admins; the Admin Lead may swap leaders afterwards |
 | See a residency's sessions and community info | Any current `RosterMember` |
