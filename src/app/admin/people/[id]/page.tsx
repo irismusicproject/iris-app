@@ -19,9 +19,9 @@ export default async function EditPersonPage({ params }: { params: Promise<{ id:
   const supabase = await createClient();
   const { data: person } = await supabase.from("person").select("*").eq("id", id).maybeSingle<Person>();
   if (!person) notFound();
-  // v0.32: the email can be changed only before they've ever signed in.
+  // v0.32: admins change the email anytime; the screen says what happens if they've signed in.
   const { data: account } = await createAdminClient().auth.admin.getUserById(person.id);
-  const neverSignedIn = !!account?.user && !account.user.last_sign_in_at;
+  const signedIn = !!account?.user?.last_sign_in_at;
 
   return (
     <AppShell isAdmin={viewer.isAdmin}>
@@ -35,9 +35,9 @@ export default async function EditPersonPage({ params }: { params: Promise<{ id:
           <InviteButton id={person.id} email={person.email} invitedAt={person.invited_at} />
         </div>
       )}
-      {person.active && neverSignedIn && (
+      {person.active && (
         <div className="mt-3">
-          <ChangeEmail id={person.id} email={person.email} />
+          <ChangeEmail id={person.id} email={person.email} signedIn={signedIn} />
         </div>
       )}
       <div className="mt-6">
