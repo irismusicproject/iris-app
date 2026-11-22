@@ -1,6 +1,6 @@
 # Iris App — Glossary (Languages 2 and 3)
 
-_Draft v0.15, November 22, 2026 (v0.15: custom invoices; v0.14: community invoices built, billable hours per musician; v0.13: usual type and lengths, Submit my week, daily one-to-one notes document; v0.12: Collab? Yes/No, hours approval and musician invoices; v0.11: monthly programs; v0.10: usual leader, calendar link; v0.9: documentation words from the CESLC workbook; v0.8: partner calendar layout from the Dec 2026 sample; "Lessons"; v0.7: D14, D15 settled; v0.6: D10, D11, D16 settled; "No Program" and roster words added; v0.5: D9, D13 settled: partner billing words added; v0.4: D2, D4, D6, D7, D8 settled; v0.3: D1, D3, D5 settled; schedule review and sending words added). Translates the words people use into the objects
+_Draft v0.16, November 22, 2026 (v0.16: shared logs, building, follow-up, outbox; v0.15: custom invoices; v0.14: community invoices built, billable hours per musician; v0.13: usual type and lengths, Submit my week, daily one-to-one notes document; v0.12: Collab? Yes/No, hours approval and musician invoices; v0.11: monthly programs; v0.10: usual leader, calendar link; v0.9: documentation words from the CESLC workbook; v0.8: partner calendar layout from the Dec 2026 sample; "Lessons"; v0.7: D14, D15 settled; v0.6: D10, D11, D16 settled; "No Program" and roster words added; v0.5: D9, D13 settled: partner billing words added; v0.4: D2, D4, D6, D7, D8 settled; v0.3: D1, D3, D5 settled; schedule review and sending words added). Translates the words people use into the objects
 defined in DOMAIN-MODEL.md (Language 1), which is authoritative._
 
 - **Part A: Team language.** How Iris staff and musicians talk, and which object each word means.
@@ -85,6 +85,10 @@ enough context to tell which object it is.
 | "mini-group session" (2–8 residents) [WB] | `RelationshipActivity(kind = mini_group)` | |
 | "hallway concert" | `RelationshipActivity(kind = hallway_concert)` | Relationship building, not a program type (decided Nov 22, 2026) |
 | "Collab?" on a relationship-building log [WB] | `RelationshipActivity.collaborative` | Yes/No |
+| "we did it together", "other musicians" (on a log) | `RelationshipActivity.musicians` | Each credited and billed; documented once (v0.16) |
+| "building" (when documenting a program) | `SessionReport.site_id` | One of the program's sites (v0.16) |
+| "Follow-up", "who's missing" | `missing_work` + metrics on the Follow-up page | Point person and admins (v0.16) |
+| "reminder", "nudge", "Outbox" | `Notification` | Sent through the one notification module (v0.16) |
 | "usual type" (of a program) | `Series.default_interaction_type_id` | Pre-selected when documenting (v0.13) |
 | "usual length" (one-to-one, mini-group, hallway concert) | `ActivityLength.minutes` | Fills Minutes on the log form (v0.13) |
 | "Submit my week" | Submitting the week's `TimeEntry` rows for every program | Only once every program the musician led is documented (v0.13) |

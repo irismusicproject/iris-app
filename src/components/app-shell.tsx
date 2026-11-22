@@ -24,6 +24,8 @@ export function AppShell({
             {isAdmin && <Link href="/admin/people" className={nav}>People</Link>}
             {isAdmin && <Link href="/admin/partners" className={nav}>Partners</Link>}
             {isAdmin && <Link href="/admin/invoices" className={nav}>Invoices</Link>}
+            {isAdmin && <Link href="/admin/follow-up" className={nav}>Follow-up</Link>}
+            {isAdmin && <Link href="/admin/notifications" className={nav}>Outbox</Link>}
             <Link href="/account/profile" className={nav}>My profile</Link>
             <form action="/auth/signout" method="post">
               <button className={nav}>Log out</button>

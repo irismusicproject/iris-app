@@ -1,6 +1,6 @@
 # Iris App — Domain Model (Language 1: the code)
 
-_Draft v0.23, November 22, 2026 (v0.23: overhead switched on or off on the contract; stipend lines can be left off each month; custom invoices typed by hand. v0.22: community invoices built; billable hours are now per musician and count once the point person approves the week (revises D9); drafts live, sent invoices frozen; admins only. v0.21: less double entry for musicians: usual type per program, usual relationship-building lengths, "Same as last time", one "Submit my week"; detailed one-to-one notes and a daily Word document per site. v0.20: program length set once by the point person or an admin; leaders change it only if a session ran longer or shorter. v0.19: musician hours and invoices built: hours entered on My week, the point person approves, admins set rates and stipends, invoices per two-week pay period; "Collab?" is Yes/No and every Yes counts as co-led; the collaboration target is set per season by the point person or an admin. v0.18: roles narrowed: the point person plans, the Admin Lead publishes and updates published dates, musicians edit drafts they play in and pick leaders; monthly programs. v0.17: "No Program" dates can be restored. v0.16: season view for the point person. v0.15: usual leaders, season reminders, private calendar links. v0.14: documentation from the CESLC workbook sample, weekly; musicians write draft notes; schedule laid out like the workbook tab. v0.13: people in a program can see each other's names, nothing else. v0.12: every roster musician edits draft titles, rooms and musicians; the point person assigns leaders. v0.11: `Partner`, `Site`, `Location` built; see section 1. v0.10: scheduled relationship building (e.g. Lessons) and the partner calendar layout; v0.9: partner permission for resident names confirmed; v0.8: decisions D14 and D15 settled: residents and attendance; v0.7: decisions D10, D11 and D16 settled: events, extras, absences, substitutes and the roster; v0.6: both D9 billing details confirmed; v0.5: decisions D9 and D13 settled: partner billing and version 1 scope; v0.4: decisions D2, D4, D6, D7 and D8 settled; v0.3: decisions D1, D3 and D5 settled, including how a month's schedule is reviewed, published and sent; v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
+_Draft v0.24, November 22, 2026 (v0.24: shared relationship-building logs; the documented building; pay only for documented hours; deadline reminders and No Program emails through one outbox; Follow-up page with missing work and metrics; staff roles. v0.23: overhead switched on or off on the contract; stipend lines can be left off each month; custom invoices typed by hand. v0.22: community invoices built; billable hours are now per musician and count once the point person approves the week (revises D9); drafts live, sent invoices frozen; admins only. v0.21: less double entry for musicians: usual type per program, usual relationship-building lengths, "Same as last time", one "Submit my week"; detailed one-to-one notes and a daily Word document per site. v0.20: program length set once by the point person or an admin; leaders change it only if a session ran longer or shorter. v0.19: musician hours and invoices built: hours entered on My week, the point person approves, admins set rates and stipends, invoices per two-week pay period; "Collab?" is Yes/No and every Yes counts as co-led; the collaboration target is set per season by the point person or an admin. v0.18: roles narrowed: the point person plans, the Admin Lead publishes and updates published dates, musicians edit drafts they play in and pick leaders; monthly programs. v0.17: "No Program" dates can be restored. v0.16: season view for the point person. v0.15: usual leaders, season reminders, private calendar links. v0.14: documentation from the CESLC workbook sample, weekly; musicians write draft notes; schedule laid out like the workbook tab. v0.13: people in a program can see each other's names, nothing else. v0.12: every roster musician edits draft titles, rooms and musicians; the point person assigns leaders. v0.11: `Partner`, `Site`, `Location` built; see section 1. v0.10: scheduled relationship building (e.g. Lessons) and the partner calendar layout; v0.9: partner permission for resident names confirmed; v0.8: decisions D14 and D15 settled: residents and attendance; v0.7: decisions D10, D11 and D16 settled: events, extras, absences, substitutes and the roster; v0.6: both D9 billing details confirmed; v0.5: decisions D9 and D13 settled: partner billing and version 1 scope; v0.4: decisions D2, D4, D6, D7 and D8 settled; v0.3: decisions D1, D3 and D5 settled, including how a month's schedule is reviewed, published and sent; v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
 app's objects. GLOSSARY.md translates the team's language (Language 2) and
 our partner-facing language (Language 3) into these objects._
 
@@ -539,6 +539,7 @@ The documentation of one `Session`, written by its **leader**. **Decided (D3):**
 |---|---|---|
 | `session_id` | → Session | One report per session |
 | `author_id` | → Person | The session leader (or an admin) |
+| `site_id` | → Site | **v0.24 (Lauren, Nov 22, 2026):** the building the program happened in, picked from the program's buildings when documenting; starts as the scheduled room's building. Attendance metrics and community invoices use it |
 | `actual_minutes` | int | Length; used for billable session hours (D9). **v0.20 (Lauren, Nov 22, 2026):** the leader doesn't type it; it is `scheduled_minutes` unless they choose "Ran longer or shorter?". An in-app timer may come later |
 | `attendance` | int | **Everyone present**: residents, staff, family and guests, counted together (D15) |
 | `interaction_type_id` | → InteractionType | Chosen by the leader when documenting (D2) |
@@ -571,7 +572,8 @@ One logged instance of relationship building with one or more residents
 
 | Attribute | Type | Notes |
 |---|---|---|
-| `person_id` | → Person | The musician |
+| `person_id` | → Person | The musician who logged it |
+| `musicians` | → Person (many), via `RelationshipActivityMusician` | **v0.24 (Lauren, Nov 22, 2026):** other roster musicians who did it too, added by the one who logs it. Documented once (residents and note once); **each musician is credited the minutes, paid for them, and the partner is billed per musician.** An added musician can take themself off ("Not me") |
 | `residency_id` | → Residency | |
 | `site_id` | → Site | Required. One of the residency's sites; needed because relationship-building time is billed per site (D9) |
 | `occurred_on` | date | |
@@ -649,6 +651,16 @@ hours are locked. Admins can also approve.
 week's hours for every program at once. The database refuses while a
 program the musician led that week (and that has happened) has no
 `SessionReport`.
+
+**Pay only for documented hours (v0.24, Lauren, Nov 22, 2026; replaces the
+"adjust them" part of D3):** musicians no longer type hours. A week's
+hours are calculated from documentation: **Programs** = the documented
+length of each program they played (not absent), **Concerts** = the same
+for special events, **Relationship Building** = minutes of every log they
+logged or were added to. The 15 minutes before and after a program aren't
+paid as program time; musicians log them as relationship building. To
+change pay, fix the documentation. Approving a week refreshes its hours
+from documentation first (keeping the original submission time).
 
 ### `PayPeriod`
 A two-week, Monday–Sunday period. Attributes: `starts_on`, `ends_on`,
@@ -839,6 +851,37 @@ Admin-editable rules from the handbook, so compliance is data.
 **Assumption (D7):** a `MonthlyReflection` is due by the same Tuesday
 17:00 deadline in the week after the month ends.
 
+### `Notification`
+One message to one person, queued by the database and delivered by the app's
+single notification module (email through Resend now; push later)
+(v0.24, Lauren, Nov 22, 2026). Attributes: `kind`, `person_id`, `email`,
+`subject`, `body`, `dedupe_key` (each message is queued once), `sent_at`,
+`delivery` (`email`, or `outbox_only` when email isn't set up), `error`.
+Admins see every message on the **Outbox** page.
+
+| Kind | When | To |
+|---|---|---|
+| `no_program` | Every time a date becomes "No Program" (unless the point person did it) | The program's point person(s) |
+| `deadline_reminder` | Monday from noon, if documentation or hours for last week are still missing | The musician |
+| `deadline_missed` | Right after the Tuesday 5 pm deadline (D7), if still missing | The musician |
+| `deadline_missed_summary` | Same time: who is missing | The point person(s) |
+| `deadline_nudge` | Every morning after that, until it's submitted (up to 4 weeks back) | The musician |
+
+Times are in the program's time zone. A scheduler (Ryan's side) calls the
+app every few minutes; each message goes out once.
+
+**Missing work** (`missing_work`): a roster musician owes a week when a
+program they led is undocumented, or they have documented work that week
+and haven't submitted it.
+
+**Follow-up page (v0.24):** for the point person (their programs) and
+admins (all programs): who still owes documentation or hours, and a
+starting set of metrics per musician (collaborations against the target,
+on-time weeks, relationship-building minutes per week and residents
+reached) and per building (average attendance this month and season,
+against the handbook's 7). Musicians see only their own progress. Lauren
+will refine the metrics.
+
 ### `AuditLog`
 Every create, change or approval of schedules, reports, activities, time,
 contracts and invoices: `who`, `when`, `object`, `before`, `after`.
@@ -847,6 +890,12 @@ Resident-record **reads** are logged too.
 ---
 
 ## 7. Permissions (who can do what)
+
+
+**Staff roles (v0.24, Lauren, Nov 22, 2026):** every Iris team member can be an
+admin (they see everything) and is also the point person for the programs
+they're directly responsible for; on other programs they may be a roster
+musician. Admins may approve their own hours.
 
 Permissions come from **relationships**, not job titles.
 

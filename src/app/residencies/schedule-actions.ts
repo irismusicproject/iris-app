@@ -9,6 +9,7 @@
 import { revalidatePath } from "next/cache";
 import { requirePerson } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { deliverSoon } from "@/lib/notify";
 import {
   CANCELLATION_REASONS,
   SESSION_KINDS,
@@ -213,6 +214,8 @@ export async function cancelSession(residencyId: string, sessionId: string, reas
     .eq("id", sessionId);
   if (error) return fail(error);
   if (!count) return { status: "error", message: "Only the date's leader (on drafts), the admin lead (on published dates), the point person or an admin can make it “No Program”." };
+  // The database queued an email to the point person (v0.24); send it now.
+  await deliverSoon();
   refresh(residencyId);
   return ok;
 }

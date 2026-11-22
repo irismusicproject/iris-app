@@ -267,6 +267,8 @@ we should design as if it does, and as our community partners would expect:
 2. **Version 2 (P2):** targets and program health, reminders, invoice status,
    community-limited admins.
 3. **Pilot:** one ensemble for a month before rolling out to everyone.
+4. **Later (Lauren, Nov 22, 2026; not planned yet):** an Iris music library
+   (sheet music), reading resources and sample programs inside the app.
 
 ## 8. Open questions
 
