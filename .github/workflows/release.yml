@@ -4,12 +4,19 @@ name: Release
 #   1. database: apply main's new migrations to PRODUCTION (an owner approves
 #      the "production" environment first);
 #   2. website: move the `production` branch up to main, which makes Vercel
-#      publish the new code at app.irismusicproject.org.
+#      publish the new code at app.irismusicproject.org;
+#   3. version: tag that exact code (e.g. v0.2) and publish a GitHub Release
+#      page with notes listing the pull requests it contains.
 # The database always goes first, so the live site never shows a screen
 # whose tables don't exist yet. See README, "Releasing".
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release, e.g. v0.2 (prototype), v1.0 (first musicians), v1.0.1 (bug fix)"
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -22,7 +29,21 @@ env:
   SUPABASE_CLI_VERSION: 2.122.1
 
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Is the version new and well-formed?
+        run: |
+          [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+(\.[0-9]+)?$ ]] || { echo "::error::Use a version like v0.2 or v1.0.1"; exit 1; }
+          if git rev-parse -q --verify "refs/tags/$VERSION" >/dev/null; then echo "::error::$VERSION already exists"; exit 1; fi
+        env:
+          VERSION: ${{ inputs.version }}
+
   database:
+    needs: check
     runs-on: ubuntu-latest
     environment: production
     concurrency:
@@ -53,9 +74,11 @@ jobs:
           ref: main
           fetch-depth: 0
       - name: What this release contains
+        env:
+          VERSION: ${{ inputs.version }}
         run: |
           {
-            echo "## Released to app.irismusicproject.org"
+            echo "## ${VERSION} released to app.irismusicproject.org"
             echo
             if git rev-parse --verify -q origin/production >/dev/null; then
               git log --oneline --no-merges origin/production..HEAD | sed 's/^/- /'
@@ -67,3 +90,8 @@ jobs:
         # Fast-forward only: if someone changed production directly, this
         # stops instead of overwriting their change.
         run: git push origin HEAD:refs/heads/production
+      - name: Tag the version and publish release notes
+        run: gh release create "$VERSION" --target "$(git rev-parse HEAD)" --title "$VERSION" --generate-notes
+        env:
+          VERSION: ${{ inputs.version }}
+          GH_TOKEN: ${{ github.token }}
