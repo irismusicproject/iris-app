@@ -201,7 +201,9 @@ Two branches, two meanings:
 
 **The handoff:** Lauren (or anyone) merges finished work to `main` when CI is green and notes it in issue #30. Ryan checks it on the staging site.
 
-**To release:** **Actions → Release → Run workflow**, then approve the **production** environment when GitHub asks. The workflow applies new migrations to production's database first, then moves `production` up to `main`, and Vercel publishes it. The run's summary lists what was released. Only this workflow moves `production`.
+**To release:** **Actions → Release → Run workflow**, enter the **version**, then approve the **production** environment when GitHub asks. The workflow applies new migrations to production's database first, then moves `production` up to `main`, and Vercel publishes it. The run's summary lists what was released. Only this workflow moves `production`.
+
+**Versions** follow `MAJOR.MINOR.PATCH`: **v0.x** while only insiders use the app; **v1.0** is the first release to musicians (Joanna and Jiyoung); then **v1.1, v1.2…** for new features and **v1.1.1** for a bug fix only. Each release tags the exact code and publishes a page under **Releases** listing the pull requests it contains. v0.1 is the sign-in, People and Partners version that was live on November 21, 2026.
 
 **If a release goes wrong:** in Vercel, open **Deployments**, choose the previous production deployment, and click **Instant Rollback**.
 
