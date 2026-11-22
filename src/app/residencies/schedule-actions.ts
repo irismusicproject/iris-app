@@ -26,7 +26,7 @@ const ok: ScheduleResult = { status: "saved" };
 function fail(error: { code?: string; message: string }): ScheduleResult {
   const m = error.message;
   if (error.code === "42501") {
-    if (m.includes("musicians can change")) return { status: "error", message: "Musicians can change a draft's title, room, notes and musicians (and a special event's date and time)." };
+    if (m.includes("musicians can change")) return { status: "error", message: "On drafts you play in, you can change the title, room, notes and musicians (and a special event's date and time). The date's leader can make it “No Program”." };
     return { status: "error", message: "You don't have permission to make that change." };
   }
   if (error.code === "23514") {
@@ -50,7 +50,10 @@ function seriesFromForm(form: FormData) {
   const kind = (String(form.get("kind") ?? "group_session") as SessionKind);
   const start = String(form.get("start_time") ?? "").trim();
   const minutesText = String(form.get("minutes") ?? "").trim();
+  const recurrence = form.get("recurrence") === "monthly" ? "monthly" : "weekly";
   return {
+    recurrence,
+    week_of_month: recurrence === "monthly" ? Number(form.get("week_of_month")) || null : null,
     kind: SESSION_KINDS.includes(kind) ? kind : "group_session",
     title: String(form.get("title") ?? ""),
     default_location_id: String(form.get("default_location_id") ?? ""),
@@ -59,6 +62,7 @@ function seriesFromForm(form: FormData) {
     minutes: minutesText ? Number(minutesText) : null,
     active_from: String(form.get("active_from") ?? ""),
     active_until: String(form.get("active_until") ?? "") || null,
+    default_leader_id: isId(String(form.get("default_leader_id") ?? "")) ? String(form.get("default_leader_id")) : null,
   };
 }
 
@@ -207,7 +211,22 @@ export async function cancelSession(residencyId: string, sessionId: string, reas
     .update({ schedule_state: "canceled", cancellation_reason: reason }, { count: "exact" })
     .eq("id", sessionId);
   if (error) return fail(error);
-  if (!count) return { status: "error", message: "Only the admin lead, point person or an admin can cancel a program." };
+  if (!count) return { status: "error", message: "Only the date's leader (on drafts), the admin lead (on published dates), the point person or an admin can make it “No Program”." };
+  refresh(residencyId);
+  return ok;
+}
+
+/** Restore a "No Program" date: back to a draft with its musicians and leader (v0.17). */
+export async function restoreSession(residencyId: string, sessionId: string): Promise<ScheduleResult> {
+  await requirePerson();
+  const supabase = await createClient();
+  const { error, count } = await supabase
+    .from("session")
+    .update({ schedule_state: "draft", cancellation_reason: null, canceled_at: null }, { count: "exact" })
+    .eq("id", sessionId)
+    .eq("schedule_state", "canceled");
+  if (error) return fail(error);
+  if (!count) return { status: "error", message: "Only the admin lead, point person or an admin can restore a date." };
   refresh(residencyId);
   return ok;
 }
@@ -285,4 +304,25 @@ export async function newCalendarVersion(residencyId: string, siteId: string, mo
   if (error) return publishFail(error);
   refresh(residencyId);
   return ok;
+}
+
+// ---- Season view (DOMAIN-MODEL v0.16) ----
+
+/** Leader for the whole season: sets the usual leader and every draft date from today on. */
+export async function setSeriesLeaderForSeason(residencyId: string, seriesId: string, personId: string): Promise<ScheduleResult & { changed?: number }> {
+  await requirePerson();
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("set_series_leader", { p_series: seriesId, p_person: isId(personId) ? personId : null });
+  if (error) return fail(error);
+  refresh(residencyId);
+  return { status: "saved", changed: data as number };
+}
+
+export async function fillSeason(residencyId: string, seasonId: string): Promise<ScheduleResult & { created?: number }> {
+  await requirePerson();
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("generate_season", { p_season: seasonId });
+  if (error) return fail(error);
+  refresh(residencyId);
+  return { status: "saved", created: data as number };
 }

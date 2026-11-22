@@ -50,7 +50,7 @@ export default async function MonthPage({
   params: Promise<{ id: string; month: string }>;
   searchParams: Promise<{ site?: string }>;
 }) {
-  const { isAdmin } = await requirePerson();
+  const { isAdmin, person } = await requirePerson();
   const { id, month } = await params;
   const { site: siteParam } = await searchParams;
   if (!/^[0-9a-f-]{36}$/i.test(id) || !isMonth(month)) notFound();
@@ -80,13 +80,14 @@ export default async function MonthPage({
     );
   }
   const tz = site.timezone;
+  const tz0 = tz;
   const rooms = site.location.filter((l) => l.active).map((l) => ({ id: l.id, label: l.display_name }));
   const allRooms = sites.flatMap((s) => s.location.filter((l) => l.active).map((l) => ({ id: l.id, label: `${s.display_name} · ${l.display_name}` })));
 
   // Sessions in a window around the month, then kept if they fall in the
   // month at this site in its own time zone.
   const w = monthWindow(month);
-  const [{ data: sessionRows }, { data: rosterRows }, { data: versions }] = await Promise.all([
+  const [{ data: sessionRows }, { data: rosterRows }, { data: versions }, { data: upcomingRows }] = await Promise.all([
     supabase
       .from("session")
       .select(
@@ -103,7 +104,22 @@ export default async function MonthPage({
       .lte("starts_on", `${shiftMonth(month, 1)}-01`)
       .gte("ends_on", `${month}-01`),
     supabase.from("calendar_export").select("version, state").eq("residency_id", id).eq("site_id", site.id).eq("month", `${month}-01`).order("version"),
+    // Special events in later months (often planned at the start of a season).
+    supabase
+      .from("session")
+      .select("id, title, starts_at, has_set_time, location(display_name, site(display_name, timezone))")
+      .eq("residency_id", id)
+      .eq("is_special_event", true)
+      .neq("schedule_state", "canceled")
+      .gte("starts_at", monthWindow(shiftMonth(month, 1)).from)
+      .order("starts_at")
+      .limit(12),
   ]);
+  type UpcomingRow = { id: string; title: string; starts_at: string; has_set_time: boolean; location: { display_name: string; site: { display_name: string; timezone: string } | null } | null };
+  const upcoming = ((upcomingRows ?? []) as unknown as UpcomingRow[]).filter((u) => {
+    const tz = u.location?.site?.timezone ?? tz0;
+    return localDateTime(u.starts_at, tz).date >= `${shiftMonth(month, 1)}-01`;
+  });
   const sessions = ((sessionRows ?? []) as unknown as SessionRow[]).filter(
     (s) => s.location?.site_id === site.id && localDateTime(s.starts_at, tz).date.startsWith(month),
   );
@@ -161,7 +177,7 @@ export default async function MonthPage({
   ).length;
 
   const card = "mt-6 rounded-xl border border-border bg-surface p-5 sm:p-6";
-  const cardProps = { residencyId: id, timeZone: tz, rooms, roster, onRoster: access.onRoster, canSchedule: access.canSchedule };
+  const cardProps = { residencyId: id, timeZone: tz, rooms, roster, onRoster: access.onRoster, canSchedule: access.canSchedule, isAdminLead: access.isAdminLead, myId: person.id };
 
   return (
     <AppShell isAdmin={isAdmin}>
@@ -188,9 +204,30 @@ export default async function MonthPage({
         {access.canSchedule && needLeader > 0 && <span className="ml-2 text-brand-orange">{needLeader} need{needLeader === 1 ? "s" : ""} a leader</span>}
       </p>
       <p className="mt-2 text-sm text-muted">
-        <Link href={`/residencies/${id}/weekly`} className="text-iris underline-offset-2 hover:underline">Weekly programs</Link>
-        {access.onRoster && !access.canSchedule && " · You can edit each date's title, notes, room and musicians while the month is a draft."}
+        <Link href={`/residencies/${id}/season`} className="text-iris underline-offset-2 hover:underline">Season view</Link>
+
+        {access.onRoster && !access.canSchedule && " · On draft dates you play in, you can edit the title, notes, room, musicians and leader."}
+        {access.isAdminLead && !access.canSchedule && " As admin lead, you publish the month and update published dates after partner feedback."}
       </p>
+
+      {upcoming.length > 0 && (
+        <section className="mt-5 rounded-xl border border-brand-blue/40 bg-brand-blue/10 p-4">
+          <h2 className="text-sm font-semibold">Coming up this season</h2>
+          <ul className="mt-2 space-y-1 text-sm">
+            {upcoming.map((u) => {
+              const utz = u.location?.site?.timezone ?? tz;
+              return (
+                <li key={u.id}>
+                  <span className="font-medium">{formatDay(u.starts_at, utz)}</span>
+                  {u.has_set_time && <span className="text-muted"> · {formatTime(u.starts_at, utz)}</span>}
+                  {" · "}{u.title}
+                  <span className="text-muted"> · {u.location?.site?.display_name}</span>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
 
       {access.canSchedule && (
         <div className="mt-5"><FillMonthButton residencyId={id} month={month} monthLabel={monthLabel} /></div>
@@ -205,7 +242,7 @@ export default async function MonthPage({
           monthLabel={monthLabel}
           latest={latest ? { version: latest.version, state: latest.state } : null}
           isPointPerson={access.isPointPerson}
-          canSchedule={access.canSchedule}
+          canSchedule={access.canSchedule || access.isAdminLead}
           draftCount={drafts}
           needLeader={needLeader}
         />
@@ -240,7 +277,7 @@ export default async function MonthPage({
         </section>
       )}
 
-      {access.canSchedule && (
+      {(access.canSchedule || access.isAdminLead) && (
         <section className={card}>
           <h2 className="text-lg font-semibold">Add a one-time program or special event</h2>
           <div className="mt-5">

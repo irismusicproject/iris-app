@@ -119,7 +119,21 @@ export type Series = {
   minutes: number | null;
   active_from: string;
   active_until: string | null;
+  /** Usual leader: made leader on each date when a month is filled in (v0.15). */
+  default_leader_id: string | null;
+  /** weekly, or monthly on the Nth (1-4) weekday (v0.18). */
+  recurrence: "weekly" | "monthly";
+  week_of_month: number | null;
 };
+
+export const WEEK_OF_MONTH_LABELS: Record<number, string> = { 1: "1st", 2: "2nd", 3: "3rd", 4: "4th" };
+
+/** "Tuesdays", "Tuesdays and Thursdays", "4th Monday of each month" */
+export function recurrenceLabel(s: Pick<Series, "recurrence" | "week_of_month" | "weekdays">): string {
+  const days = WEEKDAYS.filter((d) => s.weekdays.includes(d.value)).map((d) => d.label);
+  if (s.recurrence === "monthly") return `${WEEK_OF_MONTH_LABELS[s.week_of_month ?? 1]} ${days[0] ?? ""} of each month`;
+  return days.map((d) => `${d}s`).join(", ");
+}
 
 export type Session = {
   id: string;
@@ -169,6 +183,8 @@ export type CalendarExport = {
 // ---- Validation for forms (the database enforces the same rules) ----
 
 export type SeriesInput = {
+  recurrence: "weekly" | "monthly";
+  week_of_month: number | null;
   kind: SessionKind;
   title: string;
   default_location_id: string;
@@ -186,6 +202,10 @@ export function validateSeries(input: SeriesInput): Record<string, string> {
   else if (title.length > 200) errors.title = "Keep the title under 200 characters.";
   if (!input.default_location_id) errors.default_location_id = "Pick a room or area.";
   if (!input.weekdays.length) errors.weekdays = "Pick at least one day.";
+  if (input.recurrence === "monthly") {
+    if (input.weekdays.length !== 1) errors.weekdays = "Pick one day for a monthly program.";
+    if (!input.week_of_month || input.week_of_month < 1 || input.week_of_month > 4) errors.week_of_month = "Pick which week (1st–4th).";
+  }
   if (input.weekdays.some((d) => !Number.isInteger(d) || d < 1 || d > 7)) errors.weekdays = "Pick valid days.";
   const timeOptional = input.kind === "relationship_building";
   if (input.start_time ? !/^\d{2}:\d{2}$/.test(input.start_time) : !timeOptional)

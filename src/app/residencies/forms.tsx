@@ -3,6 +3,7 @@
 import { useActionState, useTransition } from "react";
 import { Field } from "@/components/app-shell";
 import { buttonClass, FormError, inputClass } from "@/components/auth-card";
+import { ConfirmButton } from "@/components/confirm-button";
 import {
   RESIDENCY_STATUS_LABELS,
   RESIDENCY_STATUSES,
@@ -200,17 +201,15 @@ export function RosterMemberActions({
       <button type="button" disabled={pending} className={smallButton} onClick={() => run({ is_admin_lead: !isAdminLead })}>
         {isAdminLead ? "Remove admin lead" : "Make admin lead"}
       </button>
-      <button
-        type="button"
+      <ConfirmButton
         disabled={pending}
         className={smallButton}
-        aria-label={`Remove ${name} from the roster`}
-        onClick={() => {
-          if (confirm(`Remove ${name} from this roster as of today? Their past sessions stay in the record.`)) run({ leave: true });
-        }}
-      >
-        Remove
-      </button>
+        ariaLabel={`Remove ${name} from the roster`}
+        label="Remove"
+        question={`Remove ${name} as of today? Past sessions stay in the record.`}
+        confirmLabel="Yes, remove"
+        onConfirm={() => run({ leave: true })}
+      />
     </span>
   );
 }

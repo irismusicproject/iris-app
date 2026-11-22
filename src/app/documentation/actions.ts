@@ -129,3 +129,25 @@ export async function saveReflection(residencyId: string, month: string, _prev: 
   revalidatePath("/documentation");
   return { status: "saved" };
 }
+
+// ---- Private calendar link (DOMAIN-MODEL v0.15) ----
+
+export async function createCalendarLink(): Promise<DocResult> {
+  const { person } = await requirePerson();
+  const supabase = await createClient();
+  const { error } = await supabase.from("calendar_feed").insert({ person_id: person.id });
+  if (error && error.code !== "23505") return fail(error);
+  revalidatePath("/documentation");
+  return { status: "saved" };
+}
+
+/** A new secret link; the old one stops working at once. */
+export async function resetCalendarLink(): Promise<DocResult> {
+  const { person } = await requirePerson();
+  const supabase = await createClient();
+  const random = () => crypto.randomUUID().replace(/-/g, "");
+  const { error } = await supabase.from("calendar_feed").update({ token: random() + random(), created_at: new Date().toISOString() }).eq("person_id", person.id);
+  if (error) return fail(error);
+  revalidatePath("/documentation");
+  return { status: "saved" };
+}

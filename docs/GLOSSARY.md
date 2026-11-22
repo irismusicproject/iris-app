@@ -1,6 +1,6 @@
 # Iris App — Glossary (Languages 2 and 3)
 
-_Draft v0.9, November 22, 2026 (v0.9: documentation words from the CESLC workbook; v0.8: partner calendar layout from the Dec 2026 sample; "Lessons"; v0.7: D14, D15 settled; v0.6: D10, D11, D16 settled; "No Program" and roster words added; v0.5: D9, D13 settled: partner billing words added; v0.4: D2, D4, D6, D7, D8 settled; v0.3: D1, D3, D5 settled; schedule review and sending words added). Translates the words people use into the objects
+_Draft v0.11, November 22, 2026 (v0.11: monthly programs; v0.10: usual leader, calendar link; v0.9: documentation words from the CESLC workbook; v0.8: partner calendar layout from the Dec 2026 sample; "Lessons"; v0.7: D14, D15 settled; v0.6: D10, D11, D16 settled; "No Program" and roster words added; v0.5: D9, D13 settled: partner billing words added; v0.4: D2, D4, D6, D7, D8 settled; v0.3: D1, D3, D5 settled; schedule review and sending words added). Translates the words people use into the objects
 defined in DOMAIN-MODEL.md (Language 1), which is authoritative._
 
 - **Part A: Team language.** How Iris staff and musicians talk, and which object each word means.
@@ -69,7 +69,7 @@ enough context to tell which object it is.
 | "point person", "designated Iris staff member" [CH] | `StaffAssignment.role = point_person` | |
 | "admin", "core team", "core salaried team" | `Person.system_roles ∋ admin` | Sees and does everything across every residency, with its own admin view (D5). In scheduling talk, "the admin" usually means the **admin lead**; check context |
 | "sub", "substitute", "Musician Absent" [WB] | `SessionAssignment.status` = `substitute` / `absent` | Recorded by the absent musician; any active person; joins the roster (D11, D16) |
-| "No Program" | A canceled `Session` (any reason; e.g. a planned absence before the 10th, D11, or a holiday) | Prints as "No Program" on the partner calendar |
+| "No Program" | A canceled `Session` (any reason; e.g. a planned absence before the 10th, D11, or a holiday) | Prints as "No Program" on the partner calendar. Can be restored as a draft (v0.17) |
 | "Lessons" (on a schedule) | A `Series`/`Session` with `kind = relationship_building`, often without a set time | Documented as `RelationshipActivity` records, not a session report |
 | "missed sessions" | A musician's `absent` assignments and musician-reason cancellations in a season | Warning past `Setting.max_musician_absences_per_season` (D11) |
 | "resident" | `Resident` | First name + last initial; added by musicians as they work (D14) |
@@ -85,6 +85,10 @@ enough context to tell which object it is.
 | "mini-group session" (2–8 residents) [WB] | `RelationshipActivity(kind = mini_group)` | |
 | "hallway concert" | `RelationshipActivity(kind = hallway_concert)` | Relationship building, not a program type (decided Nov 22, 2026) |
 | "Collab?" on a relationship-building log [WB] | `RelationshipActivity.collaborative` | Yes/No |
+| "monthly program", "4th Monday concert" | `Series` with monthly recurrence (`week_of_month` 1–4) | Prints under Regular programming (v0.18) |
+| "usual leader" | `Series.default_leader_id` | Auto-fills each date's leader; otherwise the point person assigns |
+| "calendar link", "add Iris to my calendar" | `CalendarFeed` | Private; on "My week" |
+| "coming up this season" | Later special events of the program | Shown at the top of each month's schedule |
 | "Notes" (scheduling tab) [WB] | `Session.internal_note` | Any roster musician, on drafts; never prints |
 | "My week" | The weekly documentation page | Due Tuesday 5 pm (D7) |
 | "resident co-facilitation" [WB] | `SessionReport.resident_involvement = co_facilitated` | Not an interaction type (D2) |

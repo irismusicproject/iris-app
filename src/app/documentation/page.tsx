@@ -1,10 +1,11 @@
+import { headers } from "next/headers";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { requirePerson } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { ACTIVITY_KIND_LABELS, addDays, dueLabel, formatWeek, weekStart, type ActivityKind, type ResidentInvolvement } from "@/shared/domain/documentation";
 import { formatDay, formatMonth, formatTime, localDateTime } from "@/shared/domain/time";
-import { ActivityForm, DeleteActivityButton, ReflectionForm, ReportRow } from "./forms";
+import { ActivityForm, CalendarLinkCard, DeleteActivityButton, ReflectionForm, ReportRow } from "./forms";
 
 // "My week": a musician's documentation for one week (Monday–Sunday), due
 // Tuesday 5 pm the following week (D7). Programs they led (session reports),
@@ -120,6 +121,10 @@ export default async function MyWeek({ searchParams }: { searchParams: Promise<{
   const activityMinutes = activities.reduce((n, a) => n + a.minutes, 0);
   const reflections = new Map(((reflectionRows ?? []) as { residency_id: string; highlights: string; challenges: string }[]).map((r) => [r.residency_id, r]));
   const toDo = ledPast.filter((s) => !s.session_report).length;
+  const { data: feed } = await supabase.from("calendar_feed").select("token").eq("person_id", person.id).maybeSingle();
+  const h = await headers();
+  const origin = `${h.get("x-forwarded-proto") ?? "http"}://${h.get("host")}`;
+  const feedUrl = feed?.token ? `${origin}/calendar-feed/${feed.token}.ics` : null;
   const programName = (id: string) => programMap.get(id)?.name ?? "";
 
   const card = "mt-6 rounded-xl border border-border bg-surface p-5 sm:p-6";
@@ -240,6 +245,11 @@ export default async function MyWeek({ searchParams }: { searchParams: Promise<{
           })}
         </>
       )}
+
+      <section className={card}>
+        <h2 className="text-lg font-semibold">Add Iris to your calendar</h2>
+        <div className="mt-3"><CalendarLinkCard feedUrl={feedUrl} /></div>
+      </section>
     </AppShell>
   );
 }
