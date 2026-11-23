@@ -745,7 +745,9 @@ begin
     from public.roster_member r join public.season sn on sn.id = r.season_id
     where sn.id = any (array['efa29a49-a984-4dcd-88bd-fcdc7f1bec3f'::uuid, '4c8f71b3-444a-4947-890a-48210459763d'::uuid, '5b66099a-f61f-4f30-829c-3422ec3cdaf7'::uuid, '940d5fd3-0fb3-4bb0-807e-423892ff8252'::uuid, 'ddaf9075-53af-4204-8678-f5cddf447cf1'::uuid, '659b4ecd-d40e-452b-8b9f-37e34a41237d'::uuid, '802071ca-c82e-4608-80ae-199e58a71787'::uuid, 'd3569669-10c7-4a52-83bf-ab1d15e6d36e'::uuid])
   loop
-    for d in select g::date from generate_series(greatest(current_date - 28, rm.starts_on), current_date, interval '1 day') g loop
+    -- Up to yesterday (UTC): "today" at a US site can still be UTC's yesterday,
+    -- and activities are logged only after they happen (20261220 migration).
+    for d in select g::date from generate_series(greatest(current_date - 29, rm.starts_on), current_date - 1, interval '1 day') g loop
       h := abs(hashtext(rm.person_id::text || rm.residency_id::text || d::text));
       continue when h % 7 > 1;
       select rs.site_id into st from public.residency_site rs
