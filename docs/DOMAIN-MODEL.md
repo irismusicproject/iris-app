@@ -1,6 +1,6 @@
 # Iris App — Domain Model (Language 1: the code)
 
-_Draft v0.32, November 22, 2026 (v0.32: admins change anyone's email, with safeguards against typos. v0.31: a point person who also plays in their program may approve their own hours. v0.30: admins add people without inviting them, and set up people, buildings, programs, rosters and weekly programs from one spreadsheet. v0.29: approved weeks are final; approval waits until the week's programs are documented. v0.28: answers to Ryan's nine scheduling questions; permissions table brought up to date. v0.27: roster musicians' phone and instruments shown to the program's people. v0.26: community contacts per building built; staff phone and email on program pages and a staff directory on Home; links on Home. v0.25: answers to the schema review: subs, leaders, locked after review, history after a season. v0.24: shared relationship-building logs; the documented building; pay only for documented hours; deadline reminders and No Program emails through one outbox; Follow-up page with missing work and metrics; staff roles. v0.23: overhead switched on or off on the contract; stipend lines can be left off each month; custom invoices typed by hand. v0.22: community invoices built; billable hours are now per musician and count once the point person approves the week (revises D9); drafts live, sent invoices frozen; admins only. v0.21: less double entry for musicians: usual type per program, usual relationship-building lengths, "Same as last time", one "Submit my week"; detailed one-to-one notes and a daily Word document per site. v0.20: program length set once by the point person or an admin; leaders change it only if a session ran longer or shorter. v0.19: musician hours and invoices built: hours entered on My week, the point person approves, admins set rates and stipends, invoices per two-week pay period; "Collab?" is Yes/No and every Yes counts as co-led; the collaboration target is set per season by the point person or an admin. v0.18: roles narrowed: the point person plans, the Admin Lead publishes and updates published dates, musicians edit drafts they play in and pick leaders; monthly programs. v0.17: "No Program" dates can be restored. v0.16: season view for the point person. v0.15: usual leaders, season reminders, private calendar links. v0.14: documentation from the CESLC workbook sample, weekly; musicians write draft notes; schedule laid out like the workbook tab. v0.13: people in a program can see each other's names, nothing else. v0.12: every roster musician edits draft titles, rooms and musicians; the point person assigns leaders. v0.11: `Partner`, `Site`, `Location` built; see section 1. v0.10: scheduled relationship building (e.g. Lessons) and the partner calendar layout; v0.9: partner permission for resident names confirmed; v0.8: decisions D14 and D15 settled: residents and attendance; v0.7: decisions D10, D11 and D16 settled: events, extras, absences, substitutes and the roster; v0.6: both D9 billing details confirmed; v0.5: decisions D9 and D13 settled: partner billing and version 1 scope; v0.4: decisions D2, D4, D6, D7 and D8 settled; v0.3: decisions D1, D3 and D5 settled, including how a month's schedule is reviewed, published and sent; v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
+_Draft v0.34, November 22, 2026 (v0.34: weekly programs listed by building and set up from each building's month view; month by month first on the season view; a weekly program can skip a week of the month ("No Program" that day); end a weekly program mid-season or delete a duplicate. v0.33: admins merge two people into one. v0.32: admins change anyone's email, with safeguards against typos. v0.31: a point person who also plays in their program may approve their own hours. v0.30: admins add people without inviting them, and set up people, buildings, programs, rosters and weekly programs from one spreadsheet. v0.29: approved weeks are final; approval waits until the week's programs are documented. v0.28: answers to Ryan's nine scheduling questions; permissions table brought up to date. v0.27: roster musicians' phone and instruments shown to the program's people. v0.26: community contacts per building built; staff phone and email on program pages and a staff directory on Home; links on Home. v0.25: answers to the schema review: subs, leaders, locked after review, history after a season. v0.24: shared relationship-building logs; the documented building; pay only for documented hours; deadline reminders and No Program emails through one outbox; Follow-up page with missing work and metrics; staff roles. v0.23: overhead switched on or off on the contract; stipend lines can be left off each month; custom invoices typed by hand. v0.22: community invoices built; billable hours are now per musician and count once the point person approves the week (revises D9); drafts live, sent invoices frozen; admins only. v0.21: less double entry for musicians: usual type per program, usual relationship-building lengths, "Same as last time", one "Submit my week"; detailed one-to-one notes and a daily Word document per site. v0.20: program length set once by the point person or an admin; leaders change it only if a session ran longer or shorter. v0.19: musician hours and invoices built: hours entered on My week, the point person approves, admins set rates and stipends, invoices per two-week pay period; "Collab?" is Yes/No and every Yes counts as co-led; the collaboration target is set per season by the point person or an admin. v0.18: roles narrowed: the point person plans, the Admin Lead publishes and updates published dates, musicians edit drafts they play in and pick leaders; monthly programs. v0.17: "No Program" dates can be restored. v0.16: season view for the point person. v0.15: usual leaders, season reminders, private calendar links. v0.14: documentation from the CESLC workbook sample, weekly; musicians write draft notes; schedule laid out like the workbook tab. v0.13: people in a program can see each other's names, nothing else. v0.12: every roster musician edits draft titles, rooms and musicians; the point person assigns leaders. v0.11: `Partner`, `Site`, `Location` built; see section 1. v0.10: scheduled relationship building (e.g. Lessons) and the partner calendar layout; v0.9: partner permission for resident names confirmed; v0.8: decisions D14 and D15 settled: residents and attendance; v0.7: decisions D10, D11 and D16 settled: events, extras, absences, substitutes and the roster; v0.6: both D9 billing details confirmed; v0.5: decisions D9 and D13 settled: partner billing and version 1 scope; v0.4: decisions D2, D4, D6, D7 and D8 settled; v0.3: decisions D1, D3 and D5 settled, including how a month's schedule is reviewed, published and sent; v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
 app's objects. GLOSSARY.md translates the team's language (Language 2) and
 our partner-facing language (Language 3) into these objects._
 
@@ -232,6 +232,24 @@ Anyone who signs in: musicians, staff, volunteers. One record per human.
   invite goes to the new address. Already signed in: same password, and a
   notice goes to both addresses. Nobody changes an email straight from the
   browser; the database refuses it.
+- **Merging two people (v0.33, Lauren, Nov 22, 2026):** for when the same
+  person has two records (a wrong email in the import, or a new address set up
+  as a new person). Admins only, on the kept person's page. Everything from
+  the other record moves to the kept one: roster places, staff roles (point
+  person), usual programs, dates, documentation, relationship building,
+  residents they added, hours, pay rates, reflections and calendars. Empty
+  details are filled from the other record; instruments and roles are
+  combined. The admin picks which **email** the person signs in with. If
+  the record merged **away** had signed in before, both old passwords stop
+  working, they're signed out, and a link to set a new password goes to the
+  kept email (Lauren, after Ryan's review: that's the only case where someone
+  else may still hold a working password). Otherwise the kept sign-in and
+  password stay as they are. Both
+  having hours for the same week, a pay rate for the same season or a
+  reflection for the same month should never happen; if it does, the merge
+  stops and says where. The other record and its sign-in account are
+  **deleted** (Lauren's choice; an exception to "retired, never deleted").
+  An admin can't merge themselves away. All or nothing.
 - An admin can't remove their own `admin` role or deactivate themselves, so Iris can't be locked out by accident.
 
 ### `RosterMember`
@@ -350,10 +368,27 @@ it doesn't happen. Its `Session`s happen.
 | `title` | text | **Title only.** Never personnel or location (D12) |
 | `default_location_id` | → Location | Must be at one of the residency's sites |
 | `recurrence` | rule | **Weekly** on chosen weekdays (e.g. Wednesdays 11:00, 120 minutes), or **monthly** on the 1st–4th of one weekday (`week_of_month`, e.g. the 4th Monday at 1:30; v0.18). Monthly programs print under Regular programming. Time and length are **optional** for `relationship_building` |
+| `skip_weeks_of_month` | set of 1–4 | **Weekly only (v0.34, Lauren, Nov 22, 2026).** Weeks of the month (the 1st–4th time the weekday comes round) the program doesn't run; e.g. Landow every Monday at 1:30 except the 2nd, when the ensemble is at Revitz (a monthly program there on the 2nd Monday). Skipped dates are still made, as **"No Program"** (`cancellation_reason = other`), so the building's calendar shows why; nobody is emailed about them. Saving the program turns future draft dates on a skipped week into "No Program" too. A 5th week is never skipped |
 | `default_personnel` | → Person (many) | Must be on the current roster |
 | `default_leader_id` | → Person | Optional **usual leader** (v0.15): made leader on every date when a month is filled in. Weekly programs without one are left for the point person |
 | `default_interaction_type_id` | → InteractionType | Optional **usual type** (v0.21, Lauren, Nov 22, 2026), set by the point person or an admin. Pre-selected when the leader documents; the leader can change it, so the type is still chosen when documenting (D2) |
-| `active_from`, `active_until` | date | |
+| `active_from`, `active_until` | date | Changing them removes draft dates now outside them (as **End** does) |
+
+**Ending and deleting a weekly program (v0.34, Lauren, Nov 22, 2026).** The
+point person and admins, from the building's month view:
+- **End** (programs change mid-season): pick the last date
+  (`active_until`). Dates after it are removed when they're drafts, or "No
+  Program" in a month not yet sent to the partner, and nothing hangs on them
+  (documentation, relationship building logged against them, an approved
+  week). Past, documented and paid dates stay. **Published** dates after it
+  stay on the calendar and are listed, so the Admin Lead or point person
+  makes them "No Program" (or keeps them).
+- **Delete** (duplicates, or set up by mistake): removes the program and
+  every date of it, published ones included, but only while no date is
+  documented, has relationship building logged against it, or is in an
+  approved week; otherwise the app says why and offers End. An exception to
+  "retired, never deleted" (a `Series` isn't an edited list); every removed
+  program, date and assignment is recorded in `AuditLog`.
 
 ### `Session`
 **One scheduled occurrence on a specific date and time.** The unit of
@@ -482,6 +517,12 @@ plays in (not absent), plus special events of programs they're on; from 60
 days ago to a year ahead. Drafts never appear. **Security review pending
 (Ryan's side):** the feed is readable by anyone holding the link.
 
+**By building (v0.34, Lauren, Nov 22, 2026).** Each building's month view
+lists the weekly and monthly programs whose usual room is there; that's where
+the point person and admins add, edit, end or delete them. The season view
+shows **month by month first**, then the programs grouped by building, with
+each one's leader for the whole season.
+
 **Season view (v0.16, decided by Lauren Nov 22, 2026).** The point person
 (and Admin Lead, admins) sees a whole `Season` at once: each weekly
 program's **leader for the whole season** (setting it makes them the usual
@@ -520,7 +561,7 @@ drafting rules below where they differ)**
 
 | Who | Can do |
 |---|---|
-| **Point person, admins** | Everything: set up weekly and monthly programs (in the season view), fill months and the season, add events, set leaders, "No Program" and restore, mark a month reviewed |
+| **Point person, admins** | Everything: set up, end or delete weekly and monthly programs (in each building's month view, v0.34), fill months and the season, add events, set leaders, "No Program" and restore, mark a month reviewed |
 | **Admin Lead** | Publish and download; update **published** dates after the partner's staff asks (time, room, title, notes, **who plays and the leader**, "No Program" or restore) and download the updated calendar; add one-time events (the point person staffs them, v0.28); make **any draft date** in their program "No Program" (v0.28). Not: fill months or the season, set up programs |
 | **Every roster musician** (Admin Lead included) | On **draft dates they play in**, **until the point person marks the month reviewed**: title, notes, room, who plays, and **swap the leader** (only once the point person has set one; a date with no leader waits for the point person, v0.25); date and time of special events they play in; **make it "No Program"** (v0.28; restoring stays with the point person and Admin Lead). They can't add themselves to a one-time event nobody is on yet |
 
@@ -972,7 +1013,9 @@ only in production, never in the repo, local prototypes or staging.
 
 ### `AuditLog`
 Every create, change or approval of schedules, reports, activities, time,
-contracts and invoices: `who`, `when`, `object`, `before`, `after`.
+contracts and invoices: `who`, `when`, `object`, `before`, `after`. Removed
+weekly programs, dates and assignments are recorded too (`action = delete`,
+v0.34).
 Resident-record **reads** are logged too.
 
 ---
@@ -992,7 +1035,7 @@ Permissions come from **relationships**, not job titles.
 | Capability | Granted by |
 |---|---|
 | Everything | `Person.system_roles ∋ admin` |
-| Set up weekly and monthly programs; fill months and the season; set leaders; staff new one-time events; "No Program" and restore on any date; mark a month reviewed | The current point person (`StaffAssignment.role = point_person`); admins |
+| Set up, end or delete weekly and monthly programs (v0.34); fill months and the season; set leaders; staff new one-time events; "No Program" and restore on any date; mark a month reviewed | The current point person (`StaffAssignment.role = point_person`); admins |
 | Approve or send back hours; see the Follow-up page | The current point person; admins |
 | Publish a month and download its partner calendar (after review); update **published** dates (time, room, title, notes, who plays, leader in one step, "No Program", restore); add one-time events; "No Program" on any **draft** date in the program | The Admin Lead (`RosterMember.is_admin_lead`, current season); the point person; admins |
 | On **draft dates they play in**, until the month is marked reviewed: title, notes, room, who plays, swap an existing leader, "No Program"; date and time of special events | Any current `RosterMember` playing that date |

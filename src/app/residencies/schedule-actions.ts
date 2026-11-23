@@ -55,6 +55,7 @@ function seriesFromForm(form: FormData) {
   return {
     recurrence,
     week_of_month: recurrence === "monthly" ? Number(form.get("week_of_month")) || null : null,
+    skip_weeks_of_month: recurrence === "weekly" ? [...new Set(form.getAll("skip_weeks_of_month").map(Number))].sort() : [],
     kind: SESSION_KINDS.includes(kind) ? kind : "group_session",
     title: String(form.get("title") ?? ""),
     default_location_id: String(form.get("default_location_id") ?? ""),
@@ -93,8 +94,57 @@ export async function saveSeries(residencyId: string, seriesId: string | null, _
     const { error } = await supabase.from("series_default_person").insert(people.map((person_id) => ({ series_id: id, person_id })));
     if (error) return fail(error);
   }
+  // Skipped weeks and new start or end dates apply to dates already filled in (v0.34).
+  if (seriesId) {
+    const { data, error } = await supabase.rpc("tidy_series_dates", { p_series: id });
+    if (error) return fail(error);
+    refresh(residencyId);
+    const { removed = 0, skipped = 0 } = (data ?? {}) as { removed?: number; skipped?: number };
+    const notes = [
+      skipped ? `${skipped} draft date${skipped === 1 ? "" : "s"} on a skipped week ${skipped === 1 ? "is" : "are"} now “No Program”` : null,
+      removed ? `${removed} draft date${removed === 1 ? "" : "s"} outside the program's dates removed` : null,
+    ].filter(Boolean);
+    return { status: "saved", message: notes.length ? `Saved. ${notes.join("; ")}.` : undefined };
+  }
   refresh(residencyId);
   return ok;
+}
+
+// Ending a weekly program mid-season, and deleting one set up by mistake (v0.34).
+export type EndResult = ScheduleResult & { removed?: number; published?: { id: string; starts_at: string }[] };
+
+export async function endSeries(residencyId: string, seriesId: string, _prev: EndResult, form: FormData): Promise<EndResult> {
+  await requirePerson();
+  const last = String(form.get("last_date") ?? "");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(last)) return { status: "error", message: "Pick the program's last date." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("end_series", { p_series: seriesId, p_last: last });
+  if (error) {
+    if (error.message.includes("before the program starts")) return { status: "error", message: "That's before the program starts. To remove it completely, delete it instead." };
+    return fail(error);
+  }
+  refresh(residencyId);
+  const r = (data ?? {}) as { removed?: number; published?: { id: string; starts_at: string }[] };
+  return { status: "saved", removed: r.removed ?? 0, published: r.published ?? [] };
+}
+
+export async function deleteSeries(residencyId: string, seriesId: string): Promise<ScheduleResult & { removed?: number }> {
+  await requirePerson();
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("delete_series", { p_series: seriesId });
+  if (error) {
+    if (error.code === "23514") {
+      const why = error.message.includes("documented")
+        ? "Some of its dates are already documented"
+        : error.message.includes("relationship")
+          ? "Relationship building is logged on some of its dates"
+          : "Some of its dates are in a week whose hours are approved";
+      return { status: "error", message: `${why}, so it can't be deleted. End it instead: its past dates stay and later drafts are removed.` };
+    }
+    return fail(error);
+  }
+  refresh(residencyId);
+  return { status: "saved", removed: data as number };
 }
 
 export async function fillMonth(residencyId: string, month: string): Promise<ScheduleResult & { created?: number }> {

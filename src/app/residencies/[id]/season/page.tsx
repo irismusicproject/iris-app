@@ -8,11 +8,12 @@ import { recurrenceLabel, SESSION_KIND_LABELS, type Series, type SessionKind } f
 import { formatDay, formatMonth, formatTime, localDateTime } from "@/shared/domain/time";
 import { AddOneTimeForm } from "../month/month-controls";
 import { ActivityLengthsForm, CollaborationTargetForm, FillSeasonButton, SeasonLeaderSelect } from "./season-controls";
-import { SeriesForm } from "./series-form";
 
 // Season view (DOMAIN-MODEL v0.16): the whole semester at a glance, for the
 // point person (and Admin Lead, admins). Set a weekly program's leader for
 // the whole season, fill every month at once, and see each month's status.
+// v0.34: month by month comes first; weekly programs are listed by building
+// and set up, ended or deleted from each building's month view.
 export const metadata = { title: "Season · Iris Music Project" };
 
 type SeasonRow = { id: string; name: string; starts_on: string; ends_on: string; roster_member: { person_id: string; left_on: string | null }[] };
@@ -68,7 +69,7 @@ export default async function SeasonPage({ params, searchParams }: { params: Pro
     );
   }
 
-  const [{ data: seriesRows }, { data: sessionRows }, { data: siteRows }, { data: targetRow }, { data: typeRows }, { data: lengthRows }] = await Promise.all([
+  const [{ data: seriesRows }, { data: sessionRows }, { data: siteRows }, { data: targetRow }, { data: lengthRows }] = await Promise.all([
     supabase
       .from("series")
       .select("*, series_default_person(person_id)")
@@ -80,20 +81,19 @@ export default async function SeasonPage({ params, searchParams }: { params: Pro
       .eq("residency_id", id)
       .gte("starts_at", new Date(Date.parse(`${season.starts_on}T00:00:00Z`) - 86_400_000).toISOString())
       .lte("starts_at", new Date(Date.parse(`${season.ends_on}T00:00:00Z`) + 2 * 86_400_000).toISOString()),
-    supabase.from("residency_site").select("site(display_name, timezone, location(id, display_name, active))").eq("residency_id", id),
+    supabase.from("residency_site").select("site(id, display_name, timezone, location(id, display_name, active))").eq("residency_id", id),
     supabase.from("target").select("value").eq("season_id", season.id).eq("metric", "collaborative_programs_per_musician").maybeSingle(),
-    supabase.from("interaction_type").select("id, name").eq("active", true).order("sort_order"),
     supabase.from("activity_length").select("kind, minutes").eq("residency_id", id),
   ]);
   const collabTarget = targetRow?.value ?? 2; // handbook default
-  const types = (typeRows ?? []).map((t) => ({ id: t.id, label: t.name }));
   const usualLengths = Object.fromEntries((lengthRows ?? []).map((l) => [l.kind as string, l.minutes as number]));
   const lengthText = ["one_to_one", "mini_group", "hallway_concert"]
     .filter((k) => usualLengths[k])
     .map((k) => `${k === "one_to_one" ? "One-to-one" : k === "mini_group" ? "Mini-group" : "Hallway concert"} ${usualLengths[k]} min`)
     .join(" · ");
-  type SiteRow = { site: { display_name: string; timezone: string; location: { id: string; display_name: string; active: boolean }[] } | null };
-  const sites = ((siteRows ?? []) as unknown as SiteRow[]).map((r) => r.site!).filter(Boolean);
+  type SiteRow = { site: { id: string; display_name: string; timezone: string; location: { id: string; display_name: string; active: boolean }[] } | null };
+  const sites = ((siteRows ?? []) as unknown as SiteRow[]).map((r) => r.site!).filter(Boolean).sort((a, b) => a.display_name.localeCompare(b.display_name));
+  const siteOfRoom = new Map(sites.flatMap((st) => st.location.map((l) => [l.id, st.id] as const)));
   const rooms = sites.flatMap((st) => st.location.filter((l) => l.active).map((l) => ({ id: l.id, label: sites.length > 1 ? `${st.display_name} · ${l.display_name}` : l.display_name })));
   const siteTz = sites[0]?.timezone ?? "America/New_York";
   const series = ((seriesRows ?? []) as SeriesRow[])
@@ -132,6 +132,11 @@ export default async function SeasonPage({ params, searchParams }: { params: Pro
   const specialEvents = sessions.filter((s) => s.is_special_event).sort((a, b) => a.starts_at.localeCompare(b.starts_at));
   const defaultEventDate = today > season.starts_on && today < season.ends_on ? today : season.starts_on;
   const seriesNeedLeader = (sid: string) => sessions.filter((s) => s.series_id === sid && needsLeader(s)).length;
+  const thisMonth = today.slice(0, 7);
+  const linkMonth = months.includes(thisMonth) ? thisMonth : months[0];
+  const seriesBySite = sites
+    .map((st) => ({ site: st, series: series.filter((x) => siteOfRoom.get(x.default_location_id) === st.id) }))
+    .filter((g) => g.series.length > 0);
   const fmt = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString("en-US", { timeZone: "UTC", month: "short", day: "numeric", year: "numeric" });
 
   return (
@@ -148,61 +153,82 @@ export default async function SeasonPage({ params, searchParams }: { params: Pro
       )}
 
       <section className={card}>
+        <h2 className="text-lg font-semibold">Month by month</h2>
+        {access.canSchedule && <div className="mt-3"><FillSeasonButton residencyId={id} seasonId={season.id} seasonName={season.name} /></div>}
+        <ul className="mt-4 divide-y divide-border text-sm">
+          {monthStats.map((m) => (
+            <li key={m.month} className="flex flex-wrap items-center justify-between gap-2 py-2">
+              <Link href={`/residencies/${id}/month/${m.month}`} className="font-medium text-iris underline-offset-2 hover:underline">{formatMonth(m.month)}</Link>
+              <span className="text-muted">
+                {m.total === 0
+                  ? "Not filled in"
+                  : [
+                      m.published ? `${m.published} published` : null,
+                      m.drafts ? `${m.drafts} draft` : null,
+                      m.canceled ? `${m.canceled} No Program` : null,
+                    ].filter(Boolean).join(" · ")}
+                {m.needLeader > 0 && <span className="ml-2 text-brand-orange">{m.needLeader} need a leader</span>}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className={card}>
         <h2 className="text-lg font-semibold">Weekly and monthly programs</h2>
         <p className="mt-1 text-sm text-muted">
           {access.canSchedule
-            ? "Set up the season's recurring programs. Pick a leader for the whole season: they become the usual leader and lead every draft date from today on. Published months don't change."
+            ? "Pick a leader for the whole season: they become the usual leader and lead every draft date from today on. Published months don't change. Add, edit, end or delete programs from each building's month view."
             : "The season's recurring programs and who usually leads them."}
         </p>
-        <div className="mt-4 divide-y divide-border">
-          {series.map((s) => {
-            const open = seriesNeedLeader(s.id);
-            return (
-              <div key={s.id} className="grid gap-2 py-3 sm:grid-cols-[minmax(0,1fr)_16rem] sm:items-center">
-                <div>
-                  <p className="font-medium">
-                    {s.title}
-                    {s.kind === "relationship_building" && <span className="ml-2 rounded-full border border-border px-2 py-0.5 text-xs font-normal">{SESSION_KIND_LABELS[s.kind]}</span>}
-                  </p>
-                  <p className="text-sm text-muted">
-                    {recurrenceLabel(s)} · {time12(s.start_time)}
-                    {s.series_default_person.length ? ` · ${s.series_default_person.map((p) => nameOf(p.person_id).split(" ")[0]).join(", ")}` : ""}
-                  </p>
-                  {s.kind === "group_session" && open > 0 && <p className="text-xs text-brand-orange">{open} date{open === 1 ? "" : "s"} this season without a leader</p>}
-                  {access.canSchedule && (
-                    <details className="mt-2">
-                      <summary className="cursor-pointer text-xs font-medium text-iris">Edit program</summary>
-                      <div className="mt-3">
-                        <SeriesForm
-                          key={JSON.stringify(s)}
-                          residencyId={id}
-                          series={s}
-                          defaultPeople={s.series_default_person.map((x) => x.person_id)}
-                          rooms={rooms}
-                          musicians={musicians}
-                          types={types}
-                        />
-                      </div>
-                    </details>
-                  )}
-                </div>
-                {s.kind !== "group_session" ? (
-                  <span className="text-sm text-muted">No leader needed</span>
-                ) : access.canSchedule ? (
-                  <SeasonLeaderSelect residencyId={id} seriesId={s.id} seriesTitle={s.title} current={s.default_leader_id} musicians={musicians} />
-                ) : (
-                  <span className="text-sm">{s.default_leader_id ? nameOf(s.default_leader_id) : "Picked per date"}</span>
-                )}
-              </div>
-            );
-          })}
-          {series.length === 0 && <p className="py-3 text-sm text-muted">No programs in this season yet.</p>}
-        </div>
-        {access.canSchedule && rooms.length > 0 && (
-          <details className="mt-4 border-t border-border pt-4">
-            <summary className="cursor-pointer text-sm font-medium text-iris">Add a weekly or monthly program</summary>
-            <div className="mt-4"><SeriesForm residencyId={id} rooms={rooms} musicians={musicians} types={types} /></div>
-          </details>
+        {seriesBySite.map((g) => (
+          <div key={g.site.id} className="mt-4">
+            <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border pb-1">
+              <h3 className="font-semibold">{g.site.display_name}</h3>
+              <Link href={`/residencies/${id}/month/${linkMonth}?site=${g.site.id}`} className="text-sm text-iris underline-offset-2 hover:underline">
+                {access.canSchedule ? "Set up programs" : "Month view"} →
+              </Link>
+            </div>
+            <div className="divide-y divide-border">
+              {g.series.map((s) => {
+                const open = seriesNeedLeader(s.id);
+                return (
+                  <div key={s.id} className="grid gap-2 py-3 sm:grid-cols-[minmax(0,1fr)_16rem] sm:items-center">
+                    <div>
+                      <p className="font-medium">
+                        {s.title}
+                        {s.kind === "relationship_building" && <span className="ml-2 rounded-full border border-border px-2 py-0.5 text-xs font-normal">{SESSION_KIND_LABELS[s.kind]}</span>}
+                      </p>
+                      <p className="text-sm text-muted">
+                        {recurrenceLabel(s)} · {time12(s.start_time)}
+                        {s.series_default_person.length ? ` · ${s.series_default_person.map((p) => nameOf(p.person_id).split(" ")[0]).join(", ")}` : ""}
+                      </p>
+                      {s.kind === "group_session" && open > 0 && <p className="text-xs text-brand-orange">{open} date{open === 1 ? "" : "s"} this season without a leader</p>}
+                    </div>
+                    {s.kind !== "group_session" ? (
+                      <span className="text-sm text-muted">No leader needed</span>
+                    ) : access.canSchedule ? (
+                      <SeasonLeaderSelect residencyId={id} seriesId={s.id} seriesTitle={s.title} current={s.default_leader_id} musicians={musicians} />
+                    ) : (
+                      <span className="text-sm">{s.default_leader_id ? nameOf(s.default_leader_id) : "Picked per date"}</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+        {series.length === 0 && (
+          <p className="mt-3 text-sm text-muted">
+            No programs in this season yet.{access.canSchedule && sites.length > 0 ? " Add them from a building's month view:" : ""}
+          </p>
+        )}
+        {series.length === 0 && access.canSchedule && (
+          <ul className="mt-2 flex flex-wrap gap-2 text-sm">
+            {sites.map((st) => (
+              <li key={st.id}><Link href={`/residencies/${id}/month/${linkMonth}?site=${st.id}`} className="rounded-full border border-border px-3 py-1 hover:bg-iris-soft">{st.display_name}</Link></li>
+            ))}
+          </ul>
         )}
       </section>
 
@@ -279,27 +305,6 @@ export default async function SeasonPage({ params, searchParams }: { params: Pro
         )}
       </section>
 
-      <section className={card}>
-        <h2 className="text-lg font-semibold">Month by month</h2>
-        {access.canSchedule && <div className="mt-3"><FillSeasonButton residencyId={id} seasonId={season.id} seasonName={season.name} /></div>}
-        <ul className="mt-4 divide-y divide-border text-sm">
-          {monthStats.map((m) => (
-            <li key={m.month} className="flex flex-wrap items-center justify-between gap-2 py-2">
-              <Link href={`/residencies/${id}/month/${m.month}`} className="font-medium text-iris underline-offset-2 hover:underline">{formatMonth(m.month)}</Link>
-              <span className="text-muted">
-                {m.total === 0
-                  ? "Not filled in"
-                  : [
-                      m.published ? `${m.published} published` : null,
-                      m.drafts ? `${m.drafts} draft` : null,
-                      m.canceled ? `${m.canceled} No Program` : null,
-                    ].filter(Boolean).join(" · ")}
-                {m.needLeader > 0 && <span className="ml-2 text-brand-orange">{m.needLeader} need a leader</span>}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </section>
     </AppShell>
   );
 }

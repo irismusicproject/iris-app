@@ -1,10 +1,11 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState, useTransition } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Field } from "@/components/app-shell";
 import { buttonClass, FormError, inputClass } from "@/components/auth-card";
 import { SESSION_KIND_LABELS, SESSION_KINDS, WEEK_OF_MONTH_LABELS, WEEKDAYS, type Series, type SessionKind } from "@/shared/domain/scheduling";
-import { saveSeries, type ScheduleResult } from "../../schedule-actions";
+import { deleteSeries, endSeries, saveSeries, type EndResult, type ScheduleResult } from "../../schedule-actions";
 
 // A recurring program (Series): weekly on chosen days, or monthly on the
 // 1st–4th of a weekday (e.g. a concert on the 4th Monday). DOMAIN-MODEL v0.18.
@@ -99,6 +100,22 @@ export function SeriesForm({
           {recurrence === "monthly" && <span className="text-xs text-muted">e.g. 4th + Mon = the 4th Monday of each month</span>}
         </div>
       </fieldset>
+      {recurrence === "weekly" && (
+        <fieldset>
+          <legend className="text-sm font-medium">Skip a week each month (optional)</legend>
+          <p className="text-xs text-muted">
+            E.g. at Landow every Monday except the 2nd, when the ensemble is at Revitz: tick 2nd here, and add a monthly program on the 2nd Monday at Revitz. Skipped dates show as “No Program”.
+          </p>
+          {e?.skip_weeks_of_month && <p className="text-xs text-red-600 dark:text-red-400">{e.skip_weeks_of_month}</p>}
+          <div className="mt-2 flex flex-wrap gap-3">
+            {[1, 2, 3, 4].map((n) => (
+              <label key={n} className="flex items-center gap-1.5 text-sm">
+                <input type="checkbox" name="skip_weeks_of_month" value={n} defaultChecked={series?.skip_weeks_of_month?.includes(n)} /> {WEEK_OF_MONTH_LABELS[n]}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
       {kind === "group_session" && (
         <Field label="Usual leader (optional)" hint="Made leader on every date when a month is filled in. Leave blank and the point person picks each date's leader.">
           <select name="default_leader_id" defaultValue={series?.default_leader_id ?? ""} className={inputClass}>
@@ -127,11 +144,80 @@ export function SeriesForm({
           {musicians.length === 0 && <p className="text-sm text-muted">Add musicians to the season&apos;s roster first.</p>}
         </div>
       </fieldset>
-      {state.status === "saved" && !pending && <p role="status" className="text-sm text-iris">Saved.</p>}
-      {!pending && <FormError message={state.message} />}
+      {state.status === "saved" && !pending && <p role="status" className="text-sm text-iris">{state.message ?? "Saved."}</p>}
+      {state.status === "error" && !pending && <FormError message={state.message} />}
       <button type="submit" disabled={pending} className={`${buttonClass} self-start`}>
         {pending ? "Saving..." : series ? "Save program" : "Add program"}
       </button>
     </form>
+  );
+}
+
+// Ending a program mid-season, or deleting one set up by mistake (v0.34).
+const endInitial: EndResult = { status: "idle" };
+
+// After ending or deleting, the program may drop off this month's list, so the
+// result shows as a banner at the top of the page (?ended= / ?deleted=).
+function useShowResult() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
+  return (extra: Record<string, string>) => {
+    const next = new URLSearchParams(params.toString());
+    for (const k of ["ended", "deleted", "removed"]) next.delete(k);
+    for (const [k, v] of Object.entries(extra)) next.set(k, v);
+    router.replace(`${pathname}?${next.toString()}`, { scroll: true });
+  };
+}
+
+export function EndSeriesForm({ residencyId, series, today }: { residencyId: string; series: Series; today: string }) {
+  const [state, action, pending] = useActionState(endSeries.bind(null, residencyId, series.id), endInitial);
+  const show = useShowResult();
+  const defaultLast = series.active_until ?? (today < series.active_from ? series.active_from : today);
+  useEffect(() => {
+    if (state.status === "saved") show({ ended: series.id, removed: String(state.removed ?? 0) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
+  return (
+    <form action={action} className="flex flex-col gap-2">
+      <p className="text-xs text-muted">
+        For changes mid-season. Past dates, and anything documented or paid, stay. Draft dates after the last date are removed. Published dates after it stay on the calendar until you make them “No Program”.
+      </p>
+      <div className="flex flex-wrap items-end gap-3">
+        <Field label="Last date">
+          <input name="last_date" type="date" required min={series.active_from} defaultValue={defaultLast} className={`${inputClass} py-1.5`} />
+        </Field>
+        <button type="submit" disabled={pending} className={buttonClass}>{pending ? "Ending..." : "End program"}</button>
+      </div>
+      {state.status === "error" && !pending && <FormError message={state.message} />}
+    </form>
+  );
+}
+
+export function DeleteSeriesButton({ residencyId, seriesId, title, dateCount }: { residencyId: string; seriesId: string; title: string; dateCount: number }) {
+  const [pending, start] = useTransition();
+  const [msg, setMsg] = useState<string | null>(null);
+  const show = useShowResult();
+  return (
+    <div className="flex flex-col gap-1">
+      <p className="text-xs text-muted">For duplicates or programs set up by mistake. Removes the program and all its dates. Not possible once a date is documented or in an approved week; end it instead.</p>
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() => {
+          const dates = dateCount ? ` and its ${dateCount} date${dateCount === 1 ? "" : "s"} (including any already published)` : "";
+          if (!window.confirm(`Delete “${title}”${dates}? This can't be undone.`)) return;
+          start(async () => {
+            const r = await deleteSeries(residencyId, seriesId);
+            if (r.status === "error") setMsg(r.message ?? "Something went wrong.");
+            else show({ deleted: title.slice(0, 80), removed: String(r.removed ?? 0) });
+          });
+        }}
+        className="self-start rounded-lg border border-red-600/50 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-60 dark:text-red-400 dark:hover:bg-red-950/40"
+      >
+        {pending ? "Deleting..." : "Delete program"}
+      </button>
+      {msg && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{msg}</p>}
+    </div>
   );
 }

@@ -6,7 +6,7 @@ import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendWelcomeEmail } from "@/lib/welcome-email";
 import { createClient } from "@/lib/supabase/server";
-import { confirmUrl } from "@/lib/site-url";
+import { confirmUrl, siteUrl } from "@/lib/site-url";
 import { canSendEmail, sendEmail } from "@/lib/notify";
 import { isEmail, normalizeEmail } from "@/shared/domain/email";
 import { validateAdminEdit, validateNewPerson } from "@/shared/domain/person";
@@ -218,4 +218,90 @@ export async function changeEmail(id: string, rawEmail: string, rawConfirm: stri
       ? `Email changed to ${email}. They sign in with it from now on, with the same password${canSendEmail() ? "; a notice went to both addresses" : ""}.`
       : `Email changed to ${email}.${person.invited_at ? " The earlier invite no longer works; send a new one." : ""}`,
   };
+}
+
+/**
+ * Merge two people into one (v0.33): everything from `fromId` moves to
+ * `intoId` (the database checks and moves it all), then `fromId`'s sign-in
+ * account is deleted. The kept person signs in with the email the admin picks.
+ * If the merged-away record had signed in, both old passwords stop working and
+ * the kept person is emailed a link to set a new one.
+ */
+export async function mergePerson(fromId: string, intoId: string, keepEmailOf: "from" | "into"): Promise<PersonFormState> {
+  const viewer = await requireAdmin();
+  const supabase = await createClient();
+  const { data: people } = await supabase.from("person").select("id, name, email").in("id", [fromId, intoId]);
+  const from = people?.find((p) => p.id === fromId);
+  const into = people?.find((p) => p.id === intoId);
+  if (!from || !into) return { status: "error", message: "Choose the person to merge in." };
+
+  const admin = createAdminClient();
+  const { data: fromAcct } = await admin.auth.admin.getUserById(fromId);
+  const email = keepEmailOf === "from" ? from.email : into.email;
+  // v0.33 (Lauren, after Ryan's review): reset passwords only if the record merged
+  // away had signed in; that's the only case where someone else may still have a
+  // working password. Folding in an unused duplicate leaves the kept sign-in alone.
+  const resetPassword = !!fromAcct?.user?.last_sign_in_at;
+
+  // 1. The data (all or nothing, in the database).
+  const { error } = await supabase.rpc("merge_person", { p_from: fromId, p_into: intoId, p_end_sessions: resetPassword });
+  if (error) {
+    console.error("merge_person failed:", error.code, error.message);
+    const friendly = ["42501", "22023", "23514"].includes(error.code ?? "");
+    return { status: "error", message: friendly ? `${error.message.charAt(0).toUpperCase()}${error.message.slice(1)}.` : "We couldn't merge them. Please try again." };
+  }
+  // 2. The merged-away sign-in account (frees its email).
+  const { error: delError } = await admin.auth.admin.deleteUser(fromId);
+  if (delError) console.error("merge: delete sign-in account failed:", delError.code, delError.message);
+
+  const problems: string[] = [];
+  // 3. The email to keep.
+  if (email !== into.email) {
+    const { error: e1 } = await admin.auth.admin.updateUserById(intoId, { email, email_confirm: true });
+    const { error: e2 } = e1 ? { error: e1 } : await admin.from("person").update({ email }).eq("id", intoId);
+    if (e1 || e2) {
+      console.error("merge: set email failed:", (e1 ?? e2)?.message);
+      problems.push(`their email is still ${into.email}; use Change email to set ${email}`);
+    }
+  }
+  // 4. If the merged-away record had signed in: new password for the kept account, and a link to set it.
+  if (resetPassword) {
+    const { error: pwError } = await admin.auth.admin.updateUserById(intoId, { password: crypto.randomUUID() + crypto.randomUUID() });
+    if (pwError) console.error("merge: password reset failed:", pwError.message);
+    try {
+      await sendPasswordAfterMerge({ email, name: into.name });
+      await admin.from("person").update({ invited_at: new Date().toISOString() }).eq("id", intoId);
+    } catch (e) {
+      console.error("merge: new-password email failed:", e instanceof Error ? e.message : e);
+      problems.push("the email to set a new password didn't go out; use Send the invite again");
+    }
+  }
+
+  revalidatePath("/admin/people");
+  if (intoId === viewer.person.id && resetPassword) redirect("/login?merged=1");
+  redirect(`/admin/people/${intoId}?merged=1${problems.length ? `&note=${encodeURIComponent(problems.join("; "))}` : ""}`);
+}
+
+/** "Set a new password" after a merge: welcome-style link, or Supabase's reset email without an email service. */
+async function sendPasswordAfterMerge(person: { email: string; name: string }) {
+  const admin = createAdminClient();
+  const next = "/account/password";
+  if (!canSendEmail()) {
+    const { error } = await admin.auth.resetPasswordForEmail(person.email, { redirectTo: confirmUrl(next) });
+    if (error) throw new Error(error.message);
+    return;
+  }
+  const { data, error } = await admin.auth.admin.generateLink({ type: "recovery", email: person.email });
+  const token = data?.properties?.hashed_token;
+  if (error || !token) throw new Error(error?.message ?? "no link returned");
+  const link = `${siteUrl()}/auth/confirm?token_hash=${encodeURIComponent(token)}&type=recovery&next=${encodeURIComponent(next)}`;
+  const first = person.name.trim().split(/\s+/)[0] || "there";
+  await sendEmail({
+    to: person.email,
+    subject: "Set a new password for the Iris app",
+    text:
+      `Hi ${first},\n\nAn Iris admin combined your two Iris app accounts into one. You now sign in with ${person.email}.\n\n` +
+      `Please choose a new password here (the link works once):\n${link}\n\n` +
+      `If you didn't expect this, please reply to Iris staff right away.\n`,
+  });
 }

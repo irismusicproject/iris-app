@@ -564,6 +564,50 @@ r = await as(Q, `select * from public.contract where person_id='${M2}'`);
 question("Q1", "a point person who is also an admin (D5 'core team = admins') still never sees pay", none(r), { rows: r.rows?.length });
 await must(A, `update public.person set system_roles='{}' where id='${Q}'`);
 
+// ============================================================================
+// 15. Merging two people into one (v0.33, migration 20261218; admins only)
+// ============================================================================
+{
+  const billMaple = async () => JSON.stringify((await minutes(AG1)).rows.map((x) => [x.site_id, x.category, x.approved_minutes, x.waiting_minutes]).sort());
+  const billBirchRB = async () => (await minutes(AG2)).get(S2, "relationship_building", "approved_minutes");
+  const totals = async (who) => (await su(`select (select count(*) from public.time_entry where person_id='${who}')::int te,
+    (select count(*) from public.contract where person_id='${who}')::int c, (select count(*) from public.session_assignment where person_id='${who}')::int sa,
+    (select count(*) from public.relationship_activity where person_id='${who}')::int ra, (select coalesce(sum(hours),0)::numeric from public.time_entry where person_id='${who}')::text h`))[0];
+  const addPerson = async (uid, name, email) => {
+    await su(`insert into auth.users (id,email) values ('${uid}','${email}')`);
+    await su(`insert into public.person (id,name,email,employment_type) values ('${uid}','${name}','${email}','contractor_1099')`);
+  };
+
+  // An empty duplicate (made by the import, never used) folds into M1.
+  const DUP = "00000000-0000-0000-0000-000000000099";
+  await addPerson(DUP, "Mia One", "dup@example.com");
+  await su(`insert into public.roster_member (season_id, person_id) values ('${SEA}','${DUP}')`);
+  r = await as(A, `select public.merge_person('${DUP}','${M1}')`); check("an admin merges an empty duplicate into the real person", r.ok, r);
+  r = await su(`select count(*)::int n from public.person where id='${DUP}'`); check("…and the duplicate record is gone", r[0].n === 0, r);
+
+  r = await as(P, `select public.merge_person('${L}','${O}')`); check("a point person can't merge people", !r.ok, r);
+  r = await as(L, `select public.merge_person('${O}','${L}')`); check("a musician can't merge people", !r.ok, r);
+  r = await as(A, `select public.merge_person('${A}','${O}')`); check("an admin can't merge themselves away", !r.ok, r);
+  r = await as(A, `select public.merge_person('${M2}','${W}')`); check("two people with hours for the same week can't be merged", !r.ok && /hours for/.test(r.err), r);
+
+  // A duplicate's log in a week the kept person already has approved: refused (v0.29).
+  const Z = "00000000-0000-0000-0000-000000000098";
+  await addPerson(Z, "Mia Again", "z@example.com");
+  await su(`insert into public.relationship_activity (person_id,residency_id,site_id,occurred_on,kind,minutes) values ('${Z}','${RES}','${S2}','${addDays(W2, 2)}','one_to_one',50)`);
+  const birch0 = await billBirchRB();
+  r = await as(A, `select public.merge_person('${Z}','${M1}')`);
+  check("a merge can't add work to an approved week (it would change billing without approval)", !r.ok && /approved week/.test(r.err) && (await billBirchRB()) === birch0, { r, birch0 });
+
+  // Someone with approved hours, pay, logs and the Admin Lead role folds into an outsider: nothing lost.
+  const maple0 = await billMaple(), l0 = await totals(L), o0 = await totals(O);
+  r = await as(A, `select public.merge_person('${L}','${O}')`); check("L (hours, pay rates, logs, Admin Lead) merges into O", r.ok, r);
+  const o1 = await totals(O);
+  check("…every hour, rate, date and log moved", o1.te === l0.te + o0.te && o1.c === l0.c + o0.c && o1.sa === l0.sa + o0.sa && o1.ra === l0.ra + o0.ra
+    && Number(o1.h) === Number(l0.h) + Number(o0.h), { l0, o0, o1 });
+  check("…and community invoice totals didn't change", (await billMaple()) === maple0, null);
+  r = await su(`select count(*)::int n from public.roster_member where person_id='${O}' and is_admin_lead`); check("…and the Admin Lead role moved", r[0].n === 1, r);
+}
+
 // Final sweep: nothing protected was deleted along the way.
 r = await su(`select (select count(*) from public.time_entry)::int te, (select count(*) from public.session_report)::int sr, (select count(*) from public.contract)::int c, (select count(*) from public.resident)::int res, (select count(*) from public.partner_invoice)::int pi`);
 check("no hours, reports, contracts, residents or sent invoices were deleted", r[0].te === 9 * 3 && // 9 submitted weeks × 3 categories
