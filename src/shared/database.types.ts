@@ -1019,6 +1019,9 @@ isOneToOne: false
 "can_view_site":
 { Args: { "p_site": string }; Returns: boolean
                            },
+"delete_one_time_session":
+{ Args: { "p_session": string }; Returns: undefined
+                           },
 "delete_series":
 { Args: { "p_series": string }; Returns: number
                            },

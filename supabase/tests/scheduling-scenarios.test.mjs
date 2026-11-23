@@ -339,7 +339,7 @@ for (const [col, val, label] of [["billable", "false", "billable"], ["is_special
 r = await as(L, `update public.session set schedule_state='draft' where id='${d6}'`); check("Admin Lead can't send a published date back to draft", !r.ok, r);
 r = await as(L, `update public.session_assignment set role='participant' where session_id='${d6}' and person_id='${M2}'`);
 const r6 = await as(L, `update public.session_assignment set role='leader' where session_id='${d6}' and person_id='${M1}'`);
-check("Admin Lead swaps the leader on a published date", r.ok && r.n === 1 && r6.ok && r6.n === 1, [r, r6], "Q4");
+check("Admin Lead swaps the leader on a published date (v0.37, answers Q4)", r.ok && r.n === 1 && r6.ok && r6.n === 1, [r, r6]);
 await su(`update public.session_assignment set role='participant' where session_id='${d6}' and role='leader'; update public.session_assignment set role='leader' where session_id='${d6}' and person_id='${M2}'`);
 r = await as(L, `update public.session set schedule_state='canceled', cancellation_reason='partner' where id='${d7}' returning canceled_at > now() - interval '5 minutes' as fresh`);
 check("Admin Lead makes a published date No Program (partner's request)", r.ok && r.n === 1 && r.rows[0].fresh, r);

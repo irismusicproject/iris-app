@@ -247,12 +247,34 @@ export async function addMusician(residencyId: string, sessionId: string, person
   return ok;
 }
 
+/** Delete a one-time date (special event or other one-time program), v0.37. */
+export async function deleteOneTimeSession(residencyId: string, sessionId: string): Promise<ScheduleResult> {
+  await requirePerson();
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("delete_one_time_session", { p_session: sessionId });
+  if (error) {
+    if (error.code === "23514") {
+      const why = error.message.includes("documented")
+        ? "It's already documented"
+        : error.message.includes("relationship")
+          ? "Relationship building is logged on it"
+          : error.message.includes("approved")
+            ? "It's in a week whose hours are approved"
+            : "It belongs to a weekly program";
+      return { status: "error", message: `${why}, so it can't be deleted. Make it “No Program” instead.` };
+    }
+    return fail(error);
+  }
+  refresh(residencyId);
+  return ok;
+}
+
 export async function removeMusician(residencyId: string, assignmentId: string): Promise<ScheduleResult> {
   await requirePerson();
   const supabase = await createClient();
   const { error, count } = await supabase.from("session_assignment").delete({ count: "exact" }).eq("id", assignmentId);
   if (error) return fail(error);
-  if (!count) return { status: "error", message: "Only drafts can change who plays, and only schedulers can remove a leader." };
+  if (!count) return { status: "error", message: "Only drafts can change who plays this way. On a published date, mark the musician absent or record a sub instead." };
   refresh(residencyId);
   return ok;
 }

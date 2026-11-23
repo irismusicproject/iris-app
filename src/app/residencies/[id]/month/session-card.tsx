@@ -12,6 +12,7 @@ import {
 import {
   addMusician,
   cancelSession,
+  deleteOneTimeSession,
   removeMusician,
   restoreSession,
   setLeader,
@@ -38,6 +39,8 @@ export type CardSession = {
   locationId: string;
   roomLabel: string;
   isSpecialEvent: boolean;
+  /** A one-time date (no weekly program): the point person and admins can delete it (v0.37). */
+  isOneTime?: boolean;
   state: "draft" | "published" | "canceled";
   cancellationReason: CancellationReason | null;
   publicNote: string | null;
@@ -100,8 +103,10 @@ export function SessionCard({
   // DOMAIN-MODEL v0.18: musicians edit drafts they play in; the point person
   // and admins edit everything; the Admin Lead updates published dates.
   const playingMe = session.assignments.some((a) => a.personId === myId && a.status !== "absent");
-  const canEdit = isDraft && (canSchedule || (onRoster && playingMe && !monthReviewed));
-  const canEditPublished = isAdminLead && session.state === "published";
+  // Drafts lock for musicians once the month is reviewed; the Admin Lead keeps working on it (v0.35).
+  const canEdit = isDraft && (canSchedule || (onRoster && playingMe && (!monthReviewed || isAdminLead)));
+  // Published dates: the Admin Lead, the point person and admins (v0.18; who plays built v0.37).
+  const canEditPublished = (isAdminLead || canSchedule) && session.state === "published";
   const canEditDetails = canEdit || canEditPublished;
   // The point person/admins; the Admin Lead on published dates; any musician
   // playing a draft date, until the month is reviewed (v0.35).
@@ -149,7 +154,7 @@ export function SessionCard({
 
         {canceled || session.kind !== "group_session" ? (
           <span className="text-sm text-muted">–</span>
-        ) : canEdit ? (
+        ) : canEdit || canEditPublished ? (
           <select
             aria-label={`Leader for ${session.dayLabel}`}
             value={leader?.personId ?? ""}
@@ -231,7 +236,7 @@ export function SessionCard({
           </ul>
           {canEditDetails && (
             <div className="flex flex-wrap items-center gap-2">
-              {canEdit && notOnIt.length > 0 && (
+              {canEditDetails && notOnIt.length > 0 && (
                 <select
                   aria-label={`Add a musician to ${session.dayLabel}`}
                   value=""
@@ -286,6 +291,19 @@ export function SessionCard({
                 confirmLabel="Yes, No Program"
                 onConfirm={() => run(() => cancelSession(residencyId, session.id, reason), "Marked “No Program”.")}
               />
+            </div>
+          )}
+          {canSchedule && session.isOneTime && (
+            <div className="flex flex-wrap items-center gap-2 border-t border-border pt-2">
+              <ConfirmButton
+                disabled={pending}
+                className={`${small} border-red-600/50 text-red-700 dark:text-red-400`}
+                label={session.isSpecialEvent ? "Delete event" : "Delete date"}
+                question={`Delete “${session.title}” on ${session.dayLabel}${isDraft ? "" : ", which is already on the published calendar"}? This can't be undone.`}
+                confirmLabel="Yes, delete"
+                onConfirm={() => run(() => deleteOneTimeSession(residencyId, session.id), "Deleted.")}
+              />
+              <span className="text-xs text-muted">For an event added by mistake or no longer happening. Once it&apos;s documented, make it “No Program” instead.</span>
             </div>
           )}
         </div>
