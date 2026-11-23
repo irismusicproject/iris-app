@@ -8,7 +8,9 @@
     "scheme": "iris",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "org.irismusicproject.iris",
+      "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
@@ -17,11 +19,8 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
-    },
-    "web": {
-      "output": "server",
-      "favicon": "./assets/images/favicon.png"
+      "predictiveBackGestureEnabled": false,
+      "package": "org.irismusicproject.iris"
     },
     "plugins": [
       "expo-router",
@@ -40,15 +39,14 @@
       "reactCompiler": true
     },
     "extra": {
-      "router": {
-        "asyncRoutes": {
-          "web": true
-        }
-      },
       "eas": {
         "projectId": "033f430f-9133-4cf5-bd62-dfe9a02f8ce4"
       }
     },
-    "owner": "iris-music-project"
+    "owner": "iris-music-project",
+    "platforms": [
+      "ios",
+      "android"
+    ]
   }
 }
