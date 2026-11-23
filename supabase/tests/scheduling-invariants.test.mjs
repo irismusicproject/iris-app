@@ -123,12 +123,16 @@ for (const SEED of seeds) {
     return (await su(`select 1 from public.roster_member rm join public.season s on s.id=rm.season_id where s.residency_id='${res}' and rm.person_id='${p}'
       and s.ends_on>=current_date and (rm.left_on is null or rm.left_on>=current_date)`)).length > 0;
   }
+  // v0.35 (Lauren): once a building's month is reviewed, its drafts lock for
+  // musicians; planners and the Admin Lead keep working on it.
+  const locked = (p, f) => f.reviewed && !isAL(p, f.residency_id);
   async function facts(session) {
     const f = (await su(`select s.id, s.residency_id, s.schedule_state as st, s.kind, s.is_special_event as special, s.series_id,
       coalesce((select array_agg(person_id) from public.session_assignment a where a.session_id=s.id and a.status<>'absent'), '{}') as playing,
       coalesce((select array_agg(person_id) from public.session_assignment a where a.session_id=s.id and a.status='assigned'), '{}') as assigned,
       coalesce((select array_agg(person_id) from public.session_assignment a where a.session_id=s.id and a.role='leader' and a.status<>'absent'), '{}') as leaders,
-      (select count(*)::int from public.session_assignment a where a.session_id=s.id) as n
+      (select count(*)::int from public.session_assignment a where a.session_id=s.id) as n,
+      public.is_session_month_reviewed(s.id) as reviewed
       from public.session s where s.id='${session}'`))[0];
     return f;
   }
@@ -176,7 +180,7 @@ for (const SEED of seeds) {
       let forbid;
       if (isPlanner(p, f.residency_id)) forbid = false;
       else if (f.st === "draft") {
-        const ok = (await onRoster(p, f.residency_id)) && f.playing.includes(p) &&
+        const ok = !locked(p, f) && (await onRoster(p, f.residency_id)) && f.playing.includes(p) &&
           (["title", "location_id", "internal_note"].includes(col) || (f.special && ["starts_at", "scheduled_minutes", "call_time"].includes(col)));
         forbid = !ok;
       } else forbid = !(isAL(p, f.residency_id) && activeSet.has(p) && ["title", "location_id", "internal_note", "public_note", "starts_at", "scheduled_minutes", "call_time"].includes(col));
@@ -189,8 +193,9 @@ for (const SEED of seeds) {
       let forbid = true, tag;
       if (isPlanner(p, f.residency_id)) forbid = false;
       else if (f.st === "draft") {
-        if ((await onRoster(p, f.residency_id)) && f.leaders.includes(p)) forbid = false;
-        else if (isAL(p, f.residency_id)) { forbid = null; tag = "Q3"; }
+        // v0.35 (Lauren): any musician playing the draft date, the Admin Lead too
+        // (only on dates they play; answers Q3), until the month is reviewed.
+        if (!locked(p, f) && (await onRoster(p, f.residency_id)) && f.playing.includes(p)) forbid = false;
       } else if (isAL(p, f.residency_id)) forbid = false;
       return { label: `No Program (${f.st})${backdate ? " typing canceled_at" : ""}`, sql: `update public.session set schedule_state='canceled', cancellation_reason=${lit(reason)}${backdate ? ", canceled_at='2001-01-01'" : ""} where id='${s}'`, kind: "upd", forbid, tag, res: f.residency_id, session: s, backdate };
     }],
@@ -212,7 +217,7 @@ for (const SEED of seeds) {
       const s = R.pick(ss), f = await facts(s), who = R.pick([M1, M2, M3, M4, L, S1, O, N, p ?? M1]), role = R.chance(0.25) ? "leader" : "participant";
       let forbid = true, tag;
       if (isPlanner(p, f.residency_id)) forbid = false;
-      else if (f.st === "draft" && (await onRoster(p, f.residency_id))) {
+      else if (f.st === "draft" && !locked(p, f) && (await onRoster(p, f.residency_id))) {
         if (f.playing.includes(p)) { if (role === "leader" && f.leaders.length === 0) { forbid = null; tag = "Q1"; } else forbid = false; }
         else if (f.n === 0) { forbid = null; tag = "Q2"; }
       } else if (f.st !== "draft" && isAL(p, f.residency_id)) { forbid = null; tag = "Q4"; }
@@ -224,7 +229,7 @@ for (const SEED of seeds) {
       const a = (await su(`select id, person_id, role from public.session_assignment where session_id='${s}' order by person_id`)); if (!a.length) return null;
       const t = R.pick(a);
       let forbid = true;
-      if (f.st === "draft") forbid = !(isPlanner(p, f.residency_id) || ((await onRoster(p, f.residency_id)) && f.playing.includes(p) && t.role === "participant"));
+      if (f.st === "draft") forbid = !(isPlanner(p, f.residency_id) || (!locked(p, f) && (await onRoster(p, f.residency_id)) && f.playing.includes(p) && t.role === "participant"));
       else if (isPlanner(p, f.residency_id)) forbid = null; // docs silent: planners "edit" published dates
       return { label: `remove ${NAMES[t.person_id] ?? "someone"} (${t.role}, ${f.st})`, sql: `delete from public.session_assignment where id='${t.id}'`, kind: "upd", forbid, res: f.residency_id, session: s };
     }],
@@ -235,7 +240,7 @@ for (const SEED of seeds) {
       const t = R.pick(a), to = t.role === "leader" ? "participant" : "leader";
       let forbid = true, tag;
       if (isPlanner(p, f.residency_id)) forbid = false;
-      else if (f.st === "draft" && (await onRoster(p, f.residency_id)) && f.playing.includes(p)) {
+      else if (f.st === "draft" && !locked(p, f) && (await onRoster(p, f.residency_id)) && f.playing.includes(p)) {
         if (to === "leader" && f.leaders.length === 0) { forbid = null; tag = "Q1"; } else forbid = false;
       } else if (f.st !== "draft" && isAL(p, f.residency_id)) { forbid = null; tag = "Q4"; }
       return { label: `${to === "leader" ? "promote" : "demote"} ${NAMES[t.person_id] ?? "someone"} (${f.st})`, sql: `update public.session_assignment set role='${to}' where id='${t.id}'`, kind: "upd", forbid, tag, res: f.residency_id, session: s, roleChange: true };
@@ -345,7 +350,7 @@ for (const SEED of seeds) {
         const viaPublish = act?.publishes && (planner || al) && s.schedule_state === "published";
         if (!(planner || viaPublish || playingBefore(k, actor))) fail("I3 a draft was changed by someone not planning it or playing it", { act: act?.label, actor: NAMES[actor], k });
         if (b.schedule_state === "draft" && s.schedule_state === "canceled" && !planner &&
-            ![...before.asg.values()].some((a) => a.session_id === k && a.person_id === actor && a.role === "leader" && a.status !== "absent")) fail("I3 a draft was made No Program by a musician who isn't its leader", { act: act?.label, actor: NAMES[actor], k });
+            !playingBefore(k, actor)) fail("I3 a draft was made No Program by someone not playing it (v0.35)", { act: act?.label, actor: NAMES[actor], k });
       }
     }
     // canceled_at must be the recording time

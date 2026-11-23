@@ -272,10 +272,10 @@ check("…with its musicians and leader", JSON.stringify(await leadersOf(d2)) ==
 r = await su(`select actor_id, before->>'schedule_state' as b, after->>'schedule_state' as a from public.audit_log where table_name='session' and row_id='${d2}' order by id desc limit 1`);
 check("…and the restore is logged with who did it", r[0]?.actor_id === P && r[0]?.b === "canceled" && r[0]?.a === "draft", r);
 
-r = await as(M1, `update public.session set schedule_state='canceled', cancellation_reason='musician' where id='${d3}'`); check("a musician who isn't the leader can't make it No Program", !r.ok, r);
-r = await as(M3, `update public.session set schedule_state='canceled', cancellation_reason='musician' where id='${d3}'`); check("a musician not on it can't either (0 rows)", r.ok && r.n === 0, r);
-r = await as(M2, `update public.session set schedule_state='canceled', cancellation_reason='partner', canceled_at='2000-01-01' where id='${d3}' returning canceled_at > now() - interval '5 minutes' as fresh`);
-check("the leader makes another date No Program", r.ok && r.n === 1, r);
+// v0.35 (Lauren): any musician playing a draft date can make it "No Program", not only its leader.
+r = await as(M3, `update public.session set schedule_state='canceled', cancellation_reason='musician' where id='${d3}'`); check("a musician not on it can't (0 rows)", r.ok && r.n === 0, r);
+r = await as(M1, `update public.session set schedule_state='canceled', cancellation_reason='partner', canceled_at='2000-01-01' where id='${d3}' returning canceled_at > now() - interval '5 minutes' as fresh`);
+check("a musician playing it (not the leader) makes another date No Program (v0.35)", r.ok && r.n === 1, r);
 check("…and can't type in when it was canceled (canceled_at is the recording time)", r.ok && r.rows[0]?.fresh === true, r) /* fixed K3, migration 20261209 */;
 r = await as(L, `update public.session set schedule_state='draft' where id='${d3}'`); check("the Admin Lead restores a No Program date (v0.17)", r.ok && r.n === 1, r);
 r = await as(L, `update public.session set schedule_state='canceled', cancellation_reason='musician' where id='${d4}'`);
