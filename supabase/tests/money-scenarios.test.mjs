@@ -152,8 +152,9 @@ for (const [who, name] of [[P, "point person"], [L, "admin lead"], [M1, "musicia
 // 4. Residents and relationship building (D14; no health information)
 // ============================================================================
 r = await su(`select array_agg(column_name::text order by column_name) as c from information_schema.columns where table_schema='public' and table_name='resident'`);
-check("a resident record holds only name, disambiguator, site and bookkeeping (no health fields)",
-  JSON.stringify(r[0].c) === JSON.stringify(["active", "created_at", "created_by", "disambiguator", "display_name", "id", "site_id"]), r);
+// v0.36 (Lauren): plus a room number, kept only at detailed-notes buildings (partners comfortable).
+check("a resident record holds only name, disambiguator, room, site and bookkeeping (no health fields)",
+  JSON.stringify(r[0].c) === JSON.stringify(["active", "created_at", "created_by", "disambiguator", "display_name", "id", "room", "site_id"]), r);
 const addRes = (who, site, name, dis = "") => as(who, `insert into public.resident (site_id,display_name,disambiguator,created_by) values ('${site}','${name}','${dis}','${who}') returning id`);
 r = await addRes(M1, S1, "Ruth K."); check("roster musician adds a resident while logging", r.ok, r); const RUTH = r.rows?.[0]?.id;
 r = await addRes(M2, S1, "ruth k."); check("same name at the same site needs a disambiguator", !r.ok, r);
@@ -197,7 +198,8 @@ check("minutes are required (v0.21: billed per site)", !r.ok, r);
 const longNote = "A".repeat(600);
 r = await logAct(M1, RES, S1, addDays(W1, 1), "one_to_one", 1, false, longNote); check("a one-sentence note (500 characters) where detailed notes are off", !r.ok, r);
 r = await as(A, `update public.site set detailed_relationship_notes=true where id='${S2}'`); check("admin switches on detailed notes at Birch", r.ok && r.n === 1, r);
-r = await as(M1, `update public.relationship_activity set note='${longNote}' where id='${ACT_M1b}'`); check("…where a paragraph note is allowed (v0.21)", r.ok && r.n === 1, r);
+// v0.36: at a detailed-notes building a log also needs its start and end time (kept to its current length here).
+r = await as(M1, `update public.relationship_activity set note='${longNote}', start_time='09:00', end_time=time '09:00' + make_interval(mins => minutes) where id='${ACT_M1b}'`); check("…where a paragraph note is allowed (v0.21)", r.ok && r.n === 1, r);
 r = await as(M1, `select person_id from public.relationship_activity`); check("musician sees only their own activities", r.ok && r.rows.length === 2 && r.rows.every((x) => x.person_id === M1), r);
 r = await as(P, `select id from public.relationship_activity`); check("point person sees all of the program's activities", r.ok && r.rows.length === 6, r);
 r = await as(Q, `select id from public.relationship_activity where residency_id='${RES}'`); check("another program's point person sees none of them", none(r), r);

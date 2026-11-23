@@ -13,6 +13,7 @@
 -- Rooms are kept only at detailed-notes buildings; partners there are
 -- comfortable with it (Lauren, Nov 22, 2026). Never health information.
 -- Other buildings are unchanged. Only new or changed logs are checked.
+-- Seeds and repairs run without a signed-in user and aren't affected.
 --
 -- Additive only: new nullable columns, a function and triggers. The phone app
 -- doesn't log relationship building.
@@ -39,6 +40,12 @@ returns trigger language plpgsql security definer set search_path = ''
 as $$
 begin
   if not public.site_has_detailed_notes(new.site_id) then
+    return new;
+  end if;
+  if (select auth.uid()) is null then
+    if new.start_time is not null then
+      new.minutes := (extract(epoch from (new.end_time - new.start_time)) / 60)::integer;
+    end if;
     return new;
   end if;
   if new.note is null or length(btrim(new.note)) = 0 then
@@ -117,7 +124,7 @@ begin
   end if;
   select * into res from public.resident where id = new.resident_id;
   new.room := coalesce(nullif(btrim(new.room), ''), res.room);
-  if new.room is null then
+  if new.room is null and (select auth.uid()) is not null then
     raise exception 'enter %''s room', res.display_name using errcode = '23514';
   end if;
   return new;
