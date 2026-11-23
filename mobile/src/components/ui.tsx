@@ -1,20 +1,87 @@
-import type { ReactNode } from "react";
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View, type TextInputProps } from "react-native";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  ActivityIndicator,
+  Keyboard,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  type HostInstance,
+  type ScrollViewInstance,
+  type StyleProp,
+  type TextInputInstance,
+  type TextInputProps,
+  type ViewStyle,
+} from "react-native";
 import { colors } from "@/lib/theme";
 
 // The phone app's building blocks. Big touch targets: musicians use this
 // standing in a hallway right after a session.
 
-export function Screen({ children, refreshing, onRefresh }: { children: ReactNode; refreshing?: boolean; onRefresh?: () => void }) {
+// Android apps are edge to edge, so the screen doesn't shrink when the
+// keyboard opens: it covers the bottom of the page. Screen adds room below
+// the content while the keyboard is up, and Input scrolls the field being
+// typed in to near the top, so it's always visible.
+const ScrollToField = createContext<((field: TextInputInstance | null) => void) | null>(null);
+
+export function Screen({
+  children,
+  refreshing,
+  onRefresh,
+  style,
+  contentStyle,
+}: {
+  children: ReactNode;
+  refreshing?: boolean;
+  onRefresh?: () => void;
+  style?: StyleProp<ViewStyle>;
+  contentStyle?: StyleProp<ViewStyle>;
+}) {
+  const scroll = useRef<ScrollViewInstance>(null);
+  const content = useRef<HostInstance>(null);
+  const focused = useRef<TextInputInstance | null>(null);
+  const [keyboard, setKeyboard] = useState(0);
+
+  const reveal = () => {
+    const field = focused.current;
+    if (!field || !content.current) return;
+    field.measureLayout(content.current, (_x, y) => scroll.current?.scrollTo({ y: Math.max(0, y - 96), animated: true }), () => {});
+  };
+
+  useEffect(() => {
+    const show = Keyboard.addListener("keyboardDidShow", (e) => {
+      setKeyboard(e.endCoordinates.height);
+      setTimeout(reveal, 50);
+    });
+    const hide = Keyboard.addListener("keyboardDidHide", () => setKeyboard(0));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
-      refreshControl={onRefresh ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={colors.iris} colors={[colors.iris]} /> : undefined}
+    <ScrollToField.Provider
+      value={(field) => {
+        focused.current = field;
+        if (Keyboard.isVisible()) setTimeout(reveal, 50);
+      }}
     >
-      {children}
-    </ScrollView>
+      <ScrollView
+        ref={scroll}
+        style={[styles.screen, style]}
+        contentContainerStyle={[styles.content, contentStyle, keyboard ? { paddingBottom: keyboard + 48 } : null]}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={onRefresh ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={colors.iris} colors={[colors.iris]} /> : undefined}
+      >
+        <View ref={content} style={{ gap: 14 }} collapsable={false}>
+          {children}
+        </View>
+      </ScrollView>
+    </ScrollToField.Provider>
   );
 }
 
@@ -98,7 +165,20 @@ export function Field({ label, hint, error, children }: { label: string; hint?: 
 }
 
 export function Input(props: TextInputProps) {
-  return <TextInput placeholderTextColor={colors.muted} {...props} style={[styles.input, props.multiline && styles.multiline, props.style]} />;
+  const scrollTo = useContext(ScrollToField);
+  const ref = useRef<TextInputInstance>(null);
+  return (
+    <TextInput
+      ref={ref}
+      placeholderTextColor={colors.muted}
+      {...props}
+      onFocus={(e) => {
+        scrollTo?.(ref.current);
+        props.onFocus?.(e);
+      }}
+      style={[styles.input, props.multiline && styles.multiline, props.style]}
+    />
+  );
 }
 
 /** A row of pill buttons standing in for a dropdown or checkboxes. */

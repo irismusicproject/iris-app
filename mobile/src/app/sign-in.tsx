@@ -1,6 +1,7 @@
 import { Redirect } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { Input, Screen } from "@/components/ui";
 import { isValidEmail, normalizeCode } from "@shared/auth/password";
 import { useSession } from "@/lib/session";
 import { isConfigured, supabase } from "@/lib/supabase";
@@ -72,8 +73,7 @@ export default function SignIn() {
   const primaryLabel = mode === "password" ? "Log in" : mode === "code" ? "Email me a code" : "Log in";
 
   return (
-    <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+    <Screen style={styles.screen} contentStyle={styles.scroll}>
         <View style={styles.card}>
           <Text style={styles.title}>Iris Music Project</Text>
           {process.env.EXPO_PUBLIC_IRIS_ENVIRONMENT === "staging" && <Text style={styles.hint}>Test version: staging, fake data only.</Text>}
@@ -82,8 +82,7 @@ export default function SignIn() {
           {mode !== "code-sent" ? (
             <>
               <Text style={styles.label}>Email</Text>
-              <TextInput
-                style={styles.input}
+              <Input
                 value={email}
                 onChangeText={setEmail}
                 autoCapitalize="none"
@@ -103,8 +102,7 @@ export default function SignIn() {
           {mode === "password" && (
             <>
               <Text style={styles.label}>Password</Text>
-              <TextInput
-                style={styles.input}
+              <Input
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
@@ -118,8 +116,8 @@ export default function SignIn() {
           {mode === "code-sent" && (
             <>
               <Text style={styles.label}>Code</Text>
-              <TextInput
-                style={[styles.input, styles.code]}
+              <Input
+                style={styles.code}
                 value={code}
                 onChangeText={setCode}
                 keyboardType="number-pad"
@@ -159,8 +157,7 @@ export default function SignIn() {
           )}
           <Text style={styles.hint}>Forgot your password? Reset it on the website, then come back here.</Text>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+    </Screen>
   );
 }
 
