@@ -9,11 +9,13 @@
       "environment": "preview",
       "env": {
         "EXPO_PUBLIC_IRIS_ENVIRONMENT": "staging"
-      }
+      },
+      "channel": "preview"
     },
     "production": {
       "environment": "production",
-      "autoIncrement": true
+      "autoIncrement": true,
+      "channel": "production"
     }
   },
   "submit": {

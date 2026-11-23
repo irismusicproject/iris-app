@@ -33,9 +33,17 @@ through `src/lib/week-context.tsx`; building blocks in `src/components/ui.tsx`.
 5. Sign in with a fake staging login (e.g. `clara.clarinet@example.com` and
    `STAGING_TEST_PASSWORD`).
 
-Installable test builds (`eas build --profile preview`) take their settings
-from Expo's **preview** environment (`eas.json`), which needs the Iris Expo
-account.
+Installable test builds (`eas build --profile preview --platform android`)
+take their settings from Expo's **preview** environment (`eas.json`), which
+needs the Iris Expo account. They listen on the **preview** update channel:
+
+- **Code-only changes** (screens, wording, queries) reach installed test apps
+  without reinstalling: `npx eas-cli update --channel preview --environment preview
+  --message "…"`. The app picks it up the next time it's opened (or the time after).
+- **Native changes** (a new package with native code, app icon, `app.json`
+  plugins) need a new build. Bump `expo.version` in `app.json` first: updates
+  only go to builds with the same version (`runtimeVersion` policy `appVersion`),
+  so an update never lands on an app that can't run it.
 
 ## Checks
 
