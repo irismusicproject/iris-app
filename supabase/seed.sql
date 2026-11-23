@@ -12,7 +12,8 @@
 -- Safe to run more than once (fixed ids, "on conflict do nothing"). Each part
 -- is skipped until its tables exist, so this runs on main and after the
 -- scheduling/documentation/hours/invoice migrations land. Dates are relative
--- to the day it runs. The fake people have no password: they can't sign in.
+-- to the day it runs. The fake people have no password here; on staging, the
+-- "Staging test accounts" action gives them the shared test password.
 
 -- Partners, sites and rooms --------------------------------------------------
 do $$
@@ -138,8 +139,18 @@ begin
     ('42046212-1dc2-4653-8582-5013e3ec73aa', 'hollis.horn@example.com'),
     ('0f4c2d68-8590-49d9-84ec-46cd055b00e5', 'bastian.bassoon@example.com'),
     ('7e098809-c41c-45a4-81d6-b8c1373eb98a', 'sasha.sax@example.com'),
+    ('8995ef08-7e4c-498e-8f83-859559c01f76', 'mina.mandolin@example.com'),
+    ('09a0d465-0ddb-4249-83b8-3908c6e6de57', 'theo.trumpet@example.com'),
+    ('5577ffde-c530-4dac-8fe3-146c491b0685', 'uma.ukulele@example.com'),
+    ('205c761b-bb63-440a-8fe7-6466b2df300b', 'rhea.recorder@example.com'),
+    ('f822d7d1-8dcf-4dd1-8c7c-0ceadcfc104a', 'dex.drums@example.com'),
+    ('6c20b3af-11c4-4e56-8fb3-8eaf22e96232', 'tara.trombone@example.com'),
+    ('57044163-f5a8-4192-87ea-6c83f5b7d95f', 'nico.banjo@example.com'),
+    ('b62e8e74-64c0-4da1-8718-612950ed7db4', 'ivy.accordion@example.com'),
+    ('e35f397a-1e87-4a29-8df0-32c60cb92f6b', 'felix.fiddle@example.com'),
     ('b0000000-0000-4000-8000-000000000005', 'stella.staff@example.com'),
-    ('024211f4-32bd-4dc8-8dd8-4d2a492e6ae3', 'paz.planner@example.com')
+    ('024211f4-32bd-4dc8-8dd8-4d2a492e6ae3', 'paz.planner@example.com'),
+    ('612bb730-b5b1-4989-850f-ce8d5fc72ccf', 'owen.organizer@example.com')
   ) v(id, email)
   on conflict do nothing;
 
@@ -159,16 +170,26 @@ begin
     ('42046212-1dc2-4653-8582-5013e3ec73aa', 'Hollis Horn (fake)', 'hollis.horn@example.com', 'contractor_1099', '{horn}', '{}'),
     ('0f4c2d68-8590-49d9-84ec-46cd055b00e5', 'Bastian Bassoon (fake)', 'bastian.bassoon@example.com', 'contractor_1099', '{bassoon,voice}', '{}'),
     ('7e098809-c41c-45a4-81d6-b8c1373eb98a', 'Sasha Sax (fake)', 'sasha.sax@example.com', 'contractor_1099', '{saxophone,voice}', '{}'),
+    ('8995ef08-7e4c-498e-8f83-859559c01f76', 'Mina Mandolin (fake)', 'mina.mandolin@example.com', 'contractor_1099', '{mandolin}', '{}'),
+    ('09a0d465-0ddb-4249-83b8-3908c6e6de57', 'Theo Trumpet (fake)', 'theo.trumpet@example.com', 'contractor_1099', '{trumpet}', '{}'),
+    ('5577ffde-c530-4dac-8fe3-146c491b0685', 'Uma Ukulele (fake)', 'uma.ukulele@example.com', 'contractor_1099', '{ukulele}', '{}'),
+    ('205c761b-bb63-440a-8fe7-6466b2df300b', 'Rhea Recorder (fake)', 'rhea.recorder@example.com', 'contractor_1099', '{recorder}', '{}'),
+    ('f822d7d1-8dcf-4dd1-8c7c-0ceadcfc104a', 'Dex Drums (fake)', 'dex.drums@example.com', 'contractor_1099', '{drums}', '{}'),
+    ('6c20b3af-11c4-4e56-8fb3-8eaf22e96232', 'Tara Trombone (fake)', 'tara.trombone@example.com', 'contractor_1099', '{trombone}', '{}'),
+    ('57044163-f5a8-4192-87ea-6c83f5b7d95f', 'Nico Banjo (fake)', 'nico.banjo@example.com', 'contractor_1099', '{banjo}', '{}'),
+    ('b62e8e74-64c0-4da1-8718-612950ed7db4', 'Ivy Accordion (fake)', 'ivy.accordion@example.com', 'contractor_1099', '{accordion}', '{}'),
+    ('e35f397a-1e87-4a29-8df0-32c60cb92f6b', 'Felix Fiddle (fake)', 'felix.fiddle@example.com', 'contractor_1099', '{fiddle}', '{}'),
     ('b0000000-0000-4000-8000-000000000005', 'Stella Staff (fake)', 'stella.staff@example.com', 'employee_w2', '{}', '{admin}'),
-    ('024211f4-32bd-4dc8-8dd8-4d2a492e6ae3', 'Paz Planner (fake)', 'paz.planner@example.com', 'employee_w2', '{}', '{admin}')
+    ('024211f4-32bd-4dc8-8dd8-4d2a492e6ae3', 'Paz Planner (fake)', 'paz.planner@example.com', 'employee_w2', '{}', '{admin}'),
+    ('612bb730-b5b1-4989-850f-ce8d5fc72ccf', 'Owen Organizer (fake)', 'owen.organizer@example.com', 'employee_w2', '{}', '{admin}')
   on conflict do nothing;
 end $$;
 
 -- Residencies, seasons, rosters, point persons, weekly programs -------------
--- One residency per partner; seasons run from two months ago to four months ahead.
+-- One residency per partner; seasons run from three months ago to four months ahead.
 do $$
 declare
-  season_start date := (date_trunc('month', current_date) - interval '2 months')::date;
+  season_start date := (date_trunc('month', current_date) - interval '3 months')::date;
   season_end   date := (date_trunc('month', current_date) + interval '5 months - 1 day')::date;
 begin
   if to_regclass('public.residency') is null then
@@ -225,139 +246,158 @@ begin
 
   -- Exactly one Admin Lead per season; the last musician listed is a sub (non-core).
   insert into public.roster_member (id, season_id, person_id, is_core, is_admin_lead, joined_on) values
-    ('b3034824-6bf4-4895-80cb-64c9a6090f88', 'efa29a49-a984-4dcd-88bd-fcdc7f1bec3f', '3bef9bb8-d7d9-4ddb-85d8-db8f7e2b6bfe', true, true, season_start),
+    ('cc5c5253-d925-4dd0-82bd-aeabf170d3c1', 'efa29a49-a984-4dcd-88bd-fcdc7f1bec3f', 'b0000000-0000-4000-8000-000000000003', true, true, season_start),
     ('35f1e521-345b-44dc-835a-cb5f315f8af3', 'efa29a49-a984-4dcd-88bd-fcdc7f1bec3f', '96999630-ef16-424b-8bc3-8fb89fa7ade2', true, false, season_start),
-    ('167c49dc-e9d4-4f48-8a8a-c9ccf438f908', 'efa29a49-a984-4dcd-88bd-fcdc7f1bec3f', '0f4c2d68-8590-49d9-84ec-46cd055b00e5', true, false, season_start),
-    ('864027cb-fc1a-434a-8e7f-e61e2056d020', 'efa29a49-a984-4dcd-88bd-fcdc7f1bec3f', '42046212-1dc2-4653-8582-5013e3ec73aa', true, false, season_start),
-    ('d2336e6d-a367-49db-8f9b-ffb82c56a303', 'efa29a49-a984-4dcd-88bd-fcdc7f1bec3f', '7681964f-faf2-4545-84fd-491464392cf4', true, false, season_start),
-    ('be6be710-3cb5-4ff5-81b4-1873773b7e8a', 'efa29a49-a984-4dcd-88bd-fcdc7f1bec3f', '26614fb3-3049-40ad-8c6d-1079533bcbb1', true, false, season_start),
+    ('0a30357d-07de-4585-8163-a54ab6a4cb79', 'efa29a49-a984-4dcd-88bd-fcdc7f1bec3f', 'b0000000-0000-4000-8000-000000000004', true, false, season_start),
     ('0c601488-647b-4621-8af8-cd8388fecf12', 'efa29a49-a984-4dcd-88bd-fcdc7f1bec3f', '147f7e8e-bf76-494d-87dd-8bd6f6a32274', true, false, season_start),
-    ('50f75312-e87c-47e3-8369-f4b3c66b9246', 'efa29a49-a984-4dcd-88bd-fcdc7f1bec3f', '478277d3-e717-49b8-8e38-ccaef6afccfe', false, false, season_start),
-    ('2018fe08-e2ad-40b7-89ad-bb6bb6816bc6', '4c8f71b3-444a-4947-890a-48210459763d', '0f4c2d68-8590-49d9-84ec-46cd055b00e5', true, true, season_start),
-    ('a1cf8c86-17ee-43f4-87d4-5e1150acdd86', '4c8f71b3-444a-4947-890a-48210459763d', 'b0000000-0000-4000-8000-000000000001', true, false, season_start),
-    ('f14b6978-feb1-49af-8c13-bc19bc7cfabe', '4c8f71b3-444a-4947-890a-48210459763d', '32ec2260-0cd1-42ae-831f-4edd917e82f7', true, false, season_start),
-    ('27996a59-caee-46ea-8cbe-68271719545b', '4c8f71b3-444a-4947-890a-48210459763d', '478277d3-e717-49b8-8e38-ccaef6afccfe', true, false, season_start),
-    ('d8bbcc82-23f2-4a89-87bf-d02720e5461a', '4c8f71b3-444a-4947-890a-48210459763d', '147f7e8e-bf76-494d-87dd-8bd6f6a32274', false, false, season_start),
-    ('9380239c-2f6b-4c00-862b-5064c7682db6', '5b66099a-f61f-4f30-829c-3422ec3cdaf7', '42046212-1dc2-4653-8582-5013e3ec73aa', true, true, season_start),
-    ('98060808-1dd4-423b-8e00-63a033d4ae67', '5b66099a-f61f-4f30-829c-3422ec3cdaf7', '26614fb3-3049-40ad-8c6d-1079533bcbb1', true, false, season_start),
-    ('f8b10ce0-492d-46f4-892d-7ceb9264a208', '5b66099a-f61f-4f30-829c-3422ec3cdaf7', '32ec2260-0cd1-42ae-831f-4edd917e82f7', true, false, season_start),
-    ('53ccfaef-aeeb-4f7e-8a95-b8c11f560127', '5b66099a-f61f-4f30-829c-3422ec3cdaf7', '478277d3-e717-49b8-8e38-ccaef6afccfe', true, false, season_start),
-    ('708d12a4-f29b-427b-8944-4b5f7b318cd0', '5b66099a-f61f-4f30-829c-3422ec3cdaf7', 'b0000000-0000-4000-8000-000000000002', true, false, season_start),
-    ('54734349-ad14-45b7-8fd9-95f36fcc9dab', '5b66099a-f61f-4f30-829c-3422ec3cdaf7', '147f7e8e-bf76-494d-87dd-8bd6f6a32274', false, false, season_start),
-    ('ed928cc4-6027-4404-8b76-b487c220ffee', '940d5fd3-0fb3-4bb0-807e-423892ff8252', '0f4c2d68-8590-49d9-84ec-46cd055b00e5', true, true, season_start),
-    ('4176da69-7972-4111-8bf1-5dbc01a51e72', '940d5fd3-0fb3-4bb0-807e-423892ff8252', 'b0000000-0000-4000-8000-000000000001', true, false, season_start),
+    ('ec6c57bd-375b-4209-81c0-2b5be69a048a', 'efa29a49-a984-4dcd-88bd-fcdc7f1bec3f', '32ec2260-0cd1-42ae-831f-4edd917e82f7', true, false, season_start),
+    ('55c42ff4-d983-4ef5-8c78-28aa1b794dc2', 'efa29a49-a984-4dcd-88bd-fcdc7f1bec3f', '7e098809-c41c-45a4-81d6-b8c1373eb98a', true, false, season_start),
+    ('34e0caa3-99d2-46ac-840f-bf3b5582dd35', 'efa29a49-a984-4dcd-88bd-fcdc7f1bec3f', 'f822d7d1-8dcf-4dd1-8c7c-0ceadcfc104a', true, false, season_start),
+    ('864027cb-fc1a-434a-8e7f-e61e2056d020', 'efa29a49-a984-4dcd-88bd-fcdc7f1bec3f', '42046212-1dc2-4653-8582-5013e3ec73aa', true, false, season_start),
+    ('10f1f6af-aceb-4204-843f-c45572cf9a07', 'efa29a49-a984-4dcd-88bd-fcdc7f1bec3f', '8995ef08-7e4c-498e-8f83-859559c01f76', true, false, season_start),
+    ('8d2d1e28-992a-47f3-8e9a-884cfe06511e', 'efa29a49-a984-4dcd-88bd-fcdc7f1bec3f', '57044163-f5a8-4192-87ea-6c83f5b7d95f', false, false, season_start),
+    ('03e530bc-328c-46d7-8218-dbd811aaf7b8', '4c8f71b3-444a-4947-890a-48210459763d', 'e35f397a-1e87-4a29-8df0-32c60cb92f6b', true, true, season_start),
+    ('d8bbcc82-23f2-4a89-87bf-d02720e5461a', '4c8f71b3-444a-4947-890a-48210459763d', '147f7e8e-bf76-494d-87dd-8bd6f6a32274', true, false, season_start),
+    ('668144e6-1215-4794-8d3c-ad0b8257ed68', '4c8f71b3-444a-4947-890a-48210459763d', '57044163-f5a8-4192-87ea-6c83f5b7d95f', true, false, season_start),
+    ('338b7880-ce34-47cb-826d-8a4232b9e95e', '4c8f71b3-444a-4947-890a-48210459763d', 'b0000000-0000-4000-8000-000000000002', true, false, season_start),
+    ('4a29b418-0e36-480c-8ddb-673f288f7b19', '4c8f71b3-444a-4947-890a-48210459763d', 'b0000000-0000-4000-8000-000000000004', true, false, season_start),
+    ('3cf7ca22-a64e-4989-81c5-52a65880327b', '4c8f71b3-444a-4947-890a-48210459763d', '8995ef08-7e4c-498e-8f83-859559c01f76', false, false, season_start),
+    ('742591b8-1668-4fcd-8b85-88f4cb3e83bb', '5b66099a-f61f-4f30-829c-3422ec3cdaf7', '205c761b-bb63-440a-8fe7-6466b2df300b', true, true, season_start),
+    ('443b6932-4ce0-44a7-86c1-b9cf588a760a', '5b66099a-f61f-4f30-829c-3422ec3cdaf7', 'f822d7d1-8dcf-4dd1-8c7c-0ceadcfc104a', true, false, season_start),
+    ('9a7cc371-a18d-4fe9-8746-fd41908f0f6c', '5b66099a-f61f-4f30-829c-3422ec3cdaf7', '7681964f-faf2-4545-84fd-491464392cf4', true, false, season_start),
+    ('9380239c-2f6b-4c00-862b-5064c7682db6', '5b66099a-f61f-4f30-829c-3422ec3cdaf7', '42046212-1dc2-4653-8582-5013e3ec73aa', true, false, season_start),
+    ('c6c67fff-dea6-480c-859b-35abb4f991e0', '5b66099a-f61f-4f30-829c-3422ec3cdaf7', '09a0d465-0ddb-4249-83b8-3908c6e6de57', true, false, season_start),
+    ('47ce6459-3341-4998-8b68-72bef51c3966', '5b66099a-f61f-4f30-829c-3422ec3cdaf7', 'e35f397a-1e87-4a29-8df0-32c60cb92f6b', true, false, season_start),
+    ('91973b09-163e-4283-852f-2896e16d737b', '5b66099a-f61f-4f30-829c-3422ec3cdaf7', 'b0000000-0000-4000-8000-000000000001', false, false, season_start),
+    ('a960db33-791a-491d-8886-0c0fdbf32cd2', '940d5fd3-0fb3-4bb0-807e-423892ff8252', '09a0d465-0ddb-4249-83b8-3908c6e6de57', true, true, season_start),
+    ('1c2a09a2-3a39-4da9-8c48-138e2d6ffad3', '940d5fd3-0fb3-4bb0-807e-423892ff8252', 'b62e8e74-64c0-4da1-8718-612950ed7db4', true, false, season_start),
+    ('d73aa92d-3ad6-4ada-8ae7-4a2b64c9dd0c', '940d5fd3-0fb3-4bb0-807e-423892ff8252', '32ec2260-0cd1-42ae-831f-4edd917e82f7', true, false, season_start),
     ('1b90c580-6a30-4d5e-8f4e-e41d66c85cef', '940d5fd3-0fb3-4bb0-807e-423892ff8252', '147f7e8e-bf76-494d-87dd-8bd6f6a32274', true, false, season_start),
-    ('2c7c5bbf-4301-49fb-8068-8bed92829e8a', '940d5fd3-0fb3-4bb0-807e-423892ff8252', 'b0000000-0000-4000-8000-000000000004', false, false, season_start),
-    ('bf68e492-fee8-4d27-840d-679e4dab08c3', 'ddaf9075-53af-4204-8678-f5cddf447cf1', 'b0000000-0000-4000-8000-000000000002', true, true, season_start),
+    ('9a7a3960-687e-480b-839a-d0627856f568', '940d5fd3-0fb3-4bb0-807e-423892ff8252', '26614fb3-3049-40ad-8c6d-1079533bcbb1', false, false, season_start),
+    ('eb85f12b-14e4-43a1-8135-fd1b0f64f048', 'ddaf9075-53af-4204-8678-f5cddf447cf1', '26614fb3-3049-40ad-8c6d-1079533bcbb1', true, true, season_start),
+    ('95690515-421b-40c8-897d-e52829373f26', 'ddaf9075-53af-4204-8678-f5cddf447cf1', '6c20b3af-11c4-4e56-8fb3-8eaf22e96232', true, false, season_start),
+    ('bf68e492-fee8-4d27-840d-679e4dab08c3', 'ddaf9075-53af-4204-8678-f5cddf447cf1', 'b0000000-0000-4000-8000-000000000002', true, false, season_start),
     ('b803b2d1-5109-4f3c-8efe-f4ddcff3372e', 'ddaf9075-53af-4204-8678-f5cddf447cf1', '478277d3-e717-49b8-8e38-ccaef6afccfe', true, false, season_start),
-    ('eb85f12b-14e4-43a1-8135-fd1b0f64f048', 'ddaf9075-53af-4204-8678-f5cddf447cf1', '26614fb3-3049-40ad-8c6d-1079533bcbb1', true, false, season_start),
-    ('3ce8e3cc-1512-45d7-8b73-d76b0305d502', 'ddaf9075-53af-4204-8678-f5cddf447cf1', '7681964f-faf2-4545-84fd-491464392cf4', true, false, season_start),
-    ('251d5024-0a48-47d9-888e-4c11ac4d33b7', 'ddaf9075-53af-4204-8678-f5cddf447cf1', '0f4c2d68-8590-49d9-84ec-46cd055b00e5', false, false, season_start),
-    ('1afb4179-128b-4ac1-8fc7-8b3db46f4e68', '659b4ecd-d40e-452b-8b9f-37e34a41237d', 'b0000000-0000-4000-8000-000000000002', true, true, season_start),
-    ('6449f5b0-3ad0-4b04-8782-76f6615a418c', '659b4ecd-d40e-452b-8b9f-37e34a41237d', '478277d3-e717-49b8-8e38-ccaef6afccfe', true, false, season_start),
-    ('42dc0dd8-63e2-4bff-8c24-25a1693b4eea', '659b4ecd-d40e-452b-8b9f-37e34a41237d', '7e098809-c41c-45a4-81d6-b8c1373eb98a', true, false, season_start),
-    ('638df1df-f53f-416b-8ac0-b506e29854aa', '659b4ecd-d40e-452b-8b9f-37e34a41237d', '96999630-ef16-424b-8bc3-8fb89fa7ade2', false, false, season_start),
+    ('27291346-286b-4a7a-81fa-24d1b9737290', 'ddaf9075-53af-4204-8678-f5cddf447cf1', '5577ffde-c530-4dac-8fe3-146c491b0685', true, false, season_start),
+    ('6f572e35-8c70-4cbe-878e-73d9c47d23cf', 'ddaf9075-53af-4204-8678-f5cddf447cf1', 'f0e41740-890f-4f42-88f8-0dc65dd0fb9b', false, false, season_start),
+    ('6449f5b0-3ad0-4b04-8782-76f6615a418c', '659b4ecd-d40e-452b-8b9f-37e34a41237d', '478277d3-e717-49b8-8e38-ccaef6afccfe', true, true, season_start),
+    ('b6f5cc5f-53c9-4fff-892c-679287ea0007', '659b4ecd-d40e-452b-8b9f-37e34a41237d', '3bef9bb8-d7d9-4ddb-85d8-db8f7e2b6bfe', true, false, season_start),
+    ('470eca04-4475-4682-8048-021c30e7e311', '659b4ecd-d40e-452b-8b9f-37e34a41237d', '5577ffde-c530-4dac-8fe3-146c491b0685', true, false, season_start),
+    ('4ff3d85b-7f9f-40b2-887d-e8380cbe2fc0', '659b4ecd-d40e-452b-8b9f-37e34a41237d', 'b0000000-0000-4000-8000-000000000003', true, false, season_start),
+    ('f10a6e7e-030f-4934-8951-54549758c9fd', '659b4ecd-d40e-452b-8b9f-37e34a41237d', 'e35f397a-1e87-4a29-8df0-32c60cb92f6b', false, false, season_start),
     ('e3b6b4ba-5244-45d6-8b76-d86f29bc3d2c', '802071ca-c82e-4608-80ae-199e58a71787', 'b0000000-0000-4000-8000-000000000001', true, true, season_start),
-    ('84d1a9f6-369d-4126-86c2-9521b0699f9b', '802071ca-c82e-4608-80ae-199e58a71787', 'b0000000-0000-4000-8000-000000000002', true, false, season_start),
-    ('032e58e4-a86d-497f-8e40-d62471bc1734', '802071ca-c82e-4608-80ae-199e58a71787', '3bef9bb8-d7d9-4ddb-85d8-db8f7e2b6bfe', true, false, season_start),
-    ('c32a10a9-1141-464d-85f0-8cdae18c6048', '802071ca-c82e-4608-80ae-199e58a71787', '478277d3-e717-49b8-8e38-ccaef6afccfe', false, false, season_start),
-    ('f3667739-768d-4895-88e2-54ef985cce89', 'd3569669-10c7-4a52-83bf-ab1d15e6d36e', '42046212-1dc2-4653-8582-5013e3ec73aa', true, true, season_start),
-    ('40959dfd-2856-4ac3-898d-104aa985b778', 'd3569669-10c7-4a52-83bf-ab1d15e6d36e', '7681964f-faf2-4545-84fd-491464392cf4', true, false, season_start),
-    ('beb983e5-92d8-44c7-8d27-6652eb82d25a', 'd3569669-10c7-4a52-83bf-ab1d15e6d36e', 'b0000000-0000-4000-8000-000000000001', true, false, season_start),
-    ('7d8ebad1-c2c2-47f7-8b98-22ce0fbb93f2', 'd3569669-10c7-4a52-83bf-ab1d15e6d36e', '147f7e8e-bf76-494d-87dd-8bd6f6a32274', false, false, season_start)
+    ('304b2db6-f9a9-464e-88b0-3e5be3c7db0b', '802071ca-c82e-4608-80ae-199e58a71787', '42046212-1dc2-4653-8582-5013e3ec73aa', true, false, season_start),
+    ('46677df4-e9b5-4111-821b-02db9ad0dada', '802071ca-c82e-4608-80ae-199e58a71787', '7e098809-c41c-45a4-81d6-b8c1373eb98a', true, false, season_start),
+    ('c32a10a9-1141-464d-85f0-8cdae18c6048', '802071ca-c82e-4608-80ae-199e58a71787', '478277d3-e717-49b8-8e38-ccaef6afccfe', true, false, season_start),
+    ('a27f661f-d819-4ab6-86b9-8d07f839b468', '802071ca-c82e-4608-80ae-199e58a71787', '0f4c2d68-8590-49d9-84ec-46cd055b00e5', false, false, season_start),
+    ('fc419d1b-2ee0-42f7-8283-24282c2d0f1a', 'd3569669-10c7-4a52-83bf-ab1d15e6d36e', '8995ef08-7e4c-498e-8f83-859559c01f76', true, true, season_start),
+    ('77be0030-e61f-4e6f-81ef-7d78cfbb8dc9', 'd3569669-10c7-4a52-83bf-ab1d15e6d36e', 'f0e41740-890f-4f42-88f8-0dc65dd0fb9b', true, false, season_start),
+    ('8aa88f5a-c297-486c-8789-67832cedaf59', 'd3569669-10c7-4a52-83bf-ab1d15e6d36e', '0f4c2d68-8590-49d9-84ec-46cd055b00e5', true, false, season_start),
+    ('b15e5468-8c66-4de0-8bdb-5120c053d0cf', 'd3569669-10c7-4a52-83bf-ab1d15e6d36e', '57044163-f5a8-4192-87ea-6c83f5b7d95f', true, false, season_start),
+    ('6b9458a7-26f8-4ebb-8941-127518aef9c2', 'd3569669-10c7-4a52-83bf-ab1d15e6d36e', 'f822d7d1-8dcf-4dd1-8c7c-0ceadcfc104a', false, false, season_start)
   on conflict do nothing;
 
   insert into public.staff_assignment (id, residency_id, person_id, role, starts_on) values
     ('0b33102e-1f18-45c6-8b1a-feae077ef0a3', 'f48a6586-0201-4e93-81ad-28a94efc492d', 'b0000000-0000-4000-8000-000000000005', 'point_person', season_start),
     ('4c4fb13f-7068-4326-89be-26907661bfc7', 'cfeac2f1-4700-4130-856e-3a3e284e0d6c', '024211f4-32bd-4dc8-8dd8-4d2a492e6ae3', 'point_person', season_start),
-    ('8b9ba3c1-4736-41ff-822d-840750ef9245', '88bbf4f8-63e3-46f1-8c60-0ce5ccf24db1', 'b0000000-0000-4000-8000-000000000005', 'point_person', season_start),
-    ('e1ecd93c-1b79-4bdb-8558-12aeed47187a', '40d55bbb-a67f-4501-85ec-adf3ba390d2a', '024211f4-32bd-4dc8-8dd8-4d2a492e6ae3', 'point_person', season_start),
-    ('c318d53f-5915-4210-814b-4227d80faad5', 'ed63467d-f1f6-4e3e-8fdb-79bf0aed9cf8', 'b0000000-0000-4000-8000-000000000005', 'point_person', season_start),
-    ('e063cc0f-62f6-42f4-8664-3b2c90968e83', '7b5b246f-91df-4c8f-8823-9bb8dc4bbaf7', '024211f4-32bd-4dc8-8dd8-4d2a492e6ae3', 'point_person', season_start),
+    ('8b9ba3c1-4736-41ff-822d-840750ef9245', '88bbf4f8-63e3-46f1-8c60-0ce5ccf24db1', '612bb730-b5b1-4989-850f-ce8d5fc72ccf', 'point_person', season_start),
+    ('e1ecd93c-1b79-4bdb-8558-12aeed47187a', '40d55bbb-a67f-4501-85ec-adf3ba390d2a', 'b0000000-0000-4000-8000-000000000005', 'point_person', season_start),
+    ('c318d53f-5915-4210-814b-4227d80faad5', 'ed63467d-f1f6-4e3e-8fdb-79bf0aed9cf8', '024211f4-32bd-4dc8-8dd8-4d2a492e6ae3', 'point_person', season_start),
+    ('e063cc0f-62f6-42f4-8664-3b2c90968e83', '7b5b246f-91df-4c8f-8823-9bb8dc4bbaf7', '612bb730-b5b1-4989-850f-ce8d5fc72ccf', 'point_person', season_start),
     ('b333f20a-98ce-444e-8a32-84381fc6092d', '58d45b65-f9f9-43f4-838e-8f97b7eb50d9', 'b0000000-0000-4000-8000-000000000005', 'point_person', season_start),
     ('c1a6de98-f8a7-4474-8016-bba74138f0e1', 'f695ccda-396e-4524-860c-1ffb83b4ffbd', '024211f4-32bd-4dc8-8dd8-4d2a492e6ae3', 'point_person', season_start)
   on conflict do nothing;
 
   insert into public.series (id, residency_id, kind, title, default_location_id, weekdays, start_time, minutes, active_from) values
-    ('354baddb-134f-4a13-8887-be27ca51fe6e', 'f48a6586-0201-4e93-81ad-28a94efc492d', 'group_session', 'Music Café', '5afeabef-17b8-46b9-8ef7-d4ec468f2fc8', '{1}', '15:00', 60, season_start),
-    ('9eeb956b-0700-4ebe-8584-8a23d6f46cb6', 'f48a6586-0201-4e93-81ad-28a94efc492d', 'group_session', 'Music Instructional', '9768274a-e997-4421-85b0-3dd422e55c1e', '{2}', '19:00', 60, season_start),
-    ('1e21682e-332d-47d7-8645-58774f00d682', 'f48a6586-0201-4e93-81ad-28a94efc492d', 'group_session', 'Music Café', '8d05ca38-3cd2-4962-8734-5724e46c81f9', '{4}', '14:00', 60, season_start),
-    ('c3c3f17f-1548-4983-8548-ca51243de414', 'f48a6586-0201-4e93-81ad-28a94efc492d', 'group_session', 'Interdisciplinary', '8d05ca38-3cd2-4962-8734-5724e46c81f9', '{3}', '15:00', 90, season_start),
-    ('ddaa8930-879f-4299-8d77-9e71707741c8', 'f48a6586-0201-4e93-81ad-28a94efc492d', 'group_session', 'Lecture/Discussion', '318e5be5-daa9-4777-8a41-a5484305b65f', '{3}', '14:00', 90, season_start),
-    ('e0b0fab5-cec3-41a5-8ffd-f1db6b6798bd', 'f48a6586-0201-4e93-81ad-28a94efc492d', 'group_session', 'Open Rehearsal', '265330f9-778c-4dd7-828d-1a1290858b75', '{5}', '10:00', 75, season_start),
-    ('e352b3e2-65a2-492e-8ef1-6e53354e12c1', 'f48a6586-0201-4e93-81ad-28a94efc492d', 'group_session', 'Lecture/Discussion', 'b879829a-0c6c-4445-87a7-2dfcf0faacbf', '{5}', '13:30', 75, season_start),
-    ('396726b9-57c3-4896-8aa3-2c0533874379', 'f48a6586-0201-4e93-81ad-28a94efc492d', 'group_session', 'Music Instructional', 'd7f520ad-97e1-4c9e-8536-23f387688915', '{2}', '15:30', 90, season_start),
+    ('23c5f687-1b83-4fa7-8c00-010421c3b6d1', 'f48a6586-0201-4e93-81ad-28a94efc492d', 'group_session', 'Open Rehearsal', '5afeabef-17b8-46b9-8ef7-d4ec468f2fc8', '{3}', '13:30', 60, season_start),
+    ('4d2b42ba-641a-468e-8b62-5a416197571b', 'f48a6586-0201-4e93-81ad-28a94efc492d', 'group_session', 'Interdisciplinary', 'c9359670-d534-4ace-89e2-7776e16f2384', '{4}', '15:00', 60, season_start),
+    ('266507a6-7b50-4d41-8cda-fff7b5fa1831', 'f48a6586-0201-4e93-81ad-28a94efc492d', 'group_session', 'Interdisciplinary', '5107bc65-e040-4c98-84bc-d2e87f1ff3bd', '{5}', '10:00', 75, season_start),
+    ('9eeb956b-0700-4ebe-8584-8a23d6f46cb6', 'f48a6586-0201-4e93-81ad-28a94efc492d', 'group_session', 'Music Instructional', '9768274a-e997-4421-85b0-3dd422e55c1e', '{3}', '10:30', 60, season_start),
+    ('1e21682e-332d-47d7-8645-58774f00d682', 'f48a6586-0201-4e93-81ad-28a94efc492d', 'group_session', 'Music Café', '8d05ca38-3cd2-4962-8734-5724e46c81f9', '{3}', '14:00', 60, season_start),
+    ('6827ecf0-f92f-4fe6-8660-7b061d0ed8c3', 'f48a6586-0201-4e93-81ad-28a94efc492d', 'group_session', 'Lecture/Discussion', '95f8f328-0b6b-4d65-8bce-d157fe6167ab', '{2}', '14:00', 60, season_start),
+    ('074ba000-df18-4cdb-83d8-b46285b82c3e', 'f48a6586-0201-4e93-81ad-28a94efc492d', 'group_session', 'Interdisciplinary', '6d730e33-1bfe-45a0-8d00-cbcb6c8bd973', '{4}', '15:30', 45, season_start),
+    ('e0b0fab5-cec3-41a5-8ffd-f1db6b6798bd', 'f48a6586-0201-4e93-81ad-28a94efc492d', 'group_session', 'Open Rehearsal', '265330f9-778c-4dd7-828d-1a1290858b75', '{1}', '15:00', 45, season_start),
+    ('0d1a971b-4fb0-4cf4-884d-a6a1f24a159e', 'f48a6586-0201-4e93-81ad-28a94efc492d', 'group_session', 'Interdisciplinary', 'c39cc446-50c0-405c-86a8-32b4e85c04d9', '{3}', '14:30', 45, season_start),
+    ('5a963c09-17d7-43e4-8ef3-96ab8eac5468', 'f48a6586-0201-4e93-81ad-28a94efc492d', 'group_session', 'Music Instructional', 'b879829a-0c6c-4445-87a7-2dfcf0faacbf', '{1}', '13:30', 45, season_start),
+    ('59c5d096-560f-4004-8b69-0ca1d4cdd1b1', 'f48a6586-0201-4e93-81ad-28a94efc492d', 'group_session', 'Open Rehearsal', 'd14bffd4-6925-47ec-8c97-935dc8b5738a', '{1}', '14:00', 60, season_start),
+    ('b95fe078-af64-433b-84f7-fb6e08d84d5d', 'f48a6586-0201-4e93-81ad-28a94efc492d', 'group_session', 'Interdisciplinary', 'e8247e86-b794-4673-8b08-5b570cfad0f5', '{3}', '14:00', 75, season_start),
     ('96659d28-8ac6-498e-823b-7aa90b7be8df', 'f48a6586-0201-4e93-81ad-28a94efc492d', 'relationship_building', 'Lessons', 'ac13e1c6-354e-4e19-8947-d1c67992855a', '{3}', null, null, season_start),
-    ('4d7f8a6e-e7ef-4eec-8b75-f11153fde04c', 'cfeac2f1-4700-4130-856e-3a3e284e0d6c', 'group_session', 'Interdisciplinary', '3e3510e4-c9b0-4713-8244-6c38433b4bfc', '{1}', '14:00', 90, season_start),
-    ('c533977b-b787-4093-8cf0-5dc9f8d06225', 'cfeac2f1-4700-4130-856e-3a3e284e0d6c', 'group_session', 'Lecture/Discussion', '3e3510e4-c9b0-4713-8244-6c38433b4bfc', '{2}', '10:00', 90, season_start),
-    ('2ecfee96-1676-4270-8ca5-485b7796c8e9', 'cfeac2f1-4700-4130-856e-3a3e284e0d6c', 'group_session', 'Lecture/Discussion', '01ab3952-b6da-4a65-8426-498ef703c936', '{5}', '11:00', 45, season_start),
-    ('8d95f5d7-79d9-401d-834f-07c08a6373f1', 'cfeac2f1-4700-4130-856e-3a3e284e0d6c', 'group_session', 'Music Café', '01ab3952-b6da-4a65-8426-498ef703c936', '{4}', '15:30', 45, season_start),
-    ('ffd6c442-76d9-4db3-8d1d-03515b071f1a', '88bbf4f8-63e3-46f1-8c60-0ce5ccf24db1', 'group_session', 'Music Café', '37c705d0-5503-4dba-8b17-454e3dd4e6d6', '{3}', '14:30', 45, season_start),
-    ('335bf5c8-71f3-4b94-8a7d-63d185d19cc3', '88bbf4f8-63e3-46f1-8c60-0ce5ccf24db1', 'group_session', 'Interdisciplinary', '8d674dcd-717e-437b-8354-c163f0a8ab7e', '{1}', '13:30', 45, season_start),
-    ('4a565667-6387-4663-810e-ba89d08e764b', '88bbf4f8-63e3-46f1-8c60-0ce5ccf24db1', 'group_session', 'Open Rehearsal', '8b0f08d6-b305-4e2d-849c-33f2b9fde08c', '{1}', '14:00', 60, season_start),
-    ('a2b83dd6-2970-4079-84bf-7d682fc5e8fe', '88bbf4f8-63e3-46f1-8c60-0ce5ccf24db1', 'group_session', 'Interdisciplinary', '485fab4f-940f-44a3-80ae-e124d1c6fee6', '{3}', '14:00', 75, season_start),
-    ('773e484d-ac61-459b-8df0-9efa62ac9795', '88bbf4f8-63e3-46f1-8c60-0ce5ccf24db1', 'group_session', 'Interdisciplinary', '671e87f5-b951-4b79-80fb-d568c24b857d', '{1}', '13:30', 45, season_start),
-    ('03d0fb3f-c307-4b44-8602-bd8886707825', '88bbf4f8-63e3-46f1-8c60-0ce5ccf24db1', 'group_session', 'Open Rehearsal', '671e87f5-b951-4b79-80fb-d568c24b857d', '{1}', '19:00', 90, season_start),
+    ('4d7f8a6e-e7ef-4eec-8b75-f11153fde04c', 'cfeac2f1-4700-4130-856e-3a3e284e0d6c', 'group_session', 'Interdisciplinary', 'e0a519ea-2d73-4dd3-8f94-6760d58d450b', '{1}', '13:30', 45, season_start),
+    ('a48d0ea5-bff5-47c6-82f3-5da326786ff9', 'cfeac2f1-4700-4130-856e-3a3e284e0d6c', 'group_session', 'Open Rehearsal', 'e0a519ea-2d73-4dd3-8f94-6760d58d450b', '{1}', '19:00', 90, season_start),
+    ('9d3a206f-9eae-405a-8565-c43e87f194ad', 'cfeac2f1-4700-4130-856e-3a3e284e0d6c', 'group_session', 'Interdisciplinary', '01ab3952-b6da-4a65-8426-498ef703c936', '{3}', '13:30', 90, season_start),
+    ('8d95f5d7-79d9-401d-834f-07c08a6373f1', 'cfeac2f1-4700-4130-856e-3a3e284e0d6c', 'group_session', 'Music Café', 'cf64304b-f6c7-4d46-8855-93552c728064', '{4}', '19:00', 60, season_start),
+    ('335bf5c8-71f3-4b94-8a7d-63d185d19cc3', '88bbf4f8-63e3-46f1-8c60-0ce5ccf24db1', 'group_session', 'Interdisciplinary', '37c705d0-5503-4dba-8b17-454e3dd4e6d6', '{4}', '13:30', 60, season_start),
+    ('6e7cc005-ffc4-46f5-82ee-00816f5c885e', '88bbf4f8-63e3-46f1-8c60-0ce5ccf24db1', 'group_session', 'Open Rehearsal', '37c705d0-5503-4dba-8b17-454e3dd4e6d6', '{3}', '10:00', 75, season_start),
+    ('a3b9e65a-f6ec-4fb4-8ef9-fdff420a9904', '88bbf4f8-63e3-46f1-8c60-0ce5ccf24db1', 'group_session', 'Music Instructional', '8b0f08d6-b305-4e2d-849c-33f2b9fde08c', '{3}', '14:00', 90, season_start),
+    ('4a565667-6387-4663-810e-ba89d08e764b', '88bbf4f8-63e3-46f1-8c60-0ce5ccf24db1', 'group_session', 'Open Rehearsal', '485fab4f-940f-44a3-80ae-e124d1c6fee6', '{3}', '10:00', 45, season_start),
+    ('9bf451c2-23f5-45f4-8d27-c9810213c640', '88bbf4f8-63e3-46f1-8c60-0ce5ccf24db1', 'group_session', 'Music Café', '671e87f5-b951-4b79-80fb-d568c24b857d', '{3}', '10:30', 60, season_start),
+    ('03d0fb3f-c307-4b44-8602-bd8886707825', '88bbf4f8-63e3-46f1-8c60-0ce5ccf24db1', 'group_session', 'Open Rehearsal', '671e87f5-b951-4b79-80fb-d568c24b857d', '{4}', '14:30', 75, season_start),
     ('aa39c0c5-4401-4a85-8c53-d39b46aa96e8', '88bbf4f8-63e3-46f1-8c60-0ce5ccf24db1', 'relationship_building', 'Lessons', '8d674dcd-717e-437b-8354-c163f0a8ab7e', '{3}', null, null, season_start),
-    ('d4825a8b-b880-4e89-840d-0dc4eeccf4b4', '40d55bbb-a67f-4501-85ec-adf3ba390d2a', 'group_session', 'Music Instructional', 'da33adc4-c83e-4cf7-812d-c5c04ecadf29', '{2}', '11:00', 60, season_start),
-    ('f3e5072b-5c6e-494e-86cd-42b6a7c57c2e', '40d55bbb-a67f-4501-85ec-adf3ba390d2a', 'group_session', 'Lecture/Discussion', 'ee0463d8-0557-4d42-8109-4f246320c695', '{4}', '13:30', 45, season_start),
-    ('fdbb5f3f-a7cd-4f96-87e1-3154482e2bcd', 'ed63467d-f1f6-4e3e-8fdb-79bf0aed9cf8', 'group_session', 'Interdisciplinary', 'ac34603b-4c4c-4f66-8307-eaa1ee569581', '{4}', '15:00', 60, season_start),
-    ('dbf596ef-23dd-41e0-82e2-01cd66d86689', 'ed63467d-f1f6-4e3e-8fdb-79bf0aed9cf8', 'group_session', 'Open Rehearsal', 'ac34603b-4c4c-4f66-8307-eaa1ee569581', '{3}', '14:00', 90, season_start),
-    ('f3e1cab0-85c9-4ec6-816c-d334e456545a', 'ed63467d-f1f6-4e3e-8fdb-79bf0aed9cf8', 'group_session', 'Interdisciplinary', '0f05fe54-1382-4b58-8f69-fcbb1fcb5ac1', '{1}', '10:30', 45, season_start),
-    ('3f7292ba-2e1f-4e8a-8e52-82da65cbac0b', 'ed63467d-f1f6-4e3e-8fdb-79bf0aed9cf8', 'group_session', 'Music Instructional', 'ad68a8e0-3bac-4ef8-804f-5355fdee06bb', '{3}', '10:30', 60, season_start),
-    ('fcec5a74-a2dc-4733-84b1-cdbfeddaa02b', '7b5b246f-91df-4c8f-8823-9bb8dc4bbaf7', 'group_session', 'Interdisciplinary', '61c84b6b-486c-41e5-8523-2a1bae2b5235', '{5}', '14:00', 75, season_start),
-    ('8a30075c-2d31-49b2-8add-b835d459b8c5', '7b5b246f-91df-4c8f-8823-9bb8dc4bbaf7', 'group_session', 'Lecture/Discussion', '622a78cf-5f5a-4166-86ba-5a24f34aa408', '{2}', '10:00', 60, season_start),
-    ('3863336c-551f-410c-85ae-da6a2a639fa1', '58d45b65-f9f9-43f4-838e-8f97b7eb50d9', 'group_session', 'Music Café', 'bf90d733-4faf-4e20-8e0a-bcd67c5fd609', '{1}', '10:30', 75, season_start),
-    ('5f7ff1a8-ea3a-4101-82f4-2b51a3e2e040', '58d45b65-f9f9-43f4-838e-8f97b7eb50d9', 'group_session', 'Music Instructional', 'bf90d733-4faf-4e20-8e0a-bcd67c5fd609', '{2}', '15:00', 90, season_start),
-    ('80be455e-95de-4341-81b6-765b37551e15', 'f695ccda-396e-4524-860c-1ffb83b4ffbd', 'group_session', 'Interdisciplinary', '9ee46898-4b5e-4748-8aae-ca08884c4ac9', '{2}', '19:00', 75, season_start),
-    ('37245c65-6c3f-4609-8427-637f95edfbd1', 'f695ccda-396e-4524-860c-1ffb83b4ffbd', 'group_session', 'Lecture/Discussion', '9ee46898-4b5e-4748-8aae-ca08884c4ac9', '{5}', '10:30', 60, season_start)
+    ('4ed511ec-521e-4be8-823c-88763b7ba363', '40d55bbb-a67f-4501-85ec-adf3ba390d2a', 'group_session', 'Music Café', 'ee0463d8-0557-4d42-8109-4f246320c695', '{1}', '10:00', 60, season_start),
+    ('3daad325-78e5-47a4-87a7-638d83b9c116', '40d55bbb-a67f-4501-85ec-adf3ba390d2a', 'group_session', 'Open Rehearsal', 'da33adc4-c83e-4cf7-812d-c5c04ecadf29', '{1}', '10:00', 60, season_start),
+    ('3a2852c3-ee1c-4dd5-8f23-149dfaa63292', 'ed63467d-f1f6-4e3e-8fdb-79bf0aed9cf8', 'group_session', 'Music Instructional', '7b55e068-24ea-4e32-83b1-91cbacc8f2fe', '{1}', '10:00', 45, season_start),
+    ('0a0f9528-839c-4675-8a4e-e679ca91a4f3', 'ed63467d-f1f6-4e3e-8fdb-79bf0aed9cf8', 'group_session', 'Music Café', 'b67e7d0e-be57-4575-8418-c85c162c609a', '{4}', '13:30', 75, season_start),
+    ('f3e1cab0-85c9-4ec6-816c-d334e456545a', 'ed63467d-f1f6-4e3e-8fdb-79bf0aed9cf8', 'group_session', 'Interdisciplinary', '0f05fe54-1382-4b58-8f69-fcbb1fcb5ac1', '{3}', '10:00', 60, season_start),
+    ('3f7292ba-2e1f-4e8a-8e52-82da65cbac0b', 'ed63467d-f1f6-4e3e-8fdb-79bf0aed9cf8', 'group_session', 'Music Instructional', 'ad68a8e0-3bac-4ef8-804f-5355fdee06bb', '{5}', '10:30', 60, season_start),
+    ('6b9b062c-dcea-461d-8b1a-95b5c976a3a5', '7b5b246f-91df-4c8f-8823-9bb8dc4bbaf7', 'group_session', 'Music Instructional', '61c84b6b-486c-41e5-8523-2a1bae2b5235', '{5}', '15:30', 75, season_start),
+    ('01d68af4-3e71-4379-825f-b66731ab33c5', '7b5b246f-91df-4c8f-8823-9bb8dc4bbaf7', 'group_session', 'Open Rehearsal', '61c84b6b-486c-41e5-8523-2a1bae2b5235', '{2}', '13:30', 60, season_start),
+    ('5f7ff1a8-ea3a-4101-82f4-2b51a3e2e040', '58d45b65-f9f9-43f4-838e-8f97b7eb50d9', 'group_session', 'Music Instructional', 'bf90d733-4faf-4e20-8e0a-bcd67c5fd609', '{1}', '19:00', 60, season_start),
+    ('391caac1-62ab-427a-8bf7-28bebaeeb216', '58d45b65-f9f9-43f4-838e-8f97b7eb50d9', 'group_session', 'Open Rehearsal', 'bfe223a6-2db1-4916-8d6c-58c96eabd4b3', '{1}', '14:30', 60, season_start),
+    ('d86b8b51-d950-40ac-83c9-462217f05e1c', 'f695ccda-396e-4524-860c-1ffb83b4ffbd', 'group_session', 'Music Instructional', 'ee50ff88-c249-41b3-8bfe-827577ef9266', '{2}', '14:00', 60, season_start),
+    ('80be455e-95de-4341-81b6-765b37551e15', 'f695ccda-396e-4524-860c-1ffb83b4ffbd', 'group_session', 'Interdisciplinary', 'ee50ff88-c249-41b3-8bfe-827577ef9266', '{3}', '10:00', 60, season_start)
   on conflict do nothing;
 
   insert into public.series_default_person (series_id, person_id) values
-    ('354baddb-134f-4a13-8887-be27ca51fe6e', '96999630-ef16-424b-8bc3-8fb89fa7ade2'),
-    ('354baddb-134f-4a13-8887-be27ca51fe6e', '42046212-1dc2-4653-8582-5013e3ec73aa'),
-    ('9eeb956b-0700-4ebe-8584-8a23d6f46cb6', '7681964f-faf2-4545-84fd-491464392cf4'),
-    ('9eeb956b-0700-4ebe-8584-8a23d6f46cb6', '96999630-ef16-424b-8bc3-8fb89fa7ade2'),
-    ('1e21682e-332d-47d7-8645-58774f00d682', '96999630-ef16-424b-8bc3-8fb89fa7ade2'),
-    ('1e21682e-332d-47d7-8645-58774f00d682', '7681964f-faf2-4545-84fd-491464392cf4'),
-    ('c3c3f17f-1548-4983-8548-ca51243de414', '7681964f-faf2-4545-84fd-491464392cf4'),
-    ('ddaa8930-879f-4299-8d77-9e71707741c8', '3bef9bb8-d7d9-4ddb-85d8-db8f7e2b6bfe'),
-    ('ddaa8930-879f-4299-8d77-9e71707741c8', '147f7e8e-bf76-494d-87dd-8bd6f6a32274'),
-    ('e0b0fab5-cec3-41a5-8ffd-f1db6b6798bd', '7681964f-faf2-4545-84fd-491464392cf4'),
-    ('e352b3e2-65a2-492e-8ef1-6e53354e12c1', '26614fb3-3049-40ad-8c6d-1079533bcbb1'),
-    ('396726b9-57c3-4896-8aa3-2c0533874379', '42046212-1dc2-4653-8582-5013e3ec73aa'),
-    ('396726b9-57c3-4896-8aa3-2c0533874379', '7681964f-faf2-4545-84fd-491464392cf4'),
+    ('23c5f687-1b83-4fa7-8c00-010421c3b6d1', '42046212-1dc2-4653-8582-5013e3ec73aa'),
+    ('23c5f687-1b83-4fa7-8c00-010421c3b6d1', 'f822d7d1-8dcf-4dd1-8c7c-0ceadcfc104a'),
+    ('4d2b42ba-641a-468e-8b62-5a416197571b', '147f7e8e-bf76-494d-87dd-8bd6f6a32274'),
+    ('4d2b42ba-641a-468e-8b62-5a416197571b', '7e098809-c41c-45a4-81d6-b8c1373eb98a'),
+    ('266507a6-7b50-4d41-8cda-fff7b5fa1831', '42046212-1dc2-4653-8582-5013e3ec73aa'),
+    ('266507a6-7b50-4d41-8cda-fff7b5fa1831', '8995ef08-7e4c-498e-8f83-859559c01f76'),
+    ('9eeb956b-0700-4ebe-8584-8a23d6f46cb6', '7e098809-c41c-45a4-81d6-b8c1373eb98a'),
+    ('9eeb956b-0700-4ebe-8584-8a23d6f46cb6', '147f7e8e-bf76-494d-87dd-8bd6f6a32274'),
+    ('1e21682e-332d-47d7-8645-58774f00d682', 'b0000000-0000-4000-8000-000000000004'),
+    ('6827ecf0-f92f-4fe6-8660-7b061d0ed8c3', '96999630-ef16-424b-8bc3-8fb89fa7ade2'),
+    ('6827ecf0-f92f-4fe6-8660-7b061d0ed8c3', '8995ef08-7e4c-498e-8f83-859559c01f76'),
+    ('074ba000-df18-4cdb-83d8-b46285b82c3e', '8995ef08-7e4c-498e-8f83-859559c01f76'),
+    ('074ba000-df18-4cdb-83d8-b46285b82c3e', 'b0000000-0000-4000-8000-000000000004'),
+    ('e0b0fab5-cec3-41a5-8ffd-f1db6b6798bd', 'f822d7d1-8dcf-4dd1-8c7c-0ceadcfc104a'),
+    ('0d1a971b-4fb0-4cf4-884d-a6a1f24a159e', '42046212-1dc2-4653-8582-5013e3ec73aa'),
+    ('5a963c09-17d7-43e4-8ef3-96ab8eac5468', 'f822d7d1-8dcf-4dd1-8c7c-0ceadcfc104a'),
+    ('5a963c09-17d7-43e4-8ef3-96ab8eac5468', '42046212-1dc2-4653-8582-5013e3ec73aa'),
+    ('59c5d096-560f-4004-8b69-0ca1d4cdd1b1', '147f7e8e-bf76-494d-87dd-8bd6f6a32274'),
+    ('b95fe078-af64-433b-84f7-fb6e08d84d5d', '7e098809-c41c-45a4-81d6-b8c1373eb98a'),
     ('96659d28-8ac6-498e-823b-7aa90b7be8df', '96999630-ef16-424b-8bc3-8fb89fa7ade2'),
-    ('4d7f8a6e-e7ef-4eec-8b75-f11153fde04c', 'b0000000-0000-4000-8000-000000000001'),
-    ('c533977b-b787-4093-8cf0-5dc9f8d06225', '32ec2260-0cd1-42ae-831f-4edd917e82f7'),
-    ('c533977b-b787-4093-8cf0-5dc9f8d06225', '0f4c2d68-8590-49d9-84ec-46cd055b00e5'),
-    ('2ecfee96-1676-4270-8ca5-485b7796c8e9', '0f4c2d68-8590-49d9-84ec-46cd055b00e5'),
-    ('8d95f5d7-79d9-401d-834f-07c08a6373f1', '0f4c2d68-8590-49d9-84ec-46cd055b00e5'),
-    ('ffd6c442-76d9-4db3-8d1d-03515b071f1a', '42046212-1dc2-4653-8582-5013e3ec73aa'),
-    ('ffd6c442-76d9-4db3-8d1d-03515b071f1a', 'b0000000-0000-4000-8000-000000000002'),
-    ('335bf5c8-71f3-4b94-8a7d-63d185d19cc3', '478277d3-e717-49b8-8e38-ccaef6afccfe'),
-    ('335bf5c8-71f3-4b94-8a7d-63d185d19cc3', 'b0000000-0000-4000-8000-000000000002'),
-    ('4a565667-6387-4663-810e-ba89d08e764b', '26614fb3-3049-40ad-8c6d-1079533bcbb1'),
-    ('a2b83dd6-2970-4079-84bf-7d682fc5e8fe', '32ec2260-0cd1-42ae-831f-4edd917e82f7'),
-    ('773e484d-ac61-459b-8df0-9efa62ac9795', '42046212-1dc2-4653-8582-5013e3ec73aa'),
-    ('03d0fb3f-c307-4b44-8602-bd8886707825', '42046212-1dc2-4653-8582-5013e3ec73aa'),
-    ('aa39c0c5-4401-4a85-8c53-d39b46aa96e8', '26614fb3-3049-40ad-8c6d-1079533bcbb1'),
-    ('d4825a8b-b880-4e89-840d-0dc4eeccf4b4', 'b0000000-0000-4000-8000-000000000001'),
-    ('f3e5072b-5c6e-494e-86cd-42b6a7c57c2e', '147f7e8e-bf76-494d-87dd-8bd6f6a32274'),
-    ('f3e5072b-5c6e-494e-86cd-42b6a7c57c2e', 'b0000000-0000-4000-8000-000000000001'),
-    ('fdbb5f3f-a7cd-4f96-87e1-3154482e2bcd', 'b0000000-0000-4000-8000-000000000002'),
-    ('dbf596ef-23dd-41e0-82e2-01cd66d86689', '478277d3-e717-49b8-8e38-ccaef6afccfe'),
-    ('f3e1cab0-85c9-4ec6-816c-d334e456545a', '26614fb3-3049-40ad-8c6d-1079533bcbb1'),
-    ('f3e1cab0-85c9-4ec6-816c-d334e456545a', '478277d3-e717-49b8-8e38-ccaef6afccfe'),
-    ('3f7292ba-2e1f-4e8a-8e52-82da65cbac0b', '26614fb3-3049-40ad-8c6d-1079533bcbb1'),
-    ('fcec5a74-a2dc-4733-84b1-cdbfeddaa02b', '478277d3-e717-49b8-8e38-ccaef6afccfe'),
-    ('fcec5a74-a2dc-4733-84b1-cdbfeddaa02b', '7e098809-c41c-45a4-81d6-b8c1373eb98a'),
-    ('8a30075c-2d31-49b2-8add-b835d459b8c5', '7e098809-c41c-45a4-81d6-b8c1373eb98a'),
-    ('3863336c-551f-410c-85ae-da6a2a639fa1', 'b0000000-0000-4000-8000-000000000002'),
-    ('5f7ff1a8-ea3a-4101-82f4-2b51a3e2e040', '3bef9bb8-d7d9-4ddb-85d8-db8f7e2b6bfe'),
-    ('80be455e-95de-4341-81b6-765b37551e15', 'b0000000-0000-4000-8000-000000000001'),
-    ('80be455e-95de-4341-81b6-765b37551e15', '7681964f-faf2-4545-84fd-491464392cf4'),
-    ('37245c65-6c3f-4609-8427-637f95edfbd1', '42046212-1dc2-4653-8582-5013e3ec73aa')
+    ('4d7f8a6e-e7ef-4eec-8b75-f11153fde04c', 'e35f397a-1e87-4a29-8df0-32c60cb92f6b'),
+    ('a48d0ea5-bff5-47c6-82f3-5da326786ff9', 'e35f397a-1e87-4a29-8df0-32c60cb92f6b'),
+    ('9d3a206f-9eae-405a-8565-c43e87f194ad', '57044163-f5a8-4192-87ea-6c83f5b7d95f'),
+    ('8d95f5d7-79d9-401d-834f-07c08a6373f1', '57044163-f5a8-4192-87ea-6c83f5b7d95f'),
+    ('335bf5c8-71f3-4b94-8a7d-63d185d19cc3', 'f822d7d1-8dcf-4dd1-8c7c-0ceadcfc104a'),
+    ('6e7cc005-ffc4-46f5-82ee-00816f5c885e', '205c761b-bb63-440a-8fe7-6466b2df300b'),
+    ('6e7cc005-ffc4-46f5-82ee-00816f5c885e', '42046212-1dc2-4653-8582-5013e3ec73aa'),
+    ('a3b9e65a-f6ec-4fb4-8ef9-fdff420a9904', '42046212-1dc2-4653-8582-5013e3ec73aa'),
+    ('4a565667-6387-4663-810e-ba89d08e764b', '09a0d465-0ddb-4249-83b8-3908c6e6de57'),
+    ('4a565667-6387-4663-810e-ba89d08e764b', '205c761b-bb63-440a-8fe7-6466b2df300b'),
+    ('9bf451c2-23f5-45f4-8d27-c9810213c640', '42046212-1dc2-4653-8582-5013e3ec73aa'),
+    ('03d0fb3f-c307-4b44-8602-bd8886707825', '7681964f-faf2-4545-84fd-491464392cf4'),
+    ('03d0fb3f-c307-4b44-8602-bd8886707825', '09a0d465-0ddb-4249-83b8-3908c6e6de57'),
+    ('aa39c0c5-4401-4a85-8c53-d39b46aa96e8', 'f822d7d1-8dcf-4dd1-8c7c-0ceadcfc104a'),
+    ('4ed511ec-521e-4be8-823c-88763b7ba363', 'b62e8e74-64c0-4da1-8718-612950ed7db4'),
+    ('4ed511ec-521e-4be8-823c-88763b7ba363', '32ec2260-0cd1-42ae-831f-4edd917e82f7'),
+    ('3daad325-78e5-47a4-87a7-638d83b9c116', 'b62e8e74-64c0-4da1-8718-612950ed7db4'),
+    ('3a2852c3-ee1c-4dd5-8f23-149dfaa63292', '26614fb3-3049-40ad-8c6d-1079533bcbb1'),
+    ('0a0f9528-839c-4675-8a4e-e679ca91a4f3', 'b0000000-0000-4000-8000-000000000002'),
+    ('f3e1cab0-85c9-4ec6-816c-d334e456545a', '5577ffde-c530-4dac-8fe3-146c491b0685'),
+    ('3f7292ba-2e1f-4e8a-8e52-82da65cbac0b', '6c20b3af-11c4-4e56-8fb3-8eaf22e96232'),
+    ('3f7292ba-2e1f-4e8a-8e52-82da65cbac0b', '478277d3-e717-49b8-8e38-ccaef6afccfe'),
+    ('6b9b062c-dcea-461d-8b1a-95b5c976a3a5', '3bef9bb8-d7d9-4ddb-85d8-db8f7e2b6bfe'),
+    ('01d68af4-3e71-4379-825f-b66731ab33c5', '5577ffde-c530-4dac-8fe3-146c491b0685'),
+    ('5f7ff1a8-ea3a-4101-82f4-2b51a3e2e040', 'b0000000-0000-4000-8000-000000000001'),
+    ('391caac1-62ab-427a-8bf7-28bebaeeb216', '42046212-1dc2-4653-8582-5013e3ec73aa'),
+    ('391caac1-62ab-427a-8bf7-28bebaeeb216', 'b0000000-0000-4000-8000-000000000001'),
+    ('d86b8b51-d950-40ac-83c9-462217f05e1c', '57044163-f5a8-4192-87ea-6c83f5b7d95f'),
+    ('80be455e-95de-4341-81b6-765b37551e15', '0f4c2d68-8590-49d9-84ec-46cd055b00e5'),
+    ('80be455e-95de-4341-81b6-765b37551e15', '57044163-f5a8-4192-87ea-6c83f5b7d95f')
   on conflict do nothing;
 end $$;
 
@@ -368,36 +408,40 @@ begin
              where table_schema = 'public' and table_name = 'series' and column_name = 'default_leader_id') then
     update public.series s set default_leader_id = v.leader::uuid
       from (values
-        ('354baddb-134f-4a13-8887-be27ca51fe6e', '26614fb3-3049-40ad-8c6d-1079533bcbb1'),
-        ('9eeb956b-0700-4ebe-8584-8a23d6f46cb6', '0f4c2d68-8590-49d9-84ec-46cd055b00e5'),
-        ('1e21682e-332d-47d7-8645-58774f00d682', '0f4c2d68-8590-49d9-84ec-46cd055b00e5'),
-        ('c3c3f17f-1548-4983-8548-ca51243de414', '3bef9bb8-d7d9-4ddb-85d8-db8f7e2b6bfe'),
-        ('ddaa8930-879f-4299-8d77-9e71707741c8', '96999630-ef16-424b-8bc3-8fb89fa7ade2'),
-        ('e0b0fab5-cec3-41a5-8ffd-f1db6b6798bd', '147f7e8e-bf76-494d-87dd-8bd6f6a32274'),
-        ('e352b3e2-65a2-492e-8ef1-6e53354e12c1', '7681964f-faf2-4545-84fd-491464392cf4'),
-        ('396726b9-57c3-4896-8aa3-2c0533874379', '26614fb3-3049-40ad-8c6d-1079533bcbb1'),
-        ('4d7f8a6e-e7ef-4eec-8b75-f11153fde04c', '0f4c2d68-8590-49d9-84ec-46cd055b00e5'),
-        ('c533977b-b787-4093-8cf0-5dc9f8d06225', 'b0000000-0000-4000-8000-000000000001'),
-        ('2ecfee96-1676-4270-8ca5-485b7796c8e9', '32ec2260-0cd1-42ae-831f-4edd917e82f7'),
-        ('8d95f5d7-79d9-401d-834f-07c08a6373f1', '478277d3-e717-49b8-8e38-ccaef6afccfe'),
-        ('ffd6c442-76d9-4db3-8d1d-03515b071f1a', '32ec2260-0cd1-42ae-831f-4edd917e82f7'),
-        ('335bf5c8-71f3-4b94-8a7d-63d185d19cc3', '42046212-1dc2-4653-8582-5013e3ec73aa'),
-        ('4a565667-6387-4663-810e-ba89d08e764b', '32ec2260-0cd1-42ae-831f-4edd917e82f7'),
-        ('a2b83dd6-2970-4079-84bf-7d682fc5e8fe', 'b0000000-0000-4000-8000-000000000002'),
-        ('773e484d-ac61-459b-8df0-9efa62ac9795', '478277d3-e717-49b8-8e38-ccaef6afccfe'),
-        ('03d0fb3f-c307-4b44-8602-bd8886707825', '32ec2260-0cd1-42ae-831f-4edd917e82f7'),
-        ('d4825a8b-b880-4e89-840d-0dc4eeccf4b4', '147f7e8e-bf76-494d-87dd-8bd6f6a32274'),
-        ('f3e5072b-5c6e-494e-86cd-42b6a7c57c2e', '0f4c2d68-8590-49d9-84ec-46cd055b00e5'),
-        ('fdbb5f3f-a7cd-4f96-87e1-3154482e2bcd', '478277d3-e717-49b8-8e38-ccaef6afccfe'),
-        ('dbf596ef-23dd-41e0-82e2-01cd66d86689', '26614fb3-3049-40ad-8c6d-1079533bcbb1'),
-        ('f3e1cab0-85c9-4ec6-816c-d334e456545a', 'b0000000-0000-4000-8000-000000000002'),
-        ('3f7292ba-2e1f-4e8a-8e52-82da65cbac0b', '478277d3-e717-49b8-8e38-ccaef6afccfe'),
-        ('fcec5a74-a2dc-4733-84b1-cdbfeddaa02b', 'b0000000-0000-4000-8000-000000000002'),
-        ('8a30075c-2d31-49b2-8add-b835d459b8c5', '478277d3-e717-49b8-8e38-ccaef6afccfe'),
-        ('3863336c-551f-410c-85ae-da6a2a639fa1', 'b0000000-0000-4000-8000-000000000001'),
-        ('5f7ff1a8-ea3a-4101-82f4-2b51a3e2e040', 'b0000000-0000-4000-8000-000000000001'),
-        ('80be455e-95de-4341-81b6-765b37551e15', '42046212-1dc2-4653-8582-5013e3ec73aa'),
-        ('37245c65-6c3f-4609-8427-637f95edfbd1', '7681964f-faf2-4545-84fd-491464392cf4')
+        ('23c5f687-1b83-4fa7-8c00-010421c3b6d1', 'b0000000-0000-4000-8000-000000000003'),
+        ('4d2b42ba-641a-468e-8b62-5a416197571b', '8995ef08-7e4c-498e-8f83-859559c01f76'),
+        ('266507a6-7b50-4d41-8cda-fff7b5fa1831', '147f7e8e-bf76-494d-87dd-8bd6f6a32274'),
+        ('9eeb956b-0700-4ebe-8584-8a23d6f46cb6', '42046212-1dc2-4653-8582-5013e3ec73aa'),
+        ('1e21682e-332d-47d7-8645-58774f00d682', '7e098809-c41c-45a4-81d6-b8c1373eb98a'),
+        ('6827ecf0-f92f-4fe6-8660-7b061d0ed8c3', '32ec2260-0cd1-42ae-831f-4edd917e82f7'),
+        ('074ba000-df18-4cdb-83d8-b46285b82c3e', 'b0000000-0000-4000-8000-000000000003'),
+        ('e0b0fab5-cec3-41a5-8ffd-f1db6b6798bd', '7e098809-c41c-45a4-81d6-b8c1373eb98a'),
+        ('0d1a971b-4fb0-4cf4-884d-a6a1f24a159e', 'b0000000-0000-4000-8000-000000000004'),
+        ('5a963c09-17d7-43e4-8ef3-96ab8eac5468', 'b0000000-0000-4000-8000-000000000003'),
+        ('59c5d096-560f-4004-8b69-0ca1d4cdd1b1', '32ec2260-0cd1-42ae-831f-4edd917e82f7'),
+        ('b95fe078-af64-433b-84f7-fb6e08d84d5d', '42046212-1dc2-4653-8582-5013e3ec73aa'),
+        ('4d7f8a6e-e7ef-4eec-8b75-f11153fde04c', 'b0000000-0000-4000-8000-000000000002'),
+        ('a48d0ea5-bff5-47c6-82f3-5da326786ff9', '57044163-f5a8-4192-87ea-6c83f5b7d95f'),
+        ('9d3a206f-9eae-405a-8565-c43e87f194ad', 'b0000000-0000-4000-8000-000000000002'),
+        ('8d95f5d7-79d9-401d-834f-07c08a6373f1', '147f7e8e-bf76-494d-87dd-8bd6f6a32274'),
+        ('335bf5c8-71f3-4b94-8a7d-63d185d19cc3', '205c761b-bb63-440a-8fe7-6466b2df300b'),
+        ('6e7cc005-ffc4-46f5-82ee-00816f5c885e', 'f822d7d1-8dcf-4dd1-8c7c-0ceadcfc104a'),
+        ('a3b9e65a-f6ec-4fb4-8ef9-fdff420a9904', '09a0d465-0ddb-4249-83b8-3908c6e6de57'),
+        ('4a565667-6387-4663-810e-ba89d08e764b', '7681964f-faf2-4545-84fd-491464392cf4'),
+        ('9bf451c2-23f5-45f4-8d27-c9810213c640', 'f822d7d1-8dcf-4dd1-8c7c-0ceadcfc104a'),
+        ('03d0fb3f-c307-4b44-8602-bd8886707825', 'e35f397a-1e87-4a29-8df0-32c60cb92f6b'),
+        ('4ed511ec-521e-4be8-823c-88763b7ba363', '147f7e8e-bf76-494d-87dd-8bd6f6a32274'),
+        ('3daad325-78e5-47a4-87a7-638d83b9c116', '09a0d465-0ddb-4249-83b8-3908c6e6de57'),
+        ('3a2852c3-ee1c-4dd5-8f23-149dfaa63292', '6c20b3af-11c4-4e56-8fb3-8eaf22e96232'),
+        ('0a0f9528-839c-4675-8a4e-e679ca91a4f3', '6c20b3af-11c4-4e56-8fb3-8eaf22e96232'),
+        ('f3e1cab0-85c9-4ec6-816c-d334e456545a', '478277d3-e717-49b8-8e38-ccaef6afccfe'),
+        ('3f7292ba-2e1f-4e8a-8e52-82da65cbac0b', '5577ffde-c530-4dac-8fe3-146c491b0685'),
+        ('6b9b062c-dcea-461d-8b1a-95b5c976a3a5', '5577ffde-c530-4dac-8fe3-146c491b0685'),
+        ('01d68af4-3e71-4379-825f-b66731ab33c5', '3bef9bb8-d7d9-4ddb-85d8-db8f7e2b6bfe'),
+        ('5f7ff1a8-ea3a-4101-82f4-2b51a3e2e040', '42046212-1dc2-4653-8582-5013e3ec73aa'),
+        ('391caac1-62ab-427a-8bf7-28bebaeeb216', '7e098809-c41c-45a4-81d6-b8c1373eb98a'),
+        ('d86b8b51-d950-40ac-83c9-462217f05e1c', '0f4c2d68-8590-49d9-84ec-46cd055b00e5'),
+        ('80be455e-95de-4341-81b6-765b37551e15', 'f0e41740-890f-4f42-88f8-0dc65dd0fb9b')
       ) v(id, leader)
      where s.id = v.id::uuid and s.default_leader_id is null;
   end if;
@@ -405,44 +449,49 @@ begin
              where table_schema = 'public' and table_name = 'series' and column_name = 'default_interaction_type_id') then
     update public.series s set default_interaction_type_id = it.id
       from (values
-        ('354baddb-134f-4a13-8887-be27ca51fe6e', 'Performance'),
+        ('23c5f687-1b83-4fa7-8c00-010421c3b6d1', 'Open Rehearsal'),
+        ('4d2b42ba-641a-468e-8b62-5a416197571b', 'Interdisciplinary Program'),
+        ('266507a6-7b50-4d41-8cda-fff7b5fa1831', 'Interdisciplinary Program'),
         ('9eeb956b-0700-4ebe-8584-8a23d6f46cb6', 'Music Instructional Program'),
         ('1e21682e-332d-47d7-8645-58774f00d682', 'Performance'),
-        ('c3c3f17f-1548-4983-8548-ca51243de414', 'Interdisciplinary Program'),
-        ('ddaa8930-879f-4299-8d77-9e71707741c8', 'Lecture/Discussion'),
+        ('6827ecf0-f92f-4fe6-8660-7b061d0ed8c3', 'Lecture/Discussion'),
+        ('074ba000-df18-4cdb-83d8-b46285b82c3e', 'Interdisciplinary Program'),
         ('e0b0fab5-cec3-41a5-8ffd-f1db6b6798bd', 'Open Rehearsal'),
-        ('e352b3e2-65a2-492e-8ef1-6e53354e12c1', 'Lecture/Discussion'),
-        ('396726b9-57c3-4896-8aa3-2c0533874379', 'Music Instructional Program'),
+        ('0d1a971b-4fb0-4cf4-884d-a6a1f24a159e', 'Interdisciplinary Program'),
+        ('5a963c09-17d7-43e4-8ef3-96ab8eac5468', 'Music Instructional Program'),
+        ('59c5d096-560f-4004-8b69-0ca1d4cdd1b1', 'Open Rehearsal'),
+        ('b95fe078-af64-433b-84f7-fb6e08d84d5d', 'Interdisciplinary Program'),
         ('4d7f8a6e-e7ef-4eec-8b75-f11153fde04c', 'Interdisciplinary Program'),
-        ('c533977b-b787-4093-8cf0-5dc9f8d06225', 'Lecture/Discussion'),
-        ('2ecfee96-1676-4270-8ca5-485b7796c8e9', 'Lecture/Discussion'),
+        ('a48d0ea5-bff5-47c6-82f3-5da326786ff9', 'Open Rehearsal'),
+        ('9d3a206f-9eae-405a-8565-c43e87f194ad', 'Interdisciplinary Program'),
         ('8d95f5d7-79d9-401d-834f-07c08a6373f1', 'Performance'),
-        ('ffd6c442-76d9-4db3-8d1d-03515b071f1a', 'Performance'),
         ('335bf5c8-71f3-4b94-8a7d-63d185d19cc3', 'Interdisciplinary Program'),
+        ('6e7cc005-ffc4-46f5-82ee-00816f5c885e', 'Open Rehearsal'),
+        ('a3b9e65a-f6ec-4fb4-8ef9-fdff420a9904', 'Music Instructional Program'),
         ('4a565667-6387-4663-810e-ba89d08e764b', 'Open Rehearsal'),
-        ('a2b83dd6-2970-4079-84bf-7d682fc5e8fe', 'Interdisciplinary Program'),
-        ('773e484d-ac61-459b-8df0-9efa62ac9795', 'Interdisciplinary Program'),
+        ('9bf451c2-23f5-45f4-8d27-c9810213c640', 'Performance'),
         ('03d0fb3f-c307-4b44-8602-bd8886707825', 'Open Rehearsal'),
-        ('d4825a8b-b880-4e89-840d-0dc4eeccf4b4', 'Music Instructional Program'),
-        ('f3e5072b-5c6e-494e-86cd-42b6a7c57c2e', 'Lecture/Discussion'),
-        ('fdbb5f3f-a7cd-4f96-87e1-3154482e2bcd', 'Interdisciplinary Program'),
-        ('dbf596ef-23dd-41e0-82e2-01cd66d86689', 'Open Rehearsal'),
+        ('4ed511ec-521e-4be8-823c-88763b7ba363', 'Performance'),
+        ('3daad325-78e5-47a4-87a7-638d83b9c116', 'Open Rehearsal'),
+        ('3a2852c3-ee1c-4dd5-8f23-149dfaa63292', 'Music Instructional Program'),
+        ('0a0f9528-839c-4675-8a4e-e679ca91a4f3', 'Performance'),
         ('f3e1cab0-85c9-4ec6-816c-d334e456545a', 'Interdisciplinary Program'),
         ('3f7292ba-2e1f-4e8a-8e52-82da65cbac0b', 'Music Instructional Program'),
-        ('fcec5a74-a2dc-4733-84b1-cdbfeddaa02b', 'Interdisciplinary Program'),
-        ('8a30075c-2d31-49b2-8add-b835d459b8c5', 'Lecture/Discussion'),
-        ('3863336c-551f-410c-85ae-da6a2a639fa1', 'Performance'),
+        ('6b9b062c-dcea-461d-8b1a-95b5c976a3a5', 'Music Instructional Program'),
+        ('01d68af4-3e71-4379-825f-b66731ab33c5', 'Open Rehearsal'),
         ('5f7ff1a8-ea3a-4101-82f4-2b51a3e2e040', 'Music Instructional Program'),
-        ('80be455e-95de-4341-81b6-765b37551e15', 'Interdisciplinary Program'),
-        ('37245c65-6c3f-4609-8427-637f95edfbd1', 'Lecture/Discussion')
+        ('391caac1-62ab-427a-8bf7-28bebaeeb216', 'Open Rehearsal'),
+        ('d86b8b51-d950-40ac-83c9-462217f05e1c', 'Music Instructional Program'),
+        ('80be455e-95de-4341-81b6-765b37551e15', 'Interdisciplinary Program')
       ) v(id, itype)
       join public.interaction_type it on it.name = v.itype
      where s.id = v.id::uuid and s.default_interaction_type_id is null;
   end if;
 end $$;
 
--- Sessions: every program date from about five weeks ago to the end of next
--- month, each group session with one leader. Past and this month's dates are
+-- Sessions: every program date from about thirteen weeks ago to the end of
+-- next month, each group session with one leader (the usual leader most weeks;
+-- about one date in three another musician on it leads). Past and this month's dates are
 -- published (with a sent calendar); next month stays a draft for review. A few
 -- past dates were canceled.
 do $$
@@ -451,7 +500,8 @@ declare
   d date;
   sid uuid;
   leader uuid;
-  first_day date := (current_date - 35);
+  first_day date := (current_date - 91);
+  rot uuid;
   last_day  date := (date_trunc('month', current_date) + interval '2 months - 1 day')::date;
   next_month date := (date_trunc('month', current_date) + interval '1 month')::date;
 begin
@@ -469,36 +519,40 @@ begin
     where se.residency_id = any (array['f48a6586-0201-4e93-81ad-28a94efc492d'::uuid, 'cfeac2f1-4700-4130-856e-3a3e284e0d6c'::uuid, '88bbf4f8-63e3-46f1-8c60-0ce5ccf24db1'::uuid, '40d55bbb-a67f-4501-85ec-adf3ba390d2a'::uuid, 'ed63467d-f1f6-4e3e-8fdb-79bf0aed9cf8'::uuid, '7b5b246f-91df-4c8f-8823-9bb8dc4bbaf7'::uuid, '58d45b65-f9f9-43f4-838e-8f97b7eb50d9'::uuid, 'f695ccda-396e-4524-860c-1ffb83b4ffbd'::uuid])
   loop
     leader := case s.id::text
-          when '354baddb-134f-4a13-8887-be27ca51fe6e' then '26614fb3-3049-40ad-8c6d-1079533bcbb1'
-          when '9eeb956b-0700-4ebe-8584-8a23d6f46cb6' then '0f4c2d68-8590-49d9-84ec-46cd055b00e5'
-          when '1e21682e-332d-47d7-8645-58774f00d682' then '0f4c2d68-8590-49d9-84ec-46cd055b00e5'
-          when 'c3c3f17f-1548-4983-8548-ca51243de414' then '3bef9bb8-d7d9-4ddb-85d8-db8f7e2b6bfe'
-          when 'ddaa8930-879f-4299-8d77-9e71707741c8' then '96999630-ef16-424b-8bc3-8fb89fa7ade2'
-          when 'e0b0fab5-cec3-41a5-8ffd-f1db6b6798bd' then '147f7e8e-bf76-494d-87dd-8bd6f6a32274'
-          when 'e352b3e2-65a2-492e-8ef1-6e53354e12c1' then '7681964f-faf2-4545-84fd-491464392cf4'
-          when '396726b9-57c3-4896-8aa3-2c0533874379' then '26614fb3-3049-40ad-8c6d-1079533bcbb1'
-          when '4d7f8a6e-e7ef-4eec-8b75-f11153fde04c' then '0f4c2d68-8590-49d9-84ec-46cd055b00e5'
-          when 'c533977b-b787-4093-8cf0-5dc9f8d06225' then 'b0000000-0000-4000-8000-000000000001'
-          when '2ecfee96-1676-4270-8ca5-485b7796c8e9' then '32ec2260-0cd1-42ae-831f-4edd917e82f7'
-          when '8d95f5d7-79d9-401d-834f-07c08a6373f1' then '478277d3-e717-49b8-8e38-ccaef6afccfe'
-          when 'ffd6c442-76d9-4db3-8d1d-03515b071f1a' then '32ec2260-0cd1-42ae-831f-4edd917e82f7'
-          when '335bf5c8-71f3-4b94-8a7d-63d185d19cc3' then '42046212-1dc2-4653-8582-5013e3ec73aa'
-          when '4a565667-6387-4663-810e-ba89d08e764b' then '32ec2260-0cd1-42ae-831f-4edd917e82f7'
-          when 'a2b83dd6-2970-4079-84bf-7d682fc5e8fe' then 'b0000000-0000-4000-8000-000000000002'
-          when '773e484d-ac61-459b-8df0-9efa62ac9795' then '478277d3-e717-49b8-8e38-ccaef6afccfe'
-          when '03d0fb3f-c307-4b44-8602-bd8886707825' then '32ec2260-0cd1-42ae-831f-4edd917e82f7'
-          when 'd4825a8b-b880-4e89-840d-0dc4eeccf4b4' then '147f7e8e-bf76-494d-87dd-8bd6f6a32274'
-          when 'f3e5072b-5c6e-494e-86cd-42b6a7c57c2e' then '0f4c2d68-8590-49d9-84ec-46cd055b00e5'
-          when 'fdbb5f3f-a7cd-4f96-87e1-3154482e2bcd' then '478277d3-e717-49b8-8e38-ccaef6afccfe'
-          when 'dbf596ef-23dd-41e0-82e2-01cd66d86689' then '26614fb3-3049-40ad-8c6d-1079533bcbb1'
-          when 'f3e1cab0-85c9-4ec6-816c-d334e456545a' then 'b0000000-0000-4000-8000-000000000002'
-          when '3f7292ba-2e1f-4e8a-8e52-82da65cbac0b' then '478277d3-e717-49b8-8e38-ccaef6afccfe'
-          when 'fcec5a74-a2dc-4733-84b1-cdbfeddaa02b' then 'b0000000-0000-4000-8000-000000000002'
-          when '8a30075c-2d31-49b2-8add-b835d459b8c5' then '478277d3-e717-49b8-8e38-ccaef6afccfe'
-          when '3863336c-551f-410c-85ae-da6a2a639fa1' then 'b0000000-0000-4000-8000-000000000001'
-          when '5f7ff1a8-ea3a-4101-82f4-2b51a3e2e040' then 'b0000000-0000-4000-8000-000000000001'
-          when '80be455e-95de-4341-81b6-765b37551e15' then '42046212-1dc2-4653-8582-5013e3ec73aa'
-          when '37245c65-6c3f-4609-8427-637f95edfbd1' then '7681964f-faf2-4545-84fd-491464392cf4'
+          when '23c5f687-1b83-4fa7-8c00-010421c3b6d1' then 'b0000000-0000-4000-8000-000000000003'
+          when '4d2b42ba-641a-468e-8b62-5a416197571b' then '8995ef08-7e4c-498e-8f83-859559c01f76'
+          when '266507a6-7b50-4d41-8cda-fff7b5fa1831' then '147f7e8e-bf76-494d-87dd-8bd6f6a32274'
+          when '9eeb956b-0700-4ebe-8584-8a23d6f46cb6' then '42046212-1dc2-4653-8582-5013e3ec73aa'
+          when '1e21682e-332d-47d7-8645-58774f00d682' then '7e098809-c41c-45a4-81d6-b8c1373eb98a'
+          when '6827ecf0-f92f-4fe6-8660-7b061d0ed8c3' then '32ec2260-0cd1-42ae-831f-4edd917e82f7'
+          when '074ba000-df18-4cdb-83d8-b46285b82c3e' then 'b0000000-0000-4000-8000-000000000003'
+          when 'e0b0fab5-cec3-41a5-8ffd-f1db6b6798bd' then '7e098809-c41c-45a4-81d6-b8c1373eb98a'
+          when '0d1a971b-4fb0-4cf4-884d-a6a1f24a159e' then 'b0000000-0000-4000-8000-000000000004'
+          when '5a963c09-17d7-43e4-8ef3-96ab8eac5468' then 'b0000000-0000-4000-8000-000000000003'
+          when '59c5d096-560f-4004-8b69-0ca1d4cdd1b1' then '32ec2260-0cd1-42ae-831f-4edd917e82f7'
+          when 'b95fe078-af64-433b-84f7-fb6e08d84d5d' then '42046212-1dc2-4653-8582-5013e3ec73aa'
+          when '4d7f8a6e-e7ef-4eec-8b75-f11153fde04c' then 'b0000000-0000-4000-8000-000000000002'
+          when 'a48d0ea5-bff5-47c6-82f3-5da326786ff9' then '57044163-f5a8-4192-87ea-6c83f5b7d95f'
+          when '9d3a206f-9eae-405a-8565-c43e87f194ad' then 'b0000000-0000-4000-8000-000000000002'
+          when '8d95f5d7-79d9-401d-834f-07c08a6373f1' then '147f7e8e-bf76-494d-87dd-8bd6f6a32274'
+          when '335bf5c8-71f3-4b94-8a7d-63d185d19cc3' then '205c761b-bb63-440a-8fe7-6466b2df300b'
+          when '6e7cc005-ffc4-46f5-82ee-00816f5c885e' then 'f822d7d1-8dcf-4dd1-8c7c-0ceadcfc104a'
+          when 'a3b9e65a-f6ec-4fb4-8ef9-fdff420a9904' then '09a0d465-0ddb-4249-83b8-3908c6e6de57'
+          when '4a565667-6387-4663-810e-ba89d08e764b' then '7681964f-faf2-4545-84fd-491464392cf4'
+          when '9bf451c2-23f5-45f4-8d27-c9810213c640' then 'f822d7d1-8dcf-4dd1-8c7c-0ceadcfc104a'
+          when '03d0fb3f-c307-4b44-8602-bd8886707825' then 'e35f397a-1e87-4a29-8df0-32c60cb92f6b'
+          when '4ed511ec-521e-4be8-823c-88763b7ba363' then '147f7e8e-bf76-494d-87dd-8bd6f6a32274'
+          when '3daad325-78e5-47a4-87a7-638d83b9c116' then '09a0d465-0ddb-4249-83b8-3908c6e6de57'
+          when '3a2852c3-ee1c-4dd5-8f23-149dfaa63292' then '6c20b3af-11c4-4e56-8fb3-8eaf22e96232'
+          when '0a0f9528-839c-4675-8a4e-e679ca91a4f3' then '6c20b3af-11c4-4e56-8fb3-8eaf22e96232'
+          when 'f3e1cab0-85c9-4ec6-816c-d334e456545a' then '478277d3-e717-49b8-8e38-ccaef6afccfe'
+          when '3f7292ba-2e1f-4e8a-8e52-82da65cbac0b' then '5577ffde-c530-4dac-8fe3-146c491b0685'
+          when '6b9b062c-dcea-461d-8b1a-95b5c976a3a5' then '5577ffde-c530-4dac-8fe3-146c491b0685'
+          when '01d68af4-3e71-4379-825f-b66731ab33c5' then '3bef9bb8-d7d9-4ddb-85d8-db8f7e2b6bfe'
+          when '5f7ff1a8-ea3a-4101-82f4-2b51a3e2e040' then '42046212-1dc2-4653-8582-5013e3ec73aa'
+          when '391caac1-62ab-427a-8bf7-28bebaeeb216' then '7e098809-c41c-45a4-81d6-b8c1373eb98a'
+          when 'd86b8b51-d950-40ac-83c9-462217f05e1c' then '0f4c2d68-8590-49d9-84ec-46cd055b00e5'
+          when '80be455e-95de-4341-81b6-765b37551e15' then 'f0e41740-890f-4f42-88f8-0dc65dd0fb9b'
         end::uuid;
     for d in select g::date from generate_series(greatest(first_day, s.sn_start, s.active_from),
                                                  least(last_day, s.sn_end), interval '1 day') g
@@ -511,16 +565,47 @@ begin
       on conflict (series_id, starts_at) where series_id is not null do nothing
       returning id into sid;
       continue when sid is null;
+      -- Leaders rotate (handbook): about one date in three, another musician leads.
+      rot := null;
+      if leader is not null and abs(hashtext(sid::text || 'rotate')) % 3 = 0 then
+        select sdp.person_id into rot from public.series_default_person sdp
+         where sdp.series_id = s.id and sdp.person_id <> leader
+         order by md5(sdp.person_id::text || sid::text) limit 1;
+      end if;
       if leader is not null then
         insert into public.session_assignment (session_id, person_id, role)
-        values (sid, leader, 'leader') on conflict do nothing;
+        values (sid, coalesce(rot, leader), 'leader') on conflict do nothing;
       end if;
       insert into public.session_assignment (session_id, person_id, role)
-      select sid, sdp.person_id, 'participant' from public.series_default_person sdp
-       where sdp.series_id = s.id and sdp.person_id is distinct from leader
+      select sid, x.person_id, 'participant'
+        from (select sdp.person_id from public.series_default_person sdp where sdp.series_id = s.id
+              union select leader where leader is not null) x
+       where x.person_id is distinct from coalesce(rot, leader)
       on conflict do nothing;
     end loop;
   end loop;
+
+  -- Special events (concerts): two in the past and one next month per program,
+  -- each with three core musicians, the first leading.
+  insert into public.session (id, residency_id, kind, title, location_id, starts_at, has_set_time, scheduled_minutes, is_special_event, call_time)
+  select md5('event:' || r.id::text || e.n)::uuid, r.id, 'group_session', e.title,
+         (select l.id from public.location l join public.residency_site rs on rs.site_id = l.site_id
+           where rs.residency_id = r.id order by l.name = 'Auditorium' desc, l.id limit 1),
+         ((current_date + e.days) + time '19:00') at time zone (select st.timezone from public.residency_site rs join public.site st on st.id = rs.site_id where rs.residency_id = r.id limit 1),
+         true, 75, true, time '18:15'
+  from public.residency r
+  cross join (values (1, 'Autumn Concert', -60), (2, 'Holiday Sing-along', -20), (3, 'Winter Showcase Concert', 40)) e(n, title, days)
+  where r.id = any (array['f48a6586-0201-4e93-81ad-28a94efc492d'::uuid, 'cfeac2f1-4700-4130-856e-3a3e284e0d6c'::uuid, '88bbf4f8-63e3-46f1-8c60-0ce5ccf24db1'::uuid, '40d55bbb-a67f-4501-85ec-adf3ba390d2a'::uuid, 'ed63467d-f1f6-4e3e-8fdb-79bf0aed9cf8'::uuid, '7b5b246f-91df-4c8f-8823-9bb8dc4bbaf7'::uuid, '58d45b65-f9f9-43f4-838e-8f97b7eb50d9'::uuid, 'f695ccda-396e-4524-860c-1ffb83b4ffbd'::uuid])
+  on conflict do nothing;
+  insert into public.session_assignment (session_id, person_id, role)
+  select md5('event:' || r.id::text || e.n)::uuid, m.person_id, case when m.k = 1 then 'leader' else 'participant' end::public.assignment_role
+  from public.residency r
+  cross join (values (1), (2), (3)) e(n)
+  cross join lateral (select rm.person_id, row_number() over (order by md5(rm.person_id::text || e.n::text)) as k
+                        from public.roster_member rm join public.season sn on sn.id = rm.season_id
+                       where sn.residency_id = r.id and rm.is_core) m
+  where r.id = any (array['f48a6586-0201-4e93-81ad-28a94efc492d'::uuid, 'cfeac2f1-4700-4130-856e-3a3e284e0d6c'::uuid, '88bbf4f8-63e3-46f1-8c60-0ce5ccf24db1'::uuid, '40d55bbb-a67f-4501-85ec-adf3ba390d2a'::uuid, 'ed63467d-f1f6-4e3e-8fdb-79bf0aed9cf8'::uuid, '7b5b246f-91df-4c8f-8823-9bb8dc4bbaf7'::uuid, '58d45b65-f9f9-43f4-838e-8f97b7eb50d9'::uuid, 'f695ccda-396e-4524-860c-1ffb83b4ffbd'::uuid]) and m.k <= 3
+  on conflict do nothing;
 
   -- Publish past and current months (the same switch publish_month() uses).
   perform set_config('iris.publishing', 'on', true);
@@ -532,6 +617,8 @@ begin
   perform set_config('iris.publishing', 'off', true);
 
   -- About one in twelve past dates canceled (never one already documented).
+  -- Quietly: no "No Program" emails to the fake point people (v0.34 switch).
+  perform set_config('iris.auto_no_program', 'on', true);
   update public.session se
      set schedule_state = 'canceled',
          cancellation_reason = (array['partner', 'weather', 'musician', 'other'])[1 + abs(hashtext(se.id::text || 'why')) % 4]::public.cancellation_reason
@@ -540,6 +627,7 @@ begin
      and abs(hashtext(se.id::text)) % 12 = 0
      and (to_regclass('public.session_report') is null
           or not exists (select 1 from public.session_report r where r.session_id = se.id));
+  perform set_config('iris.auto_no_program', '', true);
 
   -- Calendar versions: reviewed by the point person and sent, for each
   -- published month.
@@ -580,139 +668,148 @@ begin
             join public.residency_site rs on rs.residency_id = sn.residency_id
            where rs.site_id = v.site::uuid and lead.is_admin_lead limit 1)
   from (values
-    ('d5f1ae21-efb9-4e57-8e93-62b15eb98d15', '7ca3c4c5-2a48-4f6d-8171-e470ef856a22', 'Sidney S.'),
-    ('6528972f-5633-4bce-81ab-afcf9fe3d57e', '7ca3c4c5-2a48-4f6d-8171-e470ef856a22', 'Thelma W.'),
-    ('75b485a3-2558-4a67-81cc-0cf5940450f4', '7ca3c4c5-2a48-4f6d-8171-e470ef856a22', 'Ruth G.'),
-    ('2467a50f-c8ae-4260-8659-4b513bb62443', '7ca3c4c5-2a48-4f6d-8171-e470ef856a22', 'Stanley D.'),
-    ('de4f7196-fd22-47af-8a18-7e905ac6356e', '7ca3c4c5-2a48-4f6d-8171-e470ef856a22', 'Morris H.'),
-    ('aca9eec4-e4c7-4b8d-812d-1cd3fecfde94', '7ca3c4c5-2a48-4f6d-8171-e470ef856a22', 'Lillian E.'),
-    ('172b0825-1463-4f9f-8789-6a8bea3f603a', '7ca3c4c5-2a48-4f6d-8171-e470ef856a22', 'Herbert E.'),
-    ('0eb99236-6422-404a-82ab-b30f312f3606', '7ca3c4c5-2a48-4f6d-8171-e470ef856a22', 'Morris E.'),
-    ('013b7ef1-bcda-4377-8538-ca01c6b58f44', '6ef1b4c7-a9b7-4f6c-80bd-9c639cd79c20', 'June H.'),
-    ('72413b7d-6394-469a-8406-77f881ce5d50', '6ef1b4c7-a9b7-4f6c-80bd-9c639cd79c20', 'Bea L.'),
-    ('beef1f98-aeca-40d9-85f8-6ee6515393b2', '6ef1b4c7-a9b7-4f6c-80bd-9c639cd79c20', 'Bea M.'),
-    ('c6a1d9d1-af24-43e9-8299-f4850bcd8942', '6ef1b4c7-a9b7-4f6c-80bd-9c639cd79c20', 'Marion B.'),
-    ('660c053c-e36d-4ca6-8bb1-cef9a6bdc5e3', '6ef1b4c7-a9b7-4f6c-80bd-9c639cd79c20', 'Milton L.'),
-    ('a4f83008-279d-4477-8b5c-553575d65bae', '6ef1b4c7-a9b7-4f6c-80bd-9c639cd79c20', 'Lillian P.'),
-    ('390e520e-0571-4170-8166-29bc92894cfe', '18e32e7f-2653-49e4-8ee3-8d10b5ad8fb0', 'Irving K.'),
-    ('d240cbf5-3942-4bc1-8c0f-b2d41a248b6b', '18e32e7f-2653-49e4-8ee3-8d10b5ad8fb0', 'Pearl F.'),
-    ('56f45e0d-7526-47d1-8223-f7a174b8b6b9', '18e32e7f-2653-49e4-8ee3-8d10b5ad8fb0', 'Herbert M.'),
-    ('fd606e22-a9c9-4a72-82af-d85ac8567346', '18e32e7f-2653-49e4-8ee3-8d10b5ad8fb0', 'Thelma M.'),
-    ('9914e9a7-d97d-42a1-8f4e-16065a2ee811', '18e32e7f-2653-49e4-8ee3-8d10b5ad8fb0', 'Herbert J.'),
-    ('782a6813-bb9a-48e8-835f-f4c612212392', '18e32e7f-2653-49e4-8ee3-8d10b5ad8fb0', 'Stanley J.'),
-    ('5f8ccb08-eaab-4bf8-8538-667ffa3390a9', '18e32e7f-2653-49e4-8ee3-8d10b5ad8fb0', 'Ruth E.'),
-    ('e7cdf33a-c9a0-491a-81dd-ecdbd5645bb3', '18e32e7f-2653-49e4-8ee3-8d10b5ad8fb0', 'Leon S.'),
-    ('d194d3d9-6e7d-4c4d-8a2e-561f1f19183c', '18e32e7f-2653-49e4-8ee3-8d10b5ad8fb0', 'Rosalind S.'),
-    ('8316137d-3a2a-4cb8-8050-6fcbb7a65f35', '554bb91c-ebca-4c21-8ef3-c13ef715b9e7', 'Dorothy W.'),
-    ('f5411791-5348-41d8-8385-4f1f377a70d4', '554bb91c-ebca-4c21-8ef3-c13ef715b9e7', 'Lillian F.'),
-    ('ed44af89-2c52-47a7-8bd1-7b77ec6469c7', '554bb91c-ebca-4c21-8ef3-c13ef715b9e7', 'Esther R.'),
-    ('03707b8b-619d-418d-8bb0-1c69cdf4bacb', '554bb91c-ebca-4c21-8ef3-c13ef715b9e7', 'Ruth J.'),
-    ('3b0af30c-cafc-4bf5-8b07-e2292c6ef501', '554bb91c-ebca-4c21-8ef3-c13ef715b9e7', 'Irving R.'),
-    ('a9cda62d-4c01-4b00-8d5b-de98a04bedb2', '554bb91c-ebca-4c21-8ef3-c13ef715b9e7', 'Howard L.'),
-    ('ae524438-31ef-4703-8d87-1c03427df23f', '554bb91c-ebca-4c21-8ef3-c13ef715b9e7', 'Esther G.'),
-    ('729002d0-135e-4d46-831b-73192ac1ef71', '554bb91c-ebca-4c21-8ef3-c13ef715b9e7', 'Frances J.'),
-    ('0643d640-5147-44db-820b-3de17367a0ce', '554bb91c-ebca-4c21-8ef3-c13ef715b9e7', 'Dorothy D.'),
-    ('b989523b-2c7e-499f-84a4-1cabfee39577', '9e0066ab-36bb-4b87-8061-fb78e5f98827', 'Esther B.'),
-    ('b754d485-d0b3-47f2-82ef-4360c857e803', '9e0066ab-36bb-4b87-8061-fb78e5f98827', 'Howard J.'),
-    ('17ef079f-723e-4d0f-8119-1f98cd2200bf', '9e0066ab-36bb-4b87-8061-fb78e5f98827', 'Bernard L.'),
-    ('dc03879a-4dca-4109-8182-7f49438b082d', '9e0066ab-36bb-4b87-8061-fb78e5f98827', 'Irving A.'),
-    ('b507fcf4-b752-46db-83ba-e75cabf9e38f', '9e0066ab-36bb-4b87-8061-fb78e5f98827', 'Frances M.'),
-    ('9e30445b-3021-4a50-875b-3e2ca48d66f4', '9e0066ab-36bb-4b87-8061-fb78e5f98827', 'Bea A.'),
-    ('3fef3233-41c5-428c-8b21-4d6b05f5d0f7', '6cf83b01-1658-455e-86fe-ab15fa16caaf', 'June D.'),
-    ('3325ee69-452a-4c2d-8de0-d5c9bdc1c7b6', '6cf83b01-1658-455e-86fe-ab15fa16caaf', 'Arthur D.'),
-    ('6d275f26-05f1-4c18-8522-4cdfa39d78dc', '6cf83b01-1658-455e-86fe-ab15fa16caaf', 'Morris R.'),
-    ('d1f775cd-ac13-48cc-8c94-eba5349c880d', '6cf83b01-1658-455e-86fe-ab15fa16caaf', 'Norman A.'),
-    ('e6057eb4-0973-484e-8bc9-89f83cbf465e', '6cf83b01-1658-455e-86fe-ab15fa16caaf', 'Walter R.'),
-    ('b98e5733-aaa7-4b21-800c-62603f96f30b', '6cf83b01-1658-455e-86fe-ab15fa16caaf', 'Arthur L.'),
-    ('8cbbfc63-df79-4bab-886c-757a36308c85', '6cf83b01-1658-455e-86fe-ab15fa16caaf', 'Ruth L.'),
-    ('78dc16fe-0f27-47ea-8c2c-b3bb32652862', '6cf83b01-1658-455e-86fe-ab15fa16caaf', 'Walter D.'),
-    ('8fe7ebd6-da5c-4cc1-8497-2cd5150270c7', '6b06d37d-60a2-4cca-8165-edabab4d3c07', 'Marion B.'),
-    ('96a3c7bf-ede9-46ef-8d05-d7b377fe26b0', '6b06d37d-60a2-4cca-8165-edabab4d3c07', 'Saul M.'),
-    ('5daa0704-327f-4518-89d0-57e10824d102', '6b06d37d-60a2-4cca-8165-edabab4d3c07', 'Stanley T.'),
-    ('12d14796-94a9-4c2a-809b-6fd5b9ab2de3', '6b06d37d-60a2-4cca-8165-edabab4d3c07', 'Bernard B.'),
-    ('3735133f-7041-4610-8c28-7d3d916df7f4', '6b06d37d-60a2-4cca-8165-edabab4d3c07', 'Morris C.'),
-    ('2e6f0c77-bcf5-4840-8183-39a4d313663b', '6b06d37d-60a2-4cca-8165-edabab4d3c07', 'Morris R.'),
-    ('35fe7897-902f-4548-8ac6-01dd5adeac5c', 'd3ef09c0-bac1-486b-86cb-3a0aaed6f139', 'Gloria K.'),
-    ('daf0ecf6-f1e1-4912-8129-4dc2ac5151b9', 'd3ef09c0-bac1-486b-86cb-3a0aaed6f139', 'Howard S.'),
-    ('45e45dbd-49c0-47dc-8e0a-55e49dae7225', 'd3ef09c0-bac1-486b-86cb-3a0aaed6f139', 'Rosalind A.'),
-    ('dfc60f3f-db9d-440b-834e-8e6dfbc557a4', 'd3ef09c0-bac1-486b-86cb-3a0aaed6f139', 'June R.'),
-    ('8eb6bb07-e3b8-479e-8ffa-9c503d8cadce', 'd3ef09c0-bac1-486b-86cb-3a0aaed6f139', 'Lillian P.'),
-    ('beed938c-e023-4567-8dc2-bded9aee41aa', 'd3ef09c0-bac1-486b-86cb-3a0aaed6f139', 'Howard F.'),
-    ('630ba314-c740-4be5-851e-42265f2bf27a', 'd3ef09c0-bac1-486b-86cb-3a0aaed6f139', 'Walter L.'),
-    ('4e6ab728-9129-40d7-8ad4-3f43debab832', 'd3ef09c0-bac1-486b-86cb-3a0aaed6f139', 'Gloria B.'),
-    ('fc5c2f5e-ed2b-4e0f-8f28-efffc62e2f94', 'd3ef09c0-bac1-486b-86cb-3a0aaed6f139', 'Norman W.'),
-    ('135fb71b-d4cf-4877-8703-dac491649b7d', 'd3ef09c0-bac1-486b-86cb-3a0aaed6f139', 'Frances G.'),
-    ('6cbf59dc-b610-470c-8647-e2ab2c434650', 'f37b14a2-2dfb-4c99-8733-6384edf5e754', 'Gloria R.'),
-    ('e8949141-b5f4-4236-8607-a7044b9c8b67', 'f37b14a2-2dfb-4c99-8733-6384edf5e754', 'Harold E.'),
-    ('4c1319d7-6419-4d74-84bb-53f62dceb0f8', 'f37b14a2-2dfb-4c99-8733-6384edf5e754', 'Dorothy R.'),
-    ('f94f5519-6cae-4739-8ac3-68a47f16421f', 'f37b14a2-2dfb-4c99-8733-6384edf5e754', 'Norman G.'),
-    ('0ee30f9a-3442-4b60-8d60-279e924decd9', 'f37b14a2-2dfb-4c99-8733-6384edf5e754', 'Frances W.'),
-    ('7899cf68-4e1b-490e-8fdc-fb16b1e0cee0', 'f37b14a2-2dfb-4c99-8733-6384edf5e754', 'Thelma K.'),
-    ('b8330722-4338-4e34-8749-44c6c3c7bdf6', 'f37b14a2-2dfb-4c99-8733-6384edf5e754', 'Herbert K.'),
-    ('3c3975db-13f8-47d3-879c-29efacde0b04', '0e3f4ecd-6e10-474d-87f6-24fda7631e13', 'Dorothy M.'),
-    ('d9b15762-7a66-4e5b-8794-1bfe1c61a16e', '0e3f4ecd-6e10-474d-87f6-24fda7631e13', 'Thelma M.'),
-    ('bb88532c-95d4-4f10-8fca-49809b7d5dab', '0e3f4ecd-6e10-474d-87f6-24fda7631e13', 'Stanley N.'),
-    ('51a41304-8711-4395-8ccd-0c71919e90c1', '0e3f4ecd-6e10-474d-87f6-24fda7631e13', 'Stanley K.'),
-    ('4e876384-375f-4b3d-8af5-78909020a871', '0e3f4ecd-6e10-474d-87f6-24fda7631e13', 'Eugene W.'),
-    ('0e17a0d4-b7ee-466c-8d95-c0d700e5cb8e', '0e3f4ecd-6e10-474d-87f6-24fda7631e13', 'June P.'),
-    ('9d751f4e-aef3-4ec8-8deb-5ecc943490d4', '0e3f4ecd-6e10-474d-87f6-24fda7631e13', 'Dorothy J.'),
-    ('e0af5b88-db5d-488d-8d83-035d22ad3e5b', '0e3f4ecd-6e10-474d-87f6-24fda7631e13', 'Gloria J.'),
-    ('684d53b8-3d40-40a8-82d9-ba43e0a2c3c8', '0e3f4ecd-6e10-474d-87f6-24fda7631e13', 'Irving K.'),
-    ('235c6e22-7c62-4c93-81db-bc794358a9f3', '74eb2983-9f7e-4854-84a8-2910e03e12d5', 'Esther F.'),
-    ('afce3b56-e397-4dfd-87c6-4d88e5f799b4', '74eb2983-9f7e-4854-84a8-2910e03e12d5', 'Pearl A.'),
-    ('9ed4eee5-ed26-4027-80cf-3fb69fb95b82', '74eb2983-9f7e-4854-84a8-2910e03e12d5', 'Edith L.'),
-    ('aba5678f-e67a-4ae4-813f-5812b9b702c1', '74eb2983-9f7e-4854-84a8-2910e03e12d5', 'Arthur L.'),
-    ('de4fd9e1-d09d-4f56-8475-c378b9654e39', '74eb2983-9f7e-4854-84a8-2910e03e12d5', 'Sidney F.'),
-    ('e3c222a4-ba7a-418a-8b11-e4a617d29ec8', '74eb2983-9f7e-4854-84a8-2910e03e12d5', 'Milton F.'),
-    ('1d3cfc9f-5207-43ad-88a5-efe65d0aacf0', '74eb2983-9f7e-4854-84a8-2910e03e12d5', 'Dorothy H.'),
-    ('54ca97a3-0063-4a4d-8d38-97358bf56363', '7e1438f5-eecd-46cc-8974-b5a00318fe9a', 'Marion H.'),
-    ('228143a5-813c-4eb4-8b02-cf2b133543ab', '7e1438f5-eecd-46cc-8974-b5a00318fe9a', 'Bea M.'),
-    ('e1374cb9-4006-4d0a-82bb-eb1d83d927ab', '7e1438f5-eecd-46cc-8974-b5a00318fe9a', 'Morris E.'),
-    ('660f727a-ff1c-4af3-8819-d1edd08219af', '7e1438f5-eecd-46cc-8974-b5a00318fe9a', 'Pearl D.'),
-    ('cc1a330d-39d2-4657-8c6e-17901a74c935', '7e1438f5-eecd-46cc-8974-b5a00318fe9a', 'Sidney E.'),
-    ('f7063ab8-42bf-4d24-899c-dfa2008a7878', '7e1438f5-eecd-46cc-8974-b5a00318fe9a', 'Pearl R.'),
-    ('0889f099-5040-4154-86de-32e8fd6e1c69', '7e1438f5-eecd-46cc-8974-b5a00318fe9a', 'Morris K.'),
-    ('5c5862ab-0e98-4cf0-8bbd-ea21bfea600c', '7e1438f5-eecd-46cc-8974-b5a00318fe9a', 'Frances F.'),
-    ('5b1e0f2a-8da6-4579-83be-08a847ceaf4a', '7e1438f5-eecd-46cc-8974-b5a00318fe9a', 'Arthur E.'),
-    ('b42a69b2-25ef-487e-8ca7-ff7d9e0056d8', 'b37ed409-719e-4364-8e62-e661abc6b075', 'Walter R.'),
-    ('c868011e-526d-4257-851e-ac092f749786', 'b37ed409-719e-4364-8e62-e661abc6b075', 'Pearl S.'),
-    ('0cc3228a-0980-44dd-8c61-2876a468ed5f', 'b37ed409-719e-4364-8e62-e661abc6b075', 'Dorothy S.'),
-    ('03120d77-ca60-4fb1-8b35-8eb68ad13036', 'b37ed409-719e-4364-8e62-e661abc6b075', 'Marion B.'),
-    ('7f26c166-64b9-41d0-838d-1e36f31a4fa8', 'b37ed409-719e-4364-8e62-e661abc6b075', 'Thelma R.'),
-    ('85323fcf-9fbb-4460-8bc9-00b4e07201cb', 'b37ed409-719e-4364-8e62-e661abc6b075', 'Stanley F.'),
-    ('4937b59c-323b-476c-81eb-3b3d3d609997', 'b37ed409-719e-4364-8e62-e661abc6b075', 'Milton B.'),
-    ('8e5ad522-4f3d-4e42-8cdc-5178d52e3c4b', '8ffd23b1-792c-48a9-82ea-6c40251af5a6', 'June J.'),
-    ('8e3081cc-2e23-480d-8211-e2e534c35e54', '8ffd23b1-792c-48a9-82ea-6c40251af5a6', 'Eugene M.'),
-    ('e9d15d23-d8c1-404b-8a13-76dd2899e1bd', '8ffd23b1-792c-48a9-82ea-6c40251af5a6', 'Bea H.'),
-    ('a17a8bba-5e5a-4e04-808f-405646e0a07d', '8ffd23b1-792c-48a9-82ea-6c40251af5a6', 'Rosalind J.'),
-    ('cd03da37-ec8f-4f48-8877-3747fd97df5c', '8ffd23b1-792c-48a9-82ea-6c40251af5a6', 'Pearl J.'),
+    ('d15c55f2-76d8-4bf7-83d9-37bdd241f1ef', '7ca3c4c5-2a48-4f6d-8171-e470ef856a22', 'Eugene J.'),
+    ('9f039d4e-64d7-41e8-8839-51bafdb0b049', '7ca3c4c5-2a48-4f6d-8171-e470ef856a22', 'Eugene M.'),
+    ('bca5eb52-b10c-49d5-8065-59d02cbfb53a', '7ca3c4c5-2a48-4f6d-8171-e470ef856a22', 'Dorothy W.'),
+    ('08da0c75-0fd3-497d-883a-c0b6774fc8f8', '7ca3c4c5-2a48-4f6d-8171-e470ef856a22', 'Lillian F.'),
+    ('c968819f-e01f-4525-87d5-5faf0b226d9e', '7ca3c4c5-2a48-4f6d-8171-e470ef856a22', 'Esther R.'),
+    ('838b017d-cac9-4dfc-8462-5c40a5877159', '7ca3c4c5-2a48-4f6d-8171-e470ef856a22', 'Ruth J.'),
+    ('2434b820-603b-4911-8872-22a7134d701b', '7ca3c4c5-2a48-4f6d-8171-e470ef856a22', 'Irving R.'),
+    ('5f6322f0-09a4-4ac8-80b3-faf013a760ee', '6ef1b4c7-a9b7-4f6c-80bd-9c639cd79c20', 'Milton B.'),
+    ('11b0cb45-3b59-444e-8388-f7c4dfd22e59', '6ef1b4c7-a9b7-4f6c-80bd-9c639cd79c20', 'Gloria M.'),
+    ('e8a70c9e-05e2-4c89-88e5-373c6e9c5cf7', '6ef1b4c7-a9b7-4f6c-80bd-9c639cd79c20', 'Herbert C.'),
+    ('eda466a7-8747-40d4-8c34-a9969ed4c674', '6ef1b4c7-a9b7-4f6c-80bd-9c639cd79c20', 'Irving D.'),
+    ('2c3d6a98-a95b-4b9d-840d-7c458c7403a4', '6ef1b4c7-a9b7-4f6c-80bd-9c639cd79c20', 'Esther B.'),
+    ('abab0109-cf44-45b2-876f-c9be72ecd2c0', '6ef1b4c7-a9b7-4f6c-80bd-9c639cd79c20', 'Howard J.'),
+    ('5aa9bcad-5a1a-4c22-8960-8a997c3642f5', '6ef1b4c7-a9b7-4f6c-80bd-9c639cd79c20', 'Bernard L.'),
+    ('1b3a281c-25d1-4b21-89a9-c8ed6a701c80', '6ef1b4c7-a9b7-4f6c-80bd-9c639cd79c20', 'Irving A.'),
+    ('9e43d3f9-4963-4445-88d2-f2d01633ffb7', '6ef1b4c7-a9b7-4f6c-80bd-9c639cd79c20', 'Frances M.'),
+    ('6dc40f94-0276-4388-844c-c951d7aa1c49', '6ef1b4c7-a9b7-4f6c-80bd-9c639cd79c20', 'Bea A.'),
+    ('09a868ac-4459-40d2-8437-97715c8247b2', '18e32e7f-2653-49e4-8ee3-8d10b5ad8fb0', 'June D.'),
+    ('18be7b28-a4a3-4958-85fc-e72868e70aae', '18e32e7f-2653-49e4-8ee3-8d10b5ad8fb0', 'Arthur D.'),
+    ('51800b93-c534-49d8-8381-a80b2c977256', '18e32e7f-2653-49e4-8ee3-8d10b5ad8fb0', 'Morris R.'),
+    ('106651fb-c2ab-40a7-8432-6e2680bfa6c0', '18e32e7f-2653-49e4-8ee3-8d10b5ad8fb0', 'Norman A.'),
+    ('051a3781-1199-4962-8874-4e5c13721e3c', '18e32e7f-2653-49e4-8ee3-8d10b5ad8fb0', 'Walter R.'),
+    ('783d1404-251e-4cd6-86a6-d0973159993e', '18e32e7f-2653-49e4-8ee3-8d10b5ad8fb0', 'Arthur L.'),
+    ('67536334-f009-4dfa-8136-7fc7db2b24f7', '18e32e7f-2653-49e4-8ee3-8d10b5ad8fb0', 'Ruth L.'),
+    ('6ef97d95-7594-46b5-8986-1cf5e7d57eb0', '18e32e7f-2653-49e4-8ee3-8d10b5ad8fb0', 'Walter D.'),
+    ('1d2574b7-e3b8-42e1-819e-44e55a77990b', '554bb91c-ebca-4c21-8ef3-c13ef715b9e7', 'Marion B.'),
+    ('e9101c38-8b4e-4899-8ed3-3ff231a26fc8', '554bb91c-ebca-4c21-8ef3-c13ef715b9e7', 'Saul M.'),
+    ('11f071ee-a78c-45a5-846d-6e4ee39496cd', '554bb91c-ebca-4c21-8ef3-c13ef715b9e7', 'Stanley T.'),
+    ('86ace130-3fd1-4b54-83f4-1f283be45e80', '554bb91c-ebca-4c21-8ef3-c13ef715b9e7', 'Bernard B.'),
+    ('5fa86d4d-59ac-4a30-89d6-7cc063396090', '554bb91c-ebca-4c21-8ef3-c13ef715b9e7', 'Morris C.'),
+    ('4ed777e8-6eb5-4ca0-80bd-83325847283f', '554bb91c-ebca-4c21-8ef3-c13ef715b9e7', 'Morris R.'),
+    ('9da1d3cc-8d61-4401-896b-ac0546f221a2', '9e0066ab-36bb-4b87-8061-fb78e5f98827', 'Gloria K.'),
+    ('13110d96-bb12-4b31-82d1-983fd158e4ef', '9e0066ab-36bb-4b87-8061-fb78e5f98827', 'Howard S.'),
+    ('98c77975-fce3-462c-8e41-8ed13d02c750', '9e0066ab-36bb-4b87-8061-fb78e5f98827', 'Rosalind A.'),
+    ('4ec40929-4b08-44a2-8408-3beefa712104', '9e0066ab-36bb-4b87-8061-fb78e5f98827', 'June R.'),
+    ('3263349b-3653-4e7d-8e9e-e477cf7e725c', '9e0066ab-36bb-4b87-8061-fb78e5f98827', 'Lillian P.'),
+    ('4d8d5032-6d6a-41da-8257-68d4af325651', '9e0066ab-36bb-4b87-8061-fb78e5f98827', 'Howard F.'),
+    ('425208bf-677e-4948-8d49-3aaa2ba39eeb', '9e0066ab-36bb-4b87-8061-fb78e5f98827', 'Walter L.'),
+    ('0906530c-70e6-4be1-8fd1-0ad11ef75fe9', '9e0066ab-36bb-4b87-8061-fb78e5f98827', 'Gloria B.'),
+    ('2e1e090a-0c8a-40b5-8912-bfb0a8ef06bf', '9e0066ab-36bb-4b87-8061-fb78e5f98827', 'Norman W.'),
+    ('f8ec0288-cc22-4706-857f-bb9983941d3d', '9e0066ab-36bb-4b87-8061-fb78e5f98827', 'Frances G.'),
+    ('26d8759f-d9b3-475c-8d54-d25faffb2437', '6cf83b01-1658-455e-86fe-ab15fa16caaf', 'Gloria R.'),
+    ('e0bf340a-1037-4ef8-8e57-66ccbc011d21', '6cf83b01-1658-455e-86fe-ab15fa16caaf', 'Harold E.'),
+    ('bcdf0b01-4c18-4a60-8597-03958f067b34', '6cf83b01-1658-455e-86fe-ab15fa16caaf', 'Dorothy R.'),
+    ('34849014-7837-44c2-8c37-614e8cbe5ff1', '6cf83b01-1658-455e-86fe-ab15fa16caaf', 'Norman G.'),
+    ('aa5f3aa6-b894-4c9e-8174-e47892f2f09f', '6cf83b01-1658-455e-86fe-ab15fa16caaf', 'Frances W.'),
+    ('b0177a16-1788-47f5-86e8-b463901da914', '6cf83b01-1658-455e-86fe-ab15fa16caaf', 'Thelma K.'),
+    ('0899e230-3ed9-4f14-8042-695348efbd19', '6cf83b01-1658-455e-86fe-ab15fa16caaf', 'Herbert K.'),
+    ('fdd6fdf9-4350-4ceb-8546-b247bb399c59', '6b06d37d-60a2-4cca-8165-edabab4d3c07', 'Dorothy M.'),
+    ('c8e4783f-ba04-4cf0-80e6-e76d5ae9ccca', '6b06d37d-60a2-4cca-8165-edabab4d3c07', 'Thelma M.'),
+    ('01486fd2-aae4-4ad3-8ed4-4d41c1569fdb', '6b06d37d-60a2-4cca-8165-edabab4d3c07', 'Stanley N.'),
+    ('911d95b9-fdec-48eb-8c0f-4a524b79d55b', '6b06d37d-60a2-4cca-8165-edabab4d3c07', 'Stanley K.'),
+    ('4bc4749c-a6f6-4908-8995-f040c631cbe0', '6b06d37d-60a2-4cca-8165-edabab4d3c07', 'Eugene W.'),
+    ('4821e95d-6b4c-4d08-8344-2cdd4057de40', '6b06d37d-60a2-4cca-8165-edabab4d3c07', 'June P.'),
+    ('35a5fd13-e1e5-4e50-884f-6b9eb7e496f6', '6b06d37d-60a2-4cca-8165-edabab4d3c07', 'Dorothy J.'),
+    ('81707ea3-be75-4716-8a66-5f39e486e095', '6b06d37d-60a2-4cca-8165-edabab4d3c07', 'Gloria J.'),
+    ('b75cedb5-89a4-420e-8f0c-8fa6200204e1', '6b06d37d-60a2-4cca-8165-edabab4d3c07', 'Irving K.'),
+    ('5c818585-64ab-45de-8918-16f6e3c70f66', 'd3ef09c0-bac1-486b-86cb-3a0aaed6f139', 'Esther F.'),
+    ('ac73dad6-d419-40b3-8d61-8793dfdefdc2', 'd3ef09c0-bac1-486b-86cb-3a0aaed6f139', 'Pearl A.'),
+    ('6119e844-4bcc-46de-894e-67f62fec12a0', 'd3ef09c0-bac1-486b-86cb-3a0aaed6f139', 'Edith L.'),
+    ('92331095-97da-4dc0-81b4-021a69dda12c', 'd3ef09c0-bac1-486b-86cb-3a0aaed6f139', 'Arthur L.'),
+    ('f2ed47bf-9bf6-44df-85af-24c1a27c438d', 'd3ef09c0-bac1-486b-86cb-3a0aaed6f139', 'Sidney F.'),
+    ('3baee5f8-9d91-4d00-8942-101729b8ec12', 'd3ef09c0-bac1-486b-86cb-3a0aaed6f139', 'Milton F.'),
+    ('1418803c-1aa4-4d9f-8323-59c64823953a', 'd3ef09c0-bac1-486b-86cb-3a0aaed6f139', 'Dorothy H.'),
+    ('f296d368-28c9-477e-8f9a-7ae8f88f66fe', 'f37b14a2-2dfb-4c99-8733-6384edf5e754', 'Marion H.'),
+    ('40a827d1-4fe0-4daa-822f-958ca95707b6', 'f37b14a2-2dfb-4c99-8733-6384edf5e754', 'Bea M.'),
+    ('24d42dab-f704-4edb-8cc7-07a108256d25', 'f37b14a2-2dfb-4c99-8733-6384edf5e754', 'Morris E.'),
+    ('a6fc1eed-9721-4ad0-8f85-532c75d7259c', 'f37b14a2-2dfb-4c99-8733-6384edf5e754', 'Pearl D.'),
+    ('0aba8013-f385-4ea2-8389-53b6e8963fad', 'f37b14a2-2dfb-4c99-8733-6384edf5e754', 'Sidney E.'),
+    ('6793c72e-c354-4ac7-8973-bbbd0a54e9e9', 'f37b14a2-2dfb-4c99-8733-6384edf5e754', 'Pearl R.'),
+    ('22c308db-21df-4efd-897c-39e5f6daecb8', 'f37b14a2-2dfb-4c99-8733-6384edf5e754', 'Morris K.'),
+    ('98cca428-9719-472e-8de0-5009c90e77e8', 'f37b14a2-2dfb-4c99-8733-6384edf5e754', 'Frances F.'),
+    ('97165ed7-1db2-4860-8baf-6c78361e51bc', 'f37b14a2-2dfb-4c99-8733-6384edf5e754', 'Arthur E.'),
+    ('46eafd73-c33b-49de-88da-5d6ca59466d5', '0e3f4ecd-6e10-474d-87f6-24fda7631e13', 'Walter R.'),
+    ('d7bedf48-7e41-41dd-8f84-f75b712bcb4f', '0e3f4ecd-6e10-474d-87f6-24fda7631e13', 'Pearl S.'),
+    ('86a72536-14d6-46a6-8ffd-50fcedbb10c8', '0e3f4ecd-6e10-474d-87f6-24fda7631e13', 'Dorothy S.'),
+    ('403ba39b-302d-4d93-80ee-58ccb427577b', '0e3f4ecd-6e10-474d-87f6-24fda7631e13', 'Marion B.'),
+    ('132dd1b9-5bbe-4193-80b5-f96dd5f6987e', '0e3f4ecd-6e10-474d-87f6-24fda7631e13', 'Thelma R.'),
+    ('9e08ca0f-ea04-4961-8ab1-9a79dca4a4d0', '0e3f4ecd-6e10-474d-87f6-24fda7631e13', 'Stanley F.'),
+    ('30e675f1-f12e-481e-809c-cc9ac4b28e1e', '0e3f4ecd-6e10-474d-87f6-24fda7631e13', 'Milton B.'),
+    ('be7b4f67-2a01-4ca1-8e37-3cfc398389a0', '74eb2983-9f7e-4854-84a8-2910e03e12d5', 'June J.'),
+    ('73d8416d-ea63-4125-8d2d-115f158802df', '74eb2983-9f7e-4854-84a8-2910e03e12d5', 'Eugene M.'),
+    ('53bca7a5-24c6-44ba-8f60-9637c311aaa2', '74eb2983-9f7e-4854-84a8-2910e03e12d5', 'Bea H.'),
+    ('3743ddc9-2ade-4c55-8646-f07f25768931', '74eb2983-9f7e-4854-84a8-2910e03e12d5', 'Rosalind J.'),
+    ('4f63be89-4c07-4bef-8b9d-acbc85fae737', '74eb2983-9f7e-4854-84a8-2910e03e12d5', 'Pearl J.'),
+    ('c687245f-2011-44d1-811b-108cbb553154', '74eb2983-9f7e-4854-84a8-2910e03e12d5', 'Norman R.'),
+    ('4a5c40d4-0136-445a-8da8-088d38fb9373', '74eb2983-9f7e-4854-84a8-2910e03e12d5', 'Pearl M.'),
+    ('a905f844-14f4-43bb-8650-88ab43e6db48', '7e1438f5-eecd-46cc-8974-b5a00318fe9a', 'Esther T.'),
+    ('f9d22ab2-f3e3-4457-8afe-f1c0de6d3619', '7e1438f5-eecd-46cc-8974-b5a00318fe9a', 'Irving C.'),
+    ('d73b85a2-b681-44f3-823f-e69c29dbddb0', '7e1438f5-eecd-46cc-8974-b5a00318fe9a', 'Norman F.'),
+    ('172c6e07-fc3b-4383-86e6-3b4eece70f3a', '7e1438f5-eecd-46cc-8974-b5a00318fe9a', 'Stanley B.'),
+    ('456ab618-404b-43fd-8821-bae693d0e13b', '7e1438f5-eecd-46cc-8974-b5a00318fe9a', 'Eugene R.'),
+    ('7ccf6c49-cd15-43ac-8d8f-4e42b437290f', '7e1438f5-eecd-46cc-8974-b5a00318fe9a', 'Rosalind G.'),
+    ('c9b5f44c-9c95-47f8-83e0-4602eb42dca8', '7e1438f5-eecd-46cc-8974-b5a00318fe9a', 'Frances S.'),
+    ('a058698a-bcf6-408e-8d22-042ce8555840', '7e1438f5-eecd-46cc-8974-b5a00318fe9a', 'Pearl H.'),
+    ('8e29000a-9a30-4df9-8e67-450f3531ee3c', 'b37ed409-719e-4364-8e62-e661abc6b075', 'Walter E.'),
+    ('2b154a79-cb40-44a9-85c0-ffdeba6bcff4', 'b37ed409-719e-4364-8e62-e661abc6b075', 'Harold M.'),
+    ('e409df60-88ff-410e-870d-d01ddff549bf', 'b37ed409-719e-4364-8e62-e661abc6b075', 'Irving L.'),
+    ('5fe06988-b7d5-4172-8642-2593677d5521', 'b37ed409-719e-4364-8e62-e661abc6b075', 'Sylvia G.'),
+    ('2db3ccde-095a-4db3-8976-c810b172a4f9', 'b37ed409-719e-4364-8e62-e661abc6b075', 'Walter J.'),
+    ('e608121f-5ce0-468f-8eb8-d7673b9b67ed', 'b37ed409-719e-4364-8e62-e661abc6b075', 'Bea T.'),
+    ('3cb5bebc-c436-4c68-852b-ec9e47a5e7a5', 'b37ed409-719e-4364-8e62-e661abc6b075', 'June P.'),
+    ('4f665479-0669-4c32-80dd-f724f80f249b', '8ffd23b1-792c-48a9-82ea-6c40251af5a6', 'Norman A.'),
+    ('6706d8c6-ffae-42a3-806d-c564888fbf6d', '8ffd23b1-792c-48a9-82ea-6c40251af5a6', 'June H.'),
+    ('cbe535c2-2456-4c21-825a-3f736c46d97b', '8ffd23b1-792c-48a9-82ea-6c40251af5a6', 'Sidney F.'),
+    ('ba62c9d7-38f5-49f4-8409-253c70048ef2', '8ffd23b1-792c-48a9-82ea-6c40251af5a6', 'Arthur F.'),
+    ('ce567f61-9ba7-4512-8abd-42e50b035f22', '8ffd23b1-792c-48a9-82ea-6c40251af5a6', 'Leon L.'),
+    ('692875b5-6823-48fa-8b31-50aa93f2d2bd', '8ffd23b1-792c-48a9-82ea-6c40251af5a6', 'Morris N.'),
+    ('6d933f6b-d983-4a39-8086-e3616e2a0ac8', '8ffd23b1-792c-48a9-82ea-6c40251af5a6', 'Sidney T.'),
     ('7c685b93-19f9-4f8e-8639-f1b91c3adec4', '8ffd23b1-792c-48a9-82ea-6c40251af5a6', 'Norman R.'),
-    ('016da0b4-6bd8-441a-8540-aa4538189c8b', '8ffd23b1-792c-48a9-82ea-6c40251af5a6', 'Pearl M.'),
-    ('2814b25f-6066-4821-82bc-8f0aac493b35', 'da6d245f-a19e-4efa-820f-727731588d60', 'Esther T.'),
-    ('6388c7f8-9889-40c1-8d6a-ef53d4005627', 'da6d245f-a19e-4efa-820f-727731588d60', 'Irving C.'),
-    ('8afa0ad6-05fa-4990-85aa-2825d0f88465', 'da6d245f-a19e-4efa-820f-727731588d60', 'Norman F.'),
-    ('e184bce3-a2c5-4b61-86b3-08347071192b', 'da6d245f-a19e-4efa-820f-727731588d60', 'Stanley B.'),
-    ('0af46646-bfdf-4cd0-8e88-fb9a94903886', 'da6d245f-a19e-4efa-820f-727731588d60', 'Eugene R.'),
-    ('c9d7a41e-0a28-4685-8547-53e3dec4bba5', 'da6d245f-a19e-4efa-820f-727731588d60', 'Rosalind G.'),
-    ('151b6dff-040b-4d11-8a26-211a40148762', 'da6d245f-a19e-4efa-820f-727731588d60', 'Frances S.'),
-    ('e66b4285-5ec5-485d-84e5-7f2e05549da0', 'da6d245f-a19e-4efa-820f-727731588d60', 'Pearl H.'),
-    ('a762f8b6-49b4-4dff-80d8-e0b579690fdf', '8d4a534c-aa34-4418-83c7-eea02d3be02d', 'Walter E.'),
-    ('c5e17b5f-d0e7-4f19-88ca-3d12f3d30897', '8d4a534c-aa34-4418-83c7-eea02d3be02d', 'Harold M.'),
-    ('4aa3cdd4-d415-48a9-8028-53bae5c5fbf0', '8d4a534c-aa34-4418-83c7-eea02d3be02d', 'Irving L.'),
-    ('e2eda9e7-d97d-48da-8f32-033bc72eb71c', '8d4a534c-aa34-4418-83c7-eea02d3be02d', 'Sylvia G.'),
-    ('a9117b31-5b1f-41fe-8d7c-e4bcc7bdff08', '8d4a534c-aa34-4418-83c7-eea02d3be02d', 'Walter J.'),
-    ('ea7fbb6e-b1d2-4751-8b70-06bf8b445372', '8d4a534c-aa34-4418-83c7-eea02d3be02d', 'Bea T.'),
-    ('e55666fc-122e-4097-862b-e69876ce518d', '8d4a534c-aa34-4418-83c7-eea02d3be02d', 'June P.'),
-    ('295c72e7-fd7e-4440-8ca9-670f36afb5c5', '51dd5c86-eaca-4c61-865a-31bc1e19dfdc', 'Norman A.'),
-    ('d538f947-c8a6-48d8-88d8-16cc4548e488', '51dd5c86-eaca-4c61-865a-31bc1e19dfdc', 'June H.'),
-    ('e994a144-b3d1-40b6-8f60-98cbce740c4c', '51dd5c86-eaca-4c61-865a-31bc1e19dfdc', 'Sidney F.'),
-    ('1cab35f6-d877-41f3-8f00-782c5ddea8c3', '51dd5c86-eaca-4c61-865a-31bc1e19dfdc', 'Arthur F.'),
-    ('3d4c162f-a91b-4f11-88b1-a9a5fee6a9dd', '51dd5c86-eaca-4c61-865a-31bc1e19dfdc', 'Leon L.'),
-    ('2337cd88-6a4f-46b0-8d68-53f93cb740eb', '51dd5c86-eaca-4c61-865a-31bc1e19dfdc', 'Morris N.'),
-    ('cc7c53c4-8392-424e-8edc-311f90cabc49', '51dd5c86-eaca-4c61-865a-31bc1e19dfdc', 'Sidney T.'),
-    ('ea22000d-8456-48a5-8e2b-18df85b4b9d5', '51dd5c86-eaca-4c61-865a-31bc1e19dfdc', 'Norman R.'),
-    ('f55e0b84-c64f-4661-8ea3-8d7edaa16e53', '51dd5c86-eaca-4c61-865a-31bc1e19dfdc', 'Bea W.'),
-    ('73588eb3-8cac-484f-8505-9d438fb1931d', '51dd5c86-eaca-4c61-865a-31bc1e19dfdc', 'Sylvia F.')
+    ('92484e23-dd6f-4391-8c62-8685e5ed4449', '8ffd23b1-792c-48a9-82ea-6c40251af5a6', 'Bea W.'),
+    ('e0fd45a9-8542-4d84-8479-8920cd5cd3fb', '8ffd23b1-792c-48a9-82ea-6c40251af5a6', 'Sylvia F.'),
+    ('c3e58aa3-856b-44b4-846a-fcd3d13467b1', 'da6d245f-a19e-4efa-820f-727731588d60', 'Sidney A.'),
+    ('f5c16006-a70b-417c-8e22-6011eb2a4644', 'da6d245f-a19e-4efa-820f-727731588d60', 'Frances W.'),
+    ('24a18485-8f5c-4fdc-8ee6-51d65ba2113f', 'da6d245f-a19e-4efa-820f-727731588d60', 'Sidney C.'),
+    ('3bbd66f7-f5c7-4a72-8a09-787856929d3b', 'da6d245f-a19e-4efa-820f-727731588d60', 'Pearl S.'),
+    ('967d234b-1f61-4c32-8967-a9cbcfb69c43', 'da6d245f-a19e-4efa-820f-727731588d60', 'Pearl K.'),
+    ('6c727c3e-af35-4685-8216-137f4f86adb8', 'da6d245f-a19e-4efa-820f-727731588d60', 'Helen R.'),
+    ('e35a4d10-a95d-443d-8238-df6abddd29b6', 'da6d245f-a19e-4efa-820f-727731588d60', 'Gloria B.'),
+    ('c9e38123-496e-427c-82e4-39e021d378e2', 'da6d245f-a19e-4efa-820f-727731588d60', 'Bernard A.'),
+    ('a2f8712e-d4eb-479d-8e05-11b35f5f8637', 'da6d245f-a19e-4efa-820f-727731588d60', 'Howard W.'),
+    ('f5c61484-3e1b-4b25-86b7-7d8eff8df567', 'da6d245f-a19e-4efa-820f-727731588d60', 'Harold L.'),
+    ('6b8c5b91-5f34-4332-8ce2-f01ad3d7ce31', '8d4a534c-aa34-4418-83c7-eea02d3be02d', 'Pearl T.'),
+    ('e19b9c78-17c9-4399-8781-7ac5ce127c24', '8d4a534c-aa34-4418-83c7-eea02d3be02d', 'Ruth A.'),
+    ('e9099da9-7d91-4ac0-8560-109cbf053e0d', '8d4a534c-aa34-4418-83c7-eea02d3be02d', 'Walter R.'),
+    ('840c25a9-af0d-4225-807c-28ef7a7ff59b', '8d4a534c-aa34-4418-83c7-eea02d3be02d', 'Milton D.'),
+    ('37fbd13c-bf5f-4909-80ab-a72de9eb35d4', '8d4a534c-aa34-4418-83c7-eea02d3be02d', 'Dorothy C.'),
+    ('e24778e9-8bc4-47e4-81ff-1bcf1f5836c2', '8d4a534c-aa34-4418-83c7-eea02d3be02d', 'June L.'),
+    ('cc5ed445-e6e8-44b0-88aa-6a9a6b7fc411', '8d4a534c-aa34-4418-83c7-eea02d3be02d', 'Arthur T.'),
+    ('876e4153-6f05-450c-8101-8cda06c0e0c5', '8d4a534c-aa34-4418-83c7-eea02d3be02d', 'Sylvia R.'),
+    ('d4083a36-e3f4-41a3-8246-61e241a7508c', '8d4a534c-aa34-4418-83c7-eea02d3be02d', 'Norman G.'),
+    ('799b19f0-4664-4436-8b27-5cc99c7ee76a', '8d4a534c-aa34-4418-83c7-eea02d3be02d', 'Harold N.'),
+    ('bb5c717f-e703-4258-8797-616c48f0d45b', '51dd5c86-eaca-4c61-865a-31bc1e19dfdc', 'Lillian H.'),
+    ('1dcb137c-f7fc-4228-8b31-84fb84a01089', '51dd5c86-eaca-4c61-865a-31bc1e19dfdc', 'Gloria P.'),
+    ('73588eb3-8cac-484f-8505-9d438fb1931d', '51dd5c86-eaca-4c61-865a-31bc1e19dfdc', 'Sylvia F.'),
+    ('1c1ca7e0-29ee-4752-83c6-d0ceaf8a08f2', '51dd5c86-eaca-4c61-865a-31bc1e19dfdc', 'Herbert N.'),
+    ('a24c27d0-0d9e-4a6a-8d23-cf5f7570e2f5', '51dd5c86-eaca-4c61-865a-31bc1e19dfdc', 'Marion D.'),
+    ('4adbf431-8c33-4fc5-8610-9f26b98e1b25', '51dd5c86-eaca-4c61-865a-31bc1e19dfdc', 'Milton G.'),
+    ('332b664c-5d9d-4f2a-87b0-e3279a0d11c9', '51dd5c86-eaca-4c61-865a-31bc1e19dfdc', 'Dorothy A.'),
+    ('413f2fe5-dabd-4b8a-8a63-5a5ca8039a74', '51dd5c86-eaca-4c61-865a-31bc1e19dfdc', 'Bernard S.'),
+    ('c2c51f1e-d3f3-405a-8a9a-f5d43d6c276e', '51dd5c86-eaca-4c61-865a-31bc1e19dfdc', 'Sylvia M.'),
+    ('8f797809-59f3-434c-8cf6-17ac0e4fe09f', '51dd5c86-eaca-4c61-865a-31bc1e19dfdc', 'Herbert G.')
   ) v(id, site, name)
   on conflict do nothing;
 
@@ -736,6 +833,8 @@ begin
     and se.kind = 'group_session' and se.schedule_state = 'published'
     and se.starts_at <= now()
     and not (se.starts_at > now() - interval '2 days' and se.starts_at >= date_trunc('week', now()))
+    -- The last two weeks are mixed: about one program in four still waits for its leader.
+    and not (se.starts_at > now() - interval '14 days' and abs(hashtext(se.id::text || 'late')) % 4 = 0)
   on conflict do nothing;
 
   -- Relationship building: about two activities a week per musician, at one of
@@ -745,9 +844,7 @@ begin
     from public.roster_member r join public.season sn on sn.id = r.season_id
     where sn.id = any (array['efa29a49-a984-4dcd-88bd-fcdc7f1bec3f'::uuid, '4c8f71b3-444a-4947-890a-48210459763d'::uuid, '5b66099a-f61f-4f30-829c-3422ec3cdaf7'::uuid, '940d5fd3-0fb3-4bb0-807e-423892ff8252'::uuid, 'ddaf9075-53af-4204-8678-f5cddf447cf1'::uuid, '659b4ecd-d40e-452b-8b9f-37e34a41237d'::uuid, '802071ca-c82e-4608-80ae-199e58a71787'::uuid, 'd3569669-10c7-4a52-83bf-ab1d15e6d36e'::uuid])
   loop
-    -- Up to yesterday (UTC): "today" at a US site can still be UTC's yesterday,
-    -- and activities are logged only after they happen (20261220 migration).
-    for d in select g::date from generate_series(greatest(current_date - 29, rm.starts_on), current_date - 1, interval '1 day') g loop
+    for d in select g::date from generate_series(greatest(current_date - 91, rm.starts_on), current_date - 1, interval '1 day') g loop
       h := abs(hashtext(rm.person_id::text || rm.residency_id::text || d::text));
       continue when h % 7 > 1;
       select rs.site_id into st from public.residency_site rs
@@ -769,12 +866,13 @@ begin
     end loop;
   end loop;
 
-  -- Last month's reflection from each musician.
+  -- Reflections for the last two months from each core musician.
   insert into public.monthly_reflection (person_id, residency_id, month, highlights, challenges)
-  select r.person_id, sn.residency_id, (date_trunc('month', current_date) - interval '1 month')::date,
-         'Residents are joining in more on the sing-alongs. (fake)',
-         'Room set-up sometimes runs late. (fake)'
+  select r.person_id, sn.residency_id, (date_trunc('month', current_date) - make_interval(months => m))::date,
+         (array['Residents are joining in more on the sing-alongs. (fake)', 'Two residents asked to co-lead next month. (fake)'])[m],
+         (array['Room set-up sometimes runs late. (fake)', 'Hard to find a quiet room for one-to-ones. (fake)'])[m]
   from public.roster_member r join public.season sn on sn.id = r.season_id
+  cross join (values (1), (2)) mm(m)
   where sn.id = any (array['efa29a49-a984-4dcd-88bd-fcdc7f1bec3f'::uuid, '4c8f71b3-444a-4947-890a-48210459763d'::uuid, '5b66099a-f61f-4f30-829c-3422ec3cdaf7'::uuid, '940d5fd3-0fb3-4bb0-807e-423892ff8252'::uuid, 'ddaf9075-53af-4204-8678-f5cddf447cf1'::uuid, '659b4ecd-d40e-452b-8b9f-37e34a41237d'::uuid, '802071ca-c82e-4608-80ae-199e58a71787'::uuid, 'd3569669-10c7-4a52-83bf-ab1d15e6d36e'::uuid]) and r.is_core
   on conflict do nothing;
 end $$;
@@ -792,7 +890,7 @@ begin
   end if;
 
   insert into public.contract (person_id, season_id, hourly_rate, estimated_weekly_hours)
-  select r.person_id, r.season_id, case when r.is_core then 45 else 40 end, 4
+  select r.person_id, r.season_id, 40 + (abs(hashtext(r.person_id::text)) % 4) * 5, 3 + abs(hashtext(r.id::text)) % 4
   from public.roster_member r where r.season_id = any (array['efa29a49-a984-4dcd-88bd-fcdc7f1bec3f'::uuid, '4c8f71b3-444a-4947-890a-48210459763d'::uuid, '5b66099a-f61f-4f30-829c-3422ec3cdaf7'::uuid, '940d5fd3-0fb3-4bb0-807e-423892ff8252'::uuid, 'ddaf9075-53af-4204-8678-f5cddf447cf1'::uuid, '659b4ecd-d40e-452b-8b9f-37e34a41237d'::uuid, '802071ca-c82e-4608-80ae-199e58a71787'::uuid, 'd3569669-10c7-4a52-83bf-ab1d15e6d36e'::uuid])
   on conflict do nothing;
 
@@ -806,37 +904,47 @@ begin
   where c.season_id = any (array['efa29a49-a984-4dcd-88bd-fcdc7f1bec3f'::uuid, '4c8f71b3-444a-4947-890a-48210459763d'::uuid, '5b66099a-f61f-4f30-829c-3422ec3cdaf7'::uuid, '940d5fd3-0fb3-4bb0-807e-423892ff8252'::uuid, 'ddaf9075-53af-4204-8678-f5cddf447cf1'::uuid, '659b4ecd-d40e-452b-8b9f-37e34a41237d'::uuid, '802071ca-c82e-4608-80ae-199e58a71787'::uuid, 'd3569669-10c7-4a52-83bf-ab1d15e6d36e'::uuid])
   on conflict do nothing;
 
+  -- Hours follow the documentation (v0.24): Programs and Concerts are the
+  -- documented length of each date played (not absent), Relationship Building
+  -- the minutes logged. Weeks before the last two are approved; the last two
+  -- are mixed (submitted, sent back with a note, not submitted yet); this week
+  -- is a draft.
   with played as (
     select a.person_id, se.residency_id,
            date_trunc('week', (se.starts_at at time zone st.timezone))::date as wk,
-           coalesce(se.scheduled_minutes, 0) as minutes
+           case when se.is_special_event then 'Concerts' else 'Programs' end as category,
+           r.actual_minutes as minutes
     from public.session se
+    join public.session_report r on r.session_id = se.id
     join public.session_assignment a on a.session_id = se.id and a.status <> 'absent'
     join public.location l on l.id = se.location_id
     join public.site st on st.id = l.site_id
     where se.residency_id = any (array['f48a6586-0201-4e93-81ad-28a94efc492d'::uuid, 'cfeac2f1-4700-4130-856e-3a3e284e0d6c'::uuid, '88bbf4f8-63e3-46f1-8c60-0ce5ccf24db1'::uuid, '40d55bbb-a67f-4501-85ec-adf3ba390d2a'::uuid, 'ed63467d-f1f6-4e3e-8fdb-79bf0aed9cf8'::uuid, '7b5b246f-91df-4c8f-8823-9bb8dc4bbaf7'::uuid, '58d45b65-f9f9-43f4-838e-8f97b7eb50d9'::uuid, 'f695ccda-396e-4524-860c-1ffb83b4ffbd'::uuid]) and se.kind = 'group_session'
       and se.schedule_state = 'published' and se.starts_at <= now()
   ),
-  rb as (
-    select person_id, residency_id, date_trunc('week', occurred_on)::date as wk, minutes
-    from public.relationship_activity where residency_id = any (array['f48a6586-0201-4e93-81ad-28a94efc492d'::uuid, 'cfeac2f1-4700-4130-856e-3a3e284e0d6c'::uuid, '88bbf4f8-63e3-46f1-8c60-0ce5ccf24db1'::uuid, '40d55bbb-a67f-4501-85ec-adf3ba390d2a'::uuid, 'ed63467d-f1f6-4e3e-8fdb-79bf0aed9cf8'::uuid, '7b5b246f-91df-4c8f-8823-9bb8dc4bbaf7'::uuid, '58d45b65-f9f9-43f4-838e-8f97b7eb50d9'::uuid, 'f695ccda-396e-4524-860c-1ffb83b4ffbd'::uuid])
-    union all  -- the 15 minutes before and after each program
-    select person_id, residency_id, wk, 30 from played
-  ),
   totals as (
-    select person_id, residency_id, wk, 'Programs' as category, sum(minutes) as minutes from played group by 1, 2, 3
+    select person_id, residency_id, wk, category, sum(minutes) as minutes from played group by 1, 2, 3, 4
     union all
-    select person_id, residency_id, wk, 'Relationship Building', sum(minutes) from rb group by 1, 2, 3
+    select person_id, residency_id, date_trunc('week', occurred_on)::date, 'Relationship Building', sum(minutes)
+    from public.relationship_activity where residency_id = any (array['f48a6586-0201-4e93-81ad-28a94efc492d'::uuid, 'cfeac2f1-4700-4130-856e-3a3e284e0d6c'::uuid, '88bbf4f8-63e3-46f1-8c60-0ce5ccf24db1'::uuid, '40d55bbb-a67f-4501-85ec-adf3ba390d2a'::uuid, 'ed63467d-f1f6-4e3e-8fdb-79bf0aed9cf8'::uuid, '7b5b246f-91df-4c8f-8823-9bb8dc4bbaf7'::uuid, '58d45b65-f9f9-43f4-838e-8f97b7eb50d9'::uuid, 'f695ccda-396e-4524-860c-1ffb83b4ffbd'::uuid]) group by 1, 2, 3
+  ),
+  weeks as (
+    select t.*, case
+      when t.wk = this_week then 'draft'
+      when t.wk < this_week - 14 then 'approved'
+      else (array['submitted','submitted','submitted','submitted','submitted','submitted','returned','draft','draft','draft'])[1 + abs(hashtext(t.person_id::text || t.residency_id::text || t.wk::text)) % 10]
+    end as st
+    from totals t
   )
   insert into public.time_entry (person_id, residency_id, week_starting, time_category_id, hours, source, state,
-                                 submitted_at, approved_by, approved_at)
-  select t.person_id, t.residency_id, t.wk, tc.id, round(t.minutes / 60.0 * 4) / 4,
-         case when t.wk = this_week then 'prefilled' else 'manual' end,
-         (case when t.wk = this_week then 'draft' when t.wk = this_week - 7 then 'submitted' else 'approved' end)::public.time_state,
-         case when t.wk < this_week then (t.wk + 7)::timestamptz + interval '10 hours' end,
-         case when t.wk < this_week - 7 then sa.person_id end,
-         case when t.wk < this_week - 7 then (t.wk + 9)::timestamptz + interval '12 hours' end
-  from totals t
+                                 submitted_at, approved_by, approved_at, returned_note)
+  select t.person_id, t.residency_id, t.wk, tc.id, round(t.minutes / 60.0 * 4) / 4, 'prefilled',
+         (case t.st when 'returned' then 'draft' else t.st end)::public.time_state,
+         case when t.st in ('submitted', 'approved') then (t.wk + 7)::timestamptz + interval '10 hours' end,
+         case when t.st = 'approved' then sa.person_id end,
+         case when t.st = 'approved' then (t.wk + 9)::timestamptz + interval '12 hours' end,
+         case when t.st = 'returned' then 'Please add the Thursday program before I approve. (fake)' end
+  from weeks t
   join public.time_category tc on tc.name = t.category
   join public.staff_assignment sa on sa.residency_id = t.residency_id and sa.role = 'point_person'
   where t.wk <= this_week and t.minutes > 0
@@ -892,4 +1000,42 @@ begin
   cross join lateral (select g::date as m from generate_series(sn.starts_on, sn.ends_on, interval '1 month') g) months
   where pa.billing_basis = 'installments' and pa.residency_id = any (array['f48a6586-0201-4e93-81ad-28a94efc492d'::uuid, 'cfeac2f1-4700-4130-856e-3a3e284e0d6c'::uuid, '88bbf4f8-63e3-46f1-8c60-0ce5ccf24db1'::uuid, '40d55bbb-a67f-4501-85ec-adf3ba390d2a'::uuid, 'ed63467d-f1f6-4e3e-8fdb-79bf0aed9cf8'::uuid, '7b5b246f-91df-4c8f-8823-9bb8dc4bbaf7'::uuid, '58d45b65-f9f9-43f4-838e-8f97b7eb50d9'::uuid, 'f695ccda-396e-4524-860c-1ffb83b4ffbd'::uuid])
   on conflict do nothing;
+end $$;
+
+-- Newer features, each skipped until its tables exist:
+--  - Ring House gets detailed one-to-one notes (v0.21/v0.36): every visit there
+--    has a start and end time, and its residents have (made-up) room numbers.
+--  - Next month's drafts: about half of the musicians playing each building
+--    have marked their dates "Done reviewing" (v0.35).
+do $$
+declare
+  next_month date := (date_trunc('month', current_date) + interval '1 month')::date;
+begin
+  if exists (select 1 from information_schema.columns where table_schema = 'public'
+               and table_name = 'resident' and column_name = 'room') then
+    update public.site set detailed_relationship_notes = true where id = '7ca3c4c5-2a48-4f6d-8171-e470ef856a22';
+    update public.resident set room = (100 + abs(hashtext(id::text)) % 300)::text
+     where site_id = '7ca3c4c5-2a48-4f6d-8171-e470ef856a22' and room is null;
+    update public.relationship_activity ra
+       set start_time = time '09:30' + make_interval(mins => (abs(hashtext(ra.id::text)) % 24) * 15),
+           end_time = time '09:30' + make_interval(mins => (abs(hashtext(ra.id::text)) % 24) * 15 + ra.minutes),
+           note = coalesce(ra.note, '') || ' Spent time on favorite songs from their youth and planned what to play next visit. (fake)'
+     where ra.site_id = '7ca3c4c5-2a48-4f6d-8171-e470ef856a22' and ra.start_time is null;
+    update public.relationship_activity_resident ar set room = r.room
+      from public.resident r, public.relationship_activity ra
+     where r.id = ar.resident_id and ra.id = ar.activity_id and ra.site_id = '7ca3c4c5-2a48-4f6d-8171-e470ef856a22' and ar.room is null;
+  end if;
+
+  if to_regclass('public.schedule_check') is not null then
+    insert into public.schedule_check (residency_id, site_id, month, person_id)
+    select distinct se.residency_id, l.site_id, next_month, a.person_id
+      from public.session se
+      join public.location l on l.id = se.location_id
+      join public.site st on st.id = l.site_id
+      join public.session_assignment a on a.session_id = se.id and a.status <> 'absent'
+     where se.residency_id = any (array['f48a6586-0201-4e93-81ad-28a94efc492d'::uuid, 'cfeac2f1-4700-4130-856e-3a3e284e0d6c'::uuid, '88bbf4f8-63e3-46f1-8c60-0ce5ccf24db1'::uuid, '40d55bbb-a67f-4501-85ec-adf3ba390d2a'::uuid, 'ed63467d-f1f6-4e3e-8fdb-79bf0aed9cf8'::uuid, '7b5b246f-91df-4c8f-8823-9bb8dc4bbaf7'::uuid, '58d45b65-f9f9-43f4-838e-8f97b7eb50d9'::uuid, 'f695ccda-396e-4524-860c-1ffb83b4ffbd'::uuid]) and se.schedule_state = 'draft'
+       and date_trunc('month', se.starts_at at time zone st.timezone)::date = next_month
+       and abs(hashtext(a.person_id::text || l.site_id::text)) % 2 = 0
+    on conflict do nothing;
+  end if;
 end $$;
