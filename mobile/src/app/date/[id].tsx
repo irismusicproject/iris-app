@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Alert, Linking, Text, View } from "react-native";
 import { CANCELLATION_REASON_LABELS, CANCELLATION_REASONS, type CancellationReason } from "@shared/domain/scheduling";
 import { weekStart } from "@shared/domain/documentation";
+import { todayIso } from "@/lib/week";
 import { formatDay, formatTime, localDateTime } from "@shared/domain/time";
 import { Button, Card, Choices, Field, LinkButton, Loading, Muted, Notice, Problem, Screen, Tag, styles } from "@/components/ui";
 import { supabase } from "@/lib/supabase";
@@ -23,7 +24,7 @@ type Row = {
   schedule_state: "draft" | "published" | "canceled";
   is_special_event: boolean;
   residency: { name: string } | null;
-  location: { display_name: string; site: { display_name: string; timezone: string; address: string | null; city: string | null; state: string | null } | null } | null;
+  location: { site_id: string; display_name: string; site: { display_name: string; timezone: string; address: string | null; city: string | null; state: string | null } | null } | null;
   session_assignment: { person_id: string; role: "leader" | "participant"; status: "assigned" | "absent" | "substitute" }[];
   session_report: { id: string } | null;
 };
@@ -44,7 +45,7 @@ export default function DateDetail() {
       const { data, error } = await supabase
         .from("session")
         .select(
-          "id, residency_id, title, starts_at, has_set_time, scheduled_minutes, schedule_state, is_special_event, residency(name), location(display_name, site(display_name, timezone, address, city, state)), session_assignment(person_id, role, status), session_report(id)",
+          "id, residency_id, title, starts_at, has_set_time, scheduled_minutes, schedule_state, is_special_event, residency(name), location(site_id, display_name, site(display_name, timezone, address, city, state)), session_assignment(person_id, role, status), session_report(id)",
         )
         .eq("id", id)
         .maybeSingle();
@@ -157,6 +158,17 @@ export default function DateDetail() {
             }
           />
         </Card>
+      )}
+
+      {!canceled && localDateTime(row.starts_at, tz).date === todayIso() && playing.some((a) => a.person_id === me.id) && row.location && (
+        <Button
+          label={`Log relationship building at ${site?.display_name ?? "this building"}`}
+          kind="secondary"
+          onPress={() => {
+            setMonday(weekStart(todayIso()));
+            router.push({ pathname: "/log", params: { residencyId: row.residency_id, siteId: row.location!.site_id } });
+          }}
+        />
       )}
 
       {iLead && past && !canceled && (

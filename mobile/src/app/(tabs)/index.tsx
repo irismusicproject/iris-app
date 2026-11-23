@@ -55,12 +55,8 @@ export default function Upcoming() {
       .order("starts_at");
     if (error) return setProblem(friendly(error));
     const list = (data ?? []) as unknown as Row[];
-    // Drop anything that already happened today (in the building's time).
-    const now = new Date().toISOString();
-    const upcoming = list.filter((r) => {
-      const tz = r.location?.site?.timezone ?? "America/New_York";
-      return r.starts_at >= now || (!r.has_set_time && localDateTime(r.starts_at, tz).date >= todayIso());
-    });
+    // Today's dates stay all day (to log relationship building after), then earlier days drop off.
+    const upcoming = list.filter((r) => localDateTime(r.starts_at, r.location?.site?.timezone ?? "America/New_York").date >= todayIso());
     setRows(upcoming);
     setProblem(null);
     // Names of the other musicians (names only, DOMAIN-MODEL v0.13).

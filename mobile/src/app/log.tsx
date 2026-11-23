@@ -1,4 +1,4 @@
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { Text, View } from "react-native";
 import { ACTIVITY_KIND_LABELS, ACTIVITY_KINDS, addDays, residentsRequired, type ActivityKind } from "@shared/domain/documentation";
@@ -20,15 +20,18 @@ const toMin = (t: string | null) => (t ? Number(t.slice(0, 2)) * 60 + Number(t.s
 
 export default function LogActivity() {
   const router = useRouter();
+  // Opened from a date ("Log relationship building here"): start at that program and building.
+  const from = useLocalSearchParams<{ residencyId?: string; siteId?: string }>();
   const { me, week, reload } = useWeek();
   const programs = week?.programs ?? [];
   const lengths = week?.lengths ?? {};
   const usual = (rid: string, k: ActivityKind) => (lengths[rid]?.[k] ? String(lengths[rid]![k]) : "");
   const days = week ? Array.from({ length: 7 }, (_, i) => addDays(week.monday, i)).filter((d) => d <= week.today) : [];
 
-  const [residencyId, setResidencyId] = useState(programs[0]?.id ?? "");
+  const startProgram = programs.find((p) => p.id === from.residencyId) ?? programs[0];
+  const [residencyId, setResidencyId] = useState(startProgram?.id ?? "");
   const program = programs.find((p) => p.id === residencyId);
-  const [siteId, setSiteId] = useState(program?.sites[0]?.id ?? "");
+  const [siteId, setSiteId] = useState(program?.sites.find((x) => x.id === from.siteId)?.id ?? program?.sites[0]?.id ?? "");
   const [kind, setKind] = useState<ActivityKind>("one_to_one");
   const [minutes, setMinutes] = useState(usual(residencyId, "one_to_one"));
   const [date, setDate] = useState(days[days.length - 1] ?? "");
