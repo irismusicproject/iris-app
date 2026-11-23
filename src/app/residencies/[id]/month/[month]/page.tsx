@@ -185,6 +185,7 @@ export default async function MonthPage({
       locationId: s.location_id,
       roomLabel: s.location?.display_name ?? "",
       isSpecialEvent: s.is_special_event,
+      isOneTime: !s.series_id,
       state: s.schedule_state,
       cancellationReason: s.cancellation_reason,
       publicNote: s.public_note,
