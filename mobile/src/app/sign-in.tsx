@@ -1,6 +1,6 @@
 import { Redirect } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { Input, Screen } from "@/components/ui";
 import { isValidEmail, normalizeCode } from "@shared/auth/password";
 import { useSession } from "@/lib/session";
@@ -76,7 +76,7 @@ export default function SignIn() {
   return (
     <Screen style={styles.screen} contentStyle={styles.scroll}>
         <View style={styles.card}>
-          <Text style={styles.title}>Iris Music Project</Text>
+          <Image source={require("@/assets/images/iris-logo.png")} style={styles.logo} resizeMode="contain" accessibilityLabel="Iris Music Project" />
           {process.env.EXPO_PUBLIC_IRIS_ENVIRONMENT === "staging" && <Text style={styles.hint}>Test version: staging, fake data only.</Text>}
           {!isConfigured && <Text style={styles.error}>This build isn&apos;t connected to Iris yet (mobile/.env.local is empty).</Text>}
 
@@ -170,6 +170,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.irisSoft },
   scroll: { flexGrow: 1, justifyContent: "center", padding: 24 },
   card: { backgroundColor: colors.white, borderRadius: 16, padding: 24, gap: 8, borderWidth: 1, borderColor: colors.border },
+  logo: { width: 140, height: 122, alignSelf: "center", marginBottom: 8 },
   title: { fontSize: 22, fontWeight: "700", color: colors.iris, marginBottom: 8 },
   label: { fontSize: 14, fontWeight: "600", color: colors.text, marginTop: 8 },
   input: { borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 12, fontSize: 16, color: colors.text },
