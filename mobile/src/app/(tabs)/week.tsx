@@ -134,9 +134,12 @@ export default function MyWeek() {
               );
             })}
             {week.ledFuture.length > 0 && (
-              <Muted>
-                Later this week: {week.ledFuture.map((s) => `${s.title} (${formatDay(s.starts_at, siteTimezone(week, s))})`).join(", ")}. Document after they happen.
-              </Muted>
+              <View style={{ gap: 6 }}>
+                <Muted>Later this week (document after they happen):</Muted>
+                {week.ledFuture.map((s) => (
+                  <LinkButton key={s.id} label={`${s.title}, ${formatDay(s.starts_at, siteTimezone(week, s))}`} onPress={() => router.push({ pathname: "/date/[id]", params: { id: s.id } })} />
+                ))}
+              </View>
             )}
             {week.playedNotLed > 0 && (
               <Muted>
