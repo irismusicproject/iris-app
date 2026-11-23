@@ -1,6 +1,6 @@
 # Iris App — Domain Model (Language 1: the code)
 
-_Draft v0.34, November 22, 2026 (v0.34: weekly programs listed by building and set up from each building's month view; month by month first on the season view; a weekly program can skip a week of the month ("No Program" that day); end a weekly program mid-season or delete a duplicate. v0.33: admins merge two people into one. v0.32: admins change anyone's email, with safeguards against typos. v0.31: a point person who also plays in their program may approve their own hours. v0.30: admins add people without inviting them, and set up people, buildings, programs, rosters and weekly programs from one spreadsheet. v0.29: approved weeks are final; approval waits until the week's programs are documented. v0.28: answers to Ryan's nine scheduling questions; permissions table brought up to date. v0.27: roster musicians' phone and instruments shown to the program's people. v0.26: community contacts per building built; staff phone and email on program pages and a staff directory on Home; links on Home. v0.25: answers to the schema review: subs, leaders, locked after review, history after a season. v0.24: shared relationship-building logs; the documented building; pay only for documented hours; deadline reminders and No Program emails through one outbox; Follow-up page with missing work and metrics; staff roles. v0.23: overhead switched on or off on the contract; stipend lines can be left off each month; custom invoices typed by hand. v0.22: community invoices built; billable hours are now per musician and count once the point person approves the week (revises D9); drafts live, sent invoices frozen; admins only. v0.21: less double entry for musicians: usual type per program, usual relationship-building lengths, "Same as last time", one "Submit my week"; detailed one-to-one notes and a daily Word document per site. v0.20: program length set once by the point person or an admin; leaders change it only if a session ran longer or shorter. v0.19: musician hours and invoices built: hours entered on My week, the point person approves, admins set rates and stipends, invoices per two-week pay period; "Collab?" is Yes/No and every Yes counts as co-led; the collaboration target is set per season by the point person or an admin. v0.18: roles narrowed: the point person plans, the Admin Lead publishes and updates published dates, musicians edit drafts they play in and pick leaders; monthly programs. v0.17: "No Program" dates can be restored. v0.16: season view for the point person. v0.15: usual leaders, season reminders, private calendar links. v0.14: documentation from the CESLC workbook sample, weekly; musicians write draft notes; schedule laid out like the workbook tab. v0.13: people in a program can see each other's names, nothing else. v0.12: every roster musician edits draft titles, rooms and musicians; the point person assigns leaders. v0.11: `Partner`, `Site`, `Location` built; see section 1. v0.10: scheduled relationship building (e.g. Lessons) and the partner calendar layout; v0.9: partner permission for resident names confirmed; v0.8: decisions D14 and D15 settled: residents and attendance; v0.7: decisions D10, D11 and D16 settled: events, extras, absences, substitutes and the roster; v0.6: both D9 billing details confirmed; v0.5: decisions D9 and D13 settled: partner billing and version 1 scope; v0.4: decisions D2, D4, D6, D7 and D8 settled; v0.3: decisions D1, D3 and D5 settled, including how a month's schedule is reviewed, published and sent; v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
+_Draft v0.35, November 22, 2026 (v0.35: musicians mark a building's draft month "Done reviewing"; the point person sees a checklist and gets one email when everyone is done. v0.34: weekly programs listed by building and set up from each building's month view; month by month first on the season view; a weekly program can skip a week of the month ("No Program" that day); end a weekly program mid-season or delete a duplicate. v0.33: admins merge two people into one. v0.32: admins change anyone's email, with safeguards against typos. v0.31: a point person who also plays in their program may approve their own hours. v0.30: admins add people without inviting them, and set up people, buildings, programs, rosters and weekly programs from one spreadsheet. v0.29: approved weeks are final; approval waits until the week's programs are documented. v0.28: answers to Ryan's nine scheduling questions; permissions table brought up to date. v0.27: roster musicians' phone and instruments shown to the program's people. v0.26: community contacts per building built; staff phone and email on program pages and a staff directory on Home; links on Home. v0.25: answers to the schema review: subs, leaders, locked after review, history after a season. v0.24: shared relationship-building logs; the documented building; pay only for documented hours; deadline reminders and No Program emails through one outbox; Follow-up page with missing work and metrics; staff roles. v0.23: overhead switched on or off on the contract; stipend lines can be left off each month; custom invoices typed by hand. v0.22: community invoices built; billable hours are now per musician and count once the point person approves the week (revises D9); drafts live, sent invoices frozen; admins only. v0.21: less double entry for musicians: usual type per program, usual relationship-building lengths, "Same as last time", one "Submit my week"; detailed one-to-one notes and a daily Word document per site. v0.20: program length set once by the point person or an admin; leaders change it only if a session ran longer or shorter. v0.19: musician hours and invoices built: hours entered on My week, the point person approves, admins set rates and stipends, invoices per two-week pay period; "Collab?" is Yes/No and every Yes counts as co-led; the collaboration target is set per season by the point person or an admin. v0.18: roles narrowed: the point person plans, the Admin Lead publishes and updates published dates, musicians edit drafts they play in and pick leaders; monthly programs. v0.17: "No Program" dates can be restored. v0.16: season view for the point person. v0.15: usual leaders, season reminders, private calendar links. v0.14: documentation from the CESLC workbook sample, weekly; musicians write draft notes; schedule laid out like the workbook tab. v0.13: people in a program can see each other's names, nothing else. v0.12: every roster musician edits draft titles, rooms and musicians; the point person assigns leaders. v0.11: `Partner`, `Site`, `Location` built; see section 1. v0.10: scheduled relationship building (e.g. Lessons) and the partner calendar layout; v0.9: partner permission for resident names confirmed; v0.8: decisions D14 and D15 settled: residents and attendance; v0.7: decisions D10, D11 and D16 settled: events, extras, absences, substitutes and the roster; v0.6: both D9 billing details confirmed; v0.5: decisions D9 and D13 settled: partner billing and version 1 scope; v0.4: decisions D2, D4, D6, D7 and D8 settled; v0.3: decisions D1, D3 and D5 settled, including how a month's schedule is reviewed, published and sent; v0.2: `Person` rules confirmed and built; see section 7). This is the **authoritative** definition of the
 app's objects. GLOSSARY.md translates the team's language (Language 2) and
 our partner-facing language (Language 3) into these objects._
 
@@ -574,6 +574,29 @@ drafting rules below where they differ)**
 - **Change history:** removing a musician from a draft date doesn't need recording (Q6).
 - **Deactivated people** can't be put on a date or made leader, and a month can't publish with one on it; the app names who to replace (Q9).
 
+### `ScheduleCheck`
+A musician's **"Done reviewing"** for one building's draft month (v0.35,
+Lauren, Nov 22, 2026): they've looked over the dates they play there.
+
+| Attribute | Type | Notes |
+|---|---|---|
+| `residency_id`, `site_id`, `month` | → Residency, → Site, year-month | One per building and month, like `CalendarExport` |
+| `person_id` | → Person | The musician. Unique with the three above |
+| `checked_at` | datetime | When they clicked "Done reviewing my dates" |
+| `changed_at` | datetime | Set when **they** change a date there afterwards; the checklist shows "done, changed since" until they mark done again |
+
+- **Who:** a current roster musician playing (not absent) a date at that
+  building that month that isn't "No Program"; until the month is marked
+  reviewed. They can undo it.
+- **Checklist:** the month view shows everyone playing that month, done or
+  not yet, to the program's people.
+- **Email:** when everyone playing is done, the point person(s) get one
+  email (`Notification` kind `schedule_checked`), once per building and
+  month.
+- **Not required:** the point person can mark the month reviewed anyway; the
+  confirmation names who isn't done yet. Their dates then lock as usual.
+- Musicians can still edit their draft dates after "Done", until review.
+
 **Locked after review (v0.25, Lauren, Nov 22, 2026):** once the point person
 marks a month reviewed, its drafts are locked for musicians; only the
 point person and admins change them, and the Admin Lead publishes.
@@ -596,6 +619,8 @@ contractor (`RosterMember.is_admin_lead`).
    (e.g. "Ben off", never printed; v0.14), **room**, and **who plays**
    (adding or removing roster musicians as participants). Titles are typed
    without musicians' names; the calendar adds "with [first names]" (D12).
+   When their dates are right, each musician clicks **"Done reviewing my
+   dates"** for that building (`ScheduleCheck`, v0.35).
    The schedule screen is laid out like the workbook scheduling tab: Day,
    Time, Program Title, Program Leader, Notes. Titles lock when the month is
    published (decided Nov 22, 2026). For **special events** they can also change the **date
@@ -974,6 +999,7 @@ Admins see every message on the **Outbox** page.
 | `deadline_missed` | Right after the Tuesday 5 pm deadline (D7), if still missing | The musician |
 | `deadline_missed_summary` | Same time: who is missing | The point person(s) |
 | `deadline_nudge` | Every morning after that, until it's submitted (up to 4 weeks back) | The musician |
+| `schedule_checked` | Once everyone playing at a building that month is "Done reviewing" (v0.35) | The program's point person(s) |
 
 Times are in the program's time zone. A scheduler (Ryan's side) calls the
 app every few minutes; each message goes out once.
@@ -1039,6 +1065,7 @@ Permissions come from **relationships**, not job titles.
 | Approve or send back hours; see the Follow-up page | The current point person; admins |
 | Publish a month and download its partner calendar (after review); update **published** dates (time, room, title, notes, who plays, leader in one step, "No Program", restore); add one-time events; "No Program" on any **draft** date in the program | The Admin Lead (`RosterMember.is_admin_lead`, current season); the point person; admins |
 | On **draft dates they play in**, until the month is marked reviewed: title, notes, room, who plays, swap an existing leader, "No Program"; date and time of special events | Any current `RosterMember` playing that date |
+| Mark own dates "Done reviewing" for a building's draft month, or undo it, until it's reviewed (v0.35) | Any current `RosterMember` playing there that month |
 | Mark self absent on a published date and name a substitute (any active person; joins the roster if needed) | A musician assigned to that date (D11) |
 | Be put on a date or made leader | Active people only (v0.28) |
 | See a program's sessions, buildings and community contacts | Its current roster, point person and admins |

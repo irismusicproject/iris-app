@@ -617,6 +617,38 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"schedule_check": {
+                  Row: {
+                    "changed_at": string | null,"checked_at": string,"id": string,"month": string,"person_id": string,"residency_id": string,"site_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "changed_at"?: string | null,"checked_at"?: string,"id"?: string,"month": string,"person_id": string,"residency_id": string,"site_id": string
+                  }
+                  Update: {
+                    "changed_at"?: string | null,"checked_at"?: string,"id"?: string,"month"?: string,"person_id"?: string,"residency_id"?: string,"site_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "schedule_check_person_id_fkey"
+      columns: ["person_id"]
+isOneToOne: false
+      referencedRelation: "person"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "schedule_check_residency_id_fkey"
+      columns: ["residency_id"]
+isOneToOne: false
+      referencedRelation: "residency"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "schedule_check_site_id_fkey"
+      columns: ["site_id"]
+isOneToOne: false
+      referencedRelation: "site"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"season": {
                   Row: {
                     "created_at": string,"ends_on": string,"id": string,"kind": Database["public"]['Enums']["season_kind"],"name": string,"residency_id": string,"starts_on": string,"updated_at": string
@@ -998,6 +1030,9 @@ isOneToOne: false
 "end_series":
 { Args: { "p_last": string,"p_series": string }; Returns: Json
                            },
+"flag_schedule_check_changed":
+{ Args: { "p_session": string }; Returns: undefined
+                           },
 "generate_residency_month":
 { Args: { "p_month": string,"p_residency": string }; Returns: number
                            },
@@ -1055,6 +1090,9 @@ isOneToOne: false
 "mark_month_reviewed":
 { Args: { "p_month": string,"p_residency": string,"p_site": string }; Returns: string
                            },
+"mark_schedule_checked":
+{ Args: { "p_month": string,"p_residency": string,"p_site": string }; Returns: boolean
+                           },
 "may_change_approved":
 { Args: Record<PropertyKey, never>; Returns: boolean
                            },
@@ -1070,6 +1108,9 @@ isOneToOne: false
 { Args: { "p_residency": string,"p_week": string }; Returns: {
               "documented_minutes": number,"hours_state": string,"person_id": string,"undocumented": number
             }[]
+                           },
+"month_players":
+{ Args: { "p_month": string,"p_residency": string,"p_site": string }; Returns: string[]
                            },
 "month_sessions":
 { Args: { "p_month": string,"p_residency": string,"p_site": string }; Returns: string[]
@@ -1145,6 +1186,9 @@ isOneToOne: false
                            },
 "tidy_series_dates":
 { Args: { "p_series": string }; Returns: Json
+                           },
+"undo_schedule_checked":
+{ Args: { "p_month": string,"p_residency": string,"p_site": string }; Returns: undefined
                            },
 "undocumented_led_sessions":
 { Args: { "p_person": string,"p_residency": string,"p_week": string }; Returns: {

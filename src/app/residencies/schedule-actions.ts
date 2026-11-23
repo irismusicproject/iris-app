@@ -147,6 +147,33 @@ export async function deleteSeries(residencyId: string, seriesId: string): Promi
   return { status: "saved", removed: data as number };
 }
 
+// "Done reviewing" (v0.35): a musician has checked their dates at one building for one draft month.
+export async function markScheduleChecked(residencyId: string, siteId: string, month: string): Promise<ScheduleResult & { allDone?: boolean }> {
+  await requirePerson();
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("mark_schedule_checked", { p_residency: residencyId, p_site: siteId, p_month: `${month}-01` });
+  if (error) {
+    if (error.message.includes("already been reviewed")) return { status: "error", message: "The point person has already marked this month reviewed. Ask them for any changes." };
+    if (error.message.includes("aren't playing")) return { status: "error", message: "You aren't playing at this building this month." };
+    return fail(error);
+  }
+  if (data) await deliverSoon();
+  refresh(residencyId);
+  return { status: "saved", allDone: Boolean(data) };
+}
+
+export async function undoScheduleChecked(residencyId: string, siteId: string, month: string): Promise<ScheduleResult> {
+  await requirePerson();
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("undo_schedule_checked", { p_residency: residencyId, p_site: siteId, p_month: `${month}-01` });
+  if (error) {
+    if (error.message.includes("already been reviewed")) return { status: "error", message: "The point person has already marked this month reviewed." };
+    return fail(error);
+  }
+  refresh(residencyId);
+  return ok;
+}
+
 export async function fillMonth(residencyId: string, month: string): Promise<ScheduleResult & { created?: number }> {
   await requirePerson();
   const supabase = await createClient();

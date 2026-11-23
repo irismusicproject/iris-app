@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { recurrenceLabel, SESSION_KIND_LABELS, type CancellationReason, type Series, type SessionKind } from "@/shared/domain/scheduling";
 import { formatDay, formatMonth, formatTime, isMonth, localDateTime, monthWindow, shiftMonth } from "@/shared/domain/time";
 import { AddOneTimeForm, FillMonthButton } from "../month-controls";
-import { PublishPanel } from "../publish-panel";
+import { PublishPanel, type ScheduleCheckRow } from "../publish-panel";
 import { ScheduleHeader, SessionCard, type CardSession } from "../session-card";
 import { DeleteSeriesButton, EndSeriesForm, SeriesForm } from "../../season/series-form";
 
@@ -130,6 +130,12 @@ export default async function MonthPage({
       .or(`active_until.is.null,active_until.gte.${month}-01`),
     supabase.from("interaction_type").select("id, name").eq("active", true).order("sort_order"),
   ]);
+  const { data: checkRows } = await supabase
+    .from("schedule_check")
+    .select("person_id, changed_at")
+    .eq("residency_id", id)
+    .eq("site_id", site.id)
+    .eq("month", `${month}-01`);
   const siteSeries = ((seriesRows ?? []) as unknown as SeriesRow[])
     .filter((x) => x.location?.site_id === site.id && x.active_from < `${shiftMonth(month, 1)}-01`)
     .sort((a, b) => Math.min(...a.weekdays) - Math.min(...b.weekdays) || (a.start_time ?? "99").localeCompare(b.start_time ?? "99"));
@@ -207,6 +213,16 @@ export default async function MonthPage({
   const others = sessions.filter((s) => !s.is_special_event && !s.series_id);
 
   const latest = versions?.at(-1);
+  // "Done reviewing" checklist (v0.35): everyone playing a date here this month that isn't "No Program".
+  const players = new Set(
+    sessions.filter((s) => s.schedule_state !== "canceled").flatMap((s) => s.session_assignment.filter((a) => a.status !== "absent").map((a) => a.person_id)),
+  );
+  const checks: ScheduleCheckRow[] = [...players]
+    .map((pid) => {
+      const c = (checkRows ?? []).find((r) => r.person_id === pid);
+      return { personId: pid, name: firstName(nameOf(pid)), done: Boolean(c), changedSince: Boolean(c?.changed_at) };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
   const stateLabel = !latest
     ? "Draft: not reviewed yet"
     : latest.state === "reviewed"
@@ -369,6 +385,8 @@ export default async function MonthPage({
           canSchedule={access.canSchedule || access.isAdminLead}
           draftCount={drafts}
           needLeader={needLeader}
+          checks={checks}
+          myId={person.id}
         />
       )}
 
