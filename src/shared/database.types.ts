@@ -417,14 +417,14 @@ isOneToOne: false
                   ]
                 },"relationship_activity": {
                   Row: {
-                    "collaborative": boolean,"created_at": string,"end_time": string | null,"id": string,"kind": Database["public"]['Enums']["activity_kind"],"minutes": number,"note": string | null,"occurred_on": string,"person_id": string,"residency_id": string,"session_id": string | null,"site_id": string,"start_time": string | null,"updated_at": string,"visit_room": string | null
+                    "collaborative": boolean,"created_at": string,"end_time": string | null,"id": string,"kind": Database["public"]['Enums']["activity_kind"],"minutes": number,"note": string | null,"occurred_on": string,"person_id": string,"residency_id": string,"session_id": string | null,"site_id": string,"start_time": string | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "collaborative"?: boolean,"created_at"?: string,"end_time"?: string | null,"id"?: string,"kind": Database["public"]['Enums']["activity_kind"],"minutes": number,"note"?: string | null,"occurred_on": string,"person_id": string,"residency_id": string,"session_id"?: string | null,"site_id": string,"start_time"?: string | null,"updated_at"?: string,"visit_room"?: string | null
+                    "collaborative"?: boolean,"created_at"?: string,"end_time"?: string | null,"id"?: string,"kind": Database["public"]['Enums']["activity_kind"],"minutes": number,"note"?: string | null,"occurred_on": string,"person_id": string,"residency_id": string,"session_id"?: string | null,"site_id": string,"start_time"?: string | null,"updated_at"?: string
                   }
                   Update: {
-                    "collaborative"?: boolean,"created_at"?: string,"end_time"?: string | null,"id"?: string,"kind"?: Database["public"]['Enums']["activity_kind"],"minutes"?: number,"note"?: string | null,"occurred_on"?: string,"person_id"?: string,"residency_id"?: string,"session_id"?: string | null,"site_id"?: string,"start_time"?: string | null,"updated_at"?: string,"visit_room"?: string | null
+                    "collaborative"?: boolean,"created_at"?: string,"end_time"?: string | null,"id"?: string,"kind"?: Database["public"]['Enums']["activity_kind"],"minutes"?: number,"note"?: string | null,"occurred_on"?: string,"person_id"?: string,"residency_id"?: string,"session_id"?: string | null,"site_id"?: string,"start_time"?: string | null,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -481,14 +481,14 @@ isOneToOne: false
                   ]
                 },"relationship_activity_resident": {
                   Row: {
-                    "activity_id": string,"resident_id": string
+                    "activity_id": string,"resident_id": string,"room": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "activity_id": string,"resident_id": string
+                    "activity_id": string,"resident_id": string,"room"?: string | null
                   }
                   Update: {
-                    "activity_id"?: string,"resident_id"?: string
+                    "activity_id"?: string,"resident_id"?: string,"room"?: string | null
                   }
                   Relationships: [
                     {
@@ -553,14 +553,14 @@ isOneToOne: false
                   ]
                 },"resident": {
                   Row: {
-                    "active": boolean,"created_at": string,"created_by": string | null,"disambiguator": string,"display_name": string,"id": string,"site_id": string
+                    "active": boolean,"created_at": string,"created_by": string | null,"disambiguator": string,"display_name": string,"id": string,"room": string | null,"site_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "active"?: boolean,"created_at"?: string,"created_by"?: string | null,"disambiguator"?: string,"display_name": string,"id"?: string,"site_id": string
+                    "active"?: boolean,"created_at"?: string,"created_by"?: string | null,"disambiguator"?: string,"display_name": string,"id"?: string,"room"?: string | null,"site_id": string
                   }
                   Update: {
-                    "active"?: boolean,"created_at"?: string,"created_by"?: string | null,"disambiguator"?: string,"display_name"?: string,"id"?: string,"site_id"?: string
+                    "active"?: boolean,"created_at"?: string,"created_by"?: string | null,"disambiguator"?: string,"display_name"?: string,"id"?: string,"room"?: string | null,"site_id"?: string
                   }
                   Relationships: [
                     {
@@ -1132,8 +1132,14 @@ isOneToOne: false
 "session_local_date":
 { Args: { "p_session": string }; Returns: string
                            },
+"set_resident_room":
+{ Args: { "p_resident": string,"p_room": string }; Returns: undefined
+                           },
 "set_series_leader":
 { Args: { "p_person": string,"p_series": string }; Returns: number
+                           },
+"site_has_detailed_notes":
+{ Args: { "p_site": string }; Returns: boolean
                            },
 "staff_directory":
 { Args: Record<PropertyKey, never>; Returns: {

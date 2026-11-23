@@ -100,7 +100,7 @@ D1: the review suggested "Ensemble Program"; the model uses `Residency`).
 | D11 | Absences, substitutes, cancellation reasons | **Decided:** planned absences become "No Program"; musicians record their own sub; missed-session limit warns (value not set yet) |
 | D12 | Titles separate from personnel and location | Adopted |
 | D13 | Workbook functions in or out of version 1 | **Decided:** monthly reflections and blackout dates in; repertoire and meeting notes out |
-| D14 | Residents as records; how they're identified | **Decided:** first name + last initial, added by musicians as they work; roster + point person + admins see them; partners confirmed comfortable |
+| D14 | Residents as records; how they're identified | **Decided:** first name + last initial, added by musicians as they work; roster + point person + admins see them; partners confirmed comfortable. Nov 22: room numbers too, only at detailed-notes buildings (partners comfortable) |
 | D15 | Attendance counting; individually led vs. multi-musician | **Decided:** one total of everyone present; led-by derived from musician count |
 | D16 | Ensemble vs. roster (`RosterMember.is_core`) | **Decided:** roster = everyone who plays that season; core = ensemble; subs join as non-core |
 

@@ -57,7 +57,6 @@ export async function logActivity(_prev: DocResult, form: FormData): Promise<Doc
   // Detailed-notes buildings (v0.36): room, start and end time, and a note are
   // required, and minutes come from the times. The database checks the same.
   const detailed = form.get("detailed") === "1";
-  const visitRoom = String(form.get("visit_room") ?? "").trim();
   const startTime = String(form.get("start_time") ?? "");
   const endTime = String(form.get("end_time") ?? "");
   const note = String(form.get("note") ?? "").trim();
@@ -73,8 +72,6 @@ export async function logActivity(_prev: DocResult, form: FormData): Promise<Doc
   if (!/^\d{4}-\d{2}-\d{2}$/.test(occurredOn)) e.occurred_on = "Enter the date.";
   if (!ACTIVITY_KINDS.includes(kind)) e.kind = "Pick a type.";
   if (detailed) {
-    if (!visitRoom) e.visit_room = "Enter the room.";
-    else if (visitRoom.length > 60) e.visit_room = "Keep the room short.";
     if (toMin(startTime) == null) e.start_time = "Enter the start time.";
     if (toMin(endTime) == null) e.end_time = "Enter the end time.";
     else if (toMin(startTime) != null && minutes < 1) e.end_time = "The end must be after the start.";
@@ -84,16 +81,40 @@ export async function logActivity(_prev: DocResult, form: FormData): Promise<Doc
   if (newNames.some((n) => n.length > 80)) e.new_residents = "Keep each name short: first name and last initial.";
   if (ACTIVITY_KINDS.includes(kind) && residentsRequired(kind) && !residentIds.length && !newNames.length)
     e.residents = "Pick or add at least one resident.";
+  // Residents' rooms (detailed-notes buildings, v0.36): one for each resident picked or added.
+  const roomOf = (key: string) => String(form.get(key) ?? "").trim();
+  const pickedRooms = residentIds.map((id) => ({ id, room: roomOf(`room_${id}`) }));
+  const newRooms = newNames.map((_, i) => roomOf(`new_room_${i}`));
+  if (detailed && (pickedRooms.some((r) => !r.room) || newRooms.some((r) => !r))) e.rooms = "Enter a room number for each resident.";
+  if (detailed && [...pickedRooms.map((r) => r.room), ...newRooms].some((r) => r.length > 30)) e.rooms = "Keep room numbers short.";
   if (Object.keys(e).length) return { status: "error", errors: e };
 
   const supabase = await createClient();
+  const linkRooms = new Map<string, string | null>();
+  if (detailed) {
+    for (const r of pickedRooms) {
+      const { error: roomError } = await supabase.rpc("set_resident_room", { p_resident: r.id, p_room: r.room });
+      if (roomError) return fail(roomError);
+      linkRooms.set(r.id, r.room);
+    }
+  }
   // New residents (first name + last initial). Reuse one that already exists.
-  for (const name of newNames) {
+  for (const [i, name] of newNames.entries()) {
+    const room = detailed ? newRooms[i] : null;
     const { data: found } = await supabase.from("resident").select("id").eq("site_id", siteId).ilike("display_name", name).eq("disambiguator", "").maybeSingle();
-    if (found) { residentIds.push(found.id); continue; }
-    const { data, error } = await supabase.from("resident").insert({ site_id: siteId, display_name: name, created_by: person.id }).select("id").single();
+    if (found) {
+      if (room) {
+        const { error: roomError } = await supabase.rpc("set_resident_room", { p_resident: found.id, p_room: room });
+        if (roomError) return fail(roomError);
+      }
+      residentIds.push(found.id);
+      linkRooms.set(found.id, room);
+      continue;
+    }
+    const { data, error } = await supabase.from("resident").insert({ site_id: siteId, display_name: name, created_by: person.id, room }).select("id").single();
     if (error) return fail(error);
     residentIds.push(data.id);
+    linkRooms.set(data.id, room);
   }
   const { data: activity, error } = await supabase
     .from("relationship_activity")
@@ -107,7 +128,7 @@ export async function logActivity(_prev: DocResult, form: FormData): Promise<Doc
       minutes,
       collaborative: form.get("collaborative") === "yes",
       note: note || null,
-      ...(detailed ? { visit_room: visitRoom, start_time: startTime, end_time: endTime } : {}),
+      ...(detailed ? { start_time: startTime, end_time: endTime } : {}),
     })
     .select("id")
     .single();
@@ -121,7 +142,7 @@ export async function logActivity(_prev: DocResult, form: FormData): Promise<Doc
   if (residentIds.length) {
     const { error: linkError } = await supabase
       .from("relationship_activity_resident")
-      .insert([...new Set(residentIds)].map((resident_id) => ({ activity_id: activity.id, resident_id })));
+      .insert([...new Set(residentIds)].map((resident_id) => ({ activity_id: activity.id, resident_id, room: linkRooms.get(resident_id) ?? null })));
     if (linkError) return fail(linkError);
   }
   revalidatePath("/documentation");

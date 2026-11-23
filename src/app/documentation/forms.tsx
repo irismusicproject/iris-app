@@ -165,7 +165,7 @@ export function ActivityForm({
   colleagues = {},
 }: {
   programs: Program[];
-  residents: { id: string; siteId: string; name: string }[];
+  residents: { id: string; siteId: string; name: string; room?: string | null }[];
   defaultDate: string;
   minDate: string;
   maxDate: string;
@@ -187,6 +187,7 @@ export function ActivityForm({
   const [picked, setPicked] = useState<string[]>([]);
   const [withIds, setWithIds] = useState<string[]>([]);
   // Detailed-notes buildings (v0.36): room and start/end time; minutes come from the times.
+  const [newNames, setNewNames] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [seen, setSeen] = useState(state.savedAt);
@@ -199,9 +200,11 @@ export function ActivityForm({
     setMinutes(usual(residencyId, kind));
     setStartTime("");
     setEndTime("");
+    setNewNames("");
   }
   const siteResidents = useMemo(() => residents.filter((r) => r.siteId === siteId), [residents, siteId]);
   const detailed = !!program?.sites.find((x) => x.id === siteId)?.detailedNotes;
+  const newList = newNames.split(",").map((n) => n.trim().replace(/\s+/g, " ")).filter(Boolean);
   const toMin = (t: string) => (/^\d{2}:\d{2}$/.test(t) ? Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5)) : null);
   const span = toMin(startTime) != null && toMin(endTime) != null ? toMin(endTime)! - toMin(startTime)! : null;
   const lastUsable = last && programs.some((p) => p.id === last.residencyId && p.sites.some((x) => x.id === last.siteId));
@@ -267,9 +270,6 @@ export function ActivityForm({
         </Field>
         {detailed && (
           <>
-            <Field label="Room" hint="Where the visit happened, e.g. “312” or “Library”." error={e?.visit_room}>
-              <input name="visit_room" maxLength={60} required className={inputClass} />
-            </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Start time" error={e?.start_time}>
                 <input name="start_time" type="time" value={startTime} onChange={(ev) => setStartTime(ev.target.value)} required className={inputClass} />
@@ -323,9 +323,34 @@ export function ActivityForm({
             hint="First name and last initial, separated by commas, e.g. “Ruth K., Sam P.”. No health information."
             error={e?.new_residents}
           >
-            <input name="new_residents" className={inputClass} />
+            <input name="new_residents" value={newNames} onChange={(ev) => setNewNames(ev.target.value)} className={inputClass} />
           </Field>
         </div>
+        {detailed && (picked.length > 0 || newList.length > 0) && (
+          <div className="mt-3 rounded-lg border border-border p-3">
+            <p className="text-sm font-medium">Room numbers</p>
+            <p className="text-xs text-muted">Saved with each resident and filled in next time. Change it if they&apos;ve moved.</p>
+            {e?.rooms && <p className="text-xs text-red-600 dark:text-red-400">{e.rooms}</p>}
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              {picked.map((id) => {
+                const r = siteResidents.find((x) => x.id === id);
+                if (!r) return null;
+                return (
+                  <label key={id} className="flex items-center gap-2 text-sm">
+                    <span className="min-w-24">{r.name}</span>
+                    <input name={`room_${id}`} defaultValue={r.room ?? ""} maxLength={30} required placeholder="Room" className={`${inputClass} py-1.5`} />
+                  </label>
+                );
+              })}
+              {newList.map((n, i) => (
+                <label key={`${i}-${n}`} className="flex items-center gap-2 text-sm">
+                  <span className="min-w-24">{n} (new)</span>
+                  <input name={`new_room_${i}`} maxLength={30} required placeholder="Room" className={`${inputClass} py-1.5`} />
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
       </fieldset>
       {(colleagues[residencyId]?.length ?? 0) > 0 && (
         <fieldset>
