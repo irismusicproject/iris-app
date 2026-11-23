@@ -17,6 +17,9 @@
 //      (point_person) on the FIRST residency, and the musicians join that
 //      residency's current season roster (Admin Lead, core musician,
 //      non-core substitute).
+//   4. every fake person from supabase/seed.sql (an @example.com address and
+//      a name ending "(fake)") gets the same password, so people can explore
+//      staging as any musician or staff member (Lauren, Nov 22, 2026).
 // It changes nothing else, except one case: if the season's Admin Lead is a
 // fake seed person (an @example.com address), the Admin Lead persona takes
 // over that role, because a season has at most one Admin Lead.
@@ -217,4 +220,28 @@ for (const persona of personas) {
   }
   console.log(`✓ ${persona.label.padEnd(20)} ${email}  ${notes.join(", ")}`);
 }
+// --- Fake seed people: same password, so anyone can sign in as them ------------
+const { data: fakes, error: fakeErr } = await db
+  .from("person")
+  .select("id, name, email, active")
+  .like("email", "%@example.com")
+  .like("name", "%(fake)")
+  .order("name");
+if (fakeErr) fail(`read fake people: ${fakeErr.message}`);
+let fakeCount = 0;
+for (const f of fakes ?? []) {
+  const existing = users.find((u) => u.id === f.id || u.email?.toLowerCase() === f.email.toLowerCase());
+  if (!existing) {
+    console.warn(`  (no sign-in account for ${f.email}; skipped)`);
+    continue;
+  }
+  const { error } = await db.auth.admin.updateUserById(existing.id, {
+    password: STAGING_TEST_PASSWORD,
+    email_confirm: true,
+    ban_duration: f.active ? "none" : BLOCKED,
+  });
+  if (error) fail(`set password for ${f.email}: ${error.message}`);
+  fakeCount++;
+}
+console.log(`✓ ${fakeCount} fake seed people can sign in (e.g. ${fakes?.[0]?.email ?? "none"}).`);
 console.log("Done. Passwords are the STAGING_TEST_PASSWORD secret.");
