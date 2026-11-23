@@ -2,11 +2,12 @@
 -- (DOMAIN-MODEL v0.37; Lauren, Nov 22, 2026).
 --
 -- 1. Published dates (decided in v0.18/v0.28, now built for who plays): the
---    point person, admins and the Admin Lead can add and remove musicians and
---    set the leader on a published date. (Adding was already open to the
---    point person and admins; removing was drafts-only, and the Admin Lead
---    had no rule at all.) Approved weeks stay final (session_assignment
---    approved guard, v0.29).
+--    point person, admins and the Admin Lead can add musicians and set the
+--    leader on a published date. (Adding was already open to the point
+--    person and admins; the Admin Lead had no rule.) Nobody removes a
+--    musician from a published date: they're marked absent or subbed, so the
+--    record of who was booked stays (Ryan's rule, kept by Lauren). Approved
+--    weeks stay final (session_assignment approved guard, v0.29).
 -- 2. Deleting a one-time date (a special event, or another one-time program):
 --    the point person and admins, like deleting a weekly program (v0.34).
 --    Refused once it's documented, has relationship building logged against
@@ -30,13 +31,6 @@ create policy "session_assignment: admin lead sets leaders on published dates" o
       and (select public.is_current_admin_lead(ss.residency_id))))
   with check (true);
 
-create policy "session_assignment: remove from published dates" on public.session_assignment
-  for delete to authenticated
-  using (exists (
-    select 1 from public.session ss
-    where ss.id = session_assignment.session_id and ss.schedule_state = 'published'
-      and ((select public.can_schedule(ss.residency_id))
-           or (select public.is_current_admin_lead(ss.residency_id)))));
 
 -- Delete a one-time date. Returns nothing; raises with a reason when refused.
 create function public.delete_one_time_session(p_session uuid)

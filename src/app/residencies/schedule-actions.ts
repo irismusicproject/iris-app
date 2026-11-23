@@ -246,7 +246,7 @@ export async function removeMusician(residencyId: string, assignmentId: string):
   const supabase = await createClient();
   const { error, count } = await supabase.from("session_assignment").delete({ count: "exact" }).eq("id", assignmentId);
   if (error) return fail(error);
-  if (!count) return { status: "error", message: "You can't change who plays on this date. On drafts, musicians playing it can; on published dates, the admin lead, the point person or an admin." };
+  if (!count) return { status: "error", message: "Only drafts can change who plays this way. On a published date, mark the musician absent or record a sub instead." };
   refresh(residencyId);
   return ok;
 }

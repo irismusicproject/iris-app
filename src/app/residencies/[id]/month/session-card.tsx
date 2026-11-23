@@ -216,7 +216,7 @@ export function SessionCard({
                 {a.name}
                 {a.role === "leader" && a.status !== "absent" && <span className="text-xs text-iris">(leader)</span>}
                 {a.status === "substitute" && <span className="text-xs text-muted">(sub)</span>}
-                {(canEdit || canEditPublished) && a.status !== "absent" && (a.role !== "leader" || canSchedule || canEditPublished) && (
+                {canEdit && a.status !== "absent" && (a.role !== "leader" || canSchedule) && (
                   <button
                     type="button"
                     disabled={pending}

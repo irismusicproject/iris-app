@@ -10,8 +10,9 @@
 //
 //   I1  every published, non-canceled group session has exactly one playing leader
 //   I2  only planners (point person, admins) and the Admin Lead changed a
-//       published or "No Program" session; only planners (or a musician
-//       recording their own sub) changed who plays on one
+//       published or "No Program" session; only planners, the Admin Lead
+//       (adding and setting leaders, v0.37) or a musician recording their own
+//       sub changed who plays on one; nobody removed anyone from one
 //   I3  draft sessions and their musicians were changed only by planners,
 //       musicians playing that date, or the publishing functions
 //   I4  no session moved to another residency; nothing protected was deleted
@@ -215,7 +216,7 @@ for (const SEED of seeds) {
       else if (f.st === "draft" && (await onRoster(p, f.residency_id))) {
         if (f.playing.includes(p)) { if (role === "leader" && f.leaders.length === 0) { forbid = null; tag = "Q1"; } else forbid = false; }
         else if (f.n === 0) { forbid = null; tag = "Q2"; }
-      } else if (f.st !== "draft" && isAL(p, f.residency_id)) { forbid = null; tag = "Q4"; }
+      } else if (f.st === "published" && isAL(p, f.residency_id)) forbid = false; // v0.37 (answers Q4)
       return { label: `add ${NAMES[who]} as ${role} (${f.st})`, sql: `insert into public.session_assignment (session_id,person_id,role) values ('${s}','${who}','${role}')`, kind: "ins", forbid, tag, res: f.residency_id, session: s };
     }],
     [5, async (p) => { // remove a musician
@@ -225,7 +226,7 @@ for (const SEED of seeds) {
       const t = R.pick(a);
       let forbid = true;
       if (f.st === "draft") forbid = !(isPlanner(p, f.residency_id) || ((await onRoster(p, f.residency_id)) && f.playing.includes(p) && t.role === "participant"));
-      else if (isPlanner(p, f.residency_id)) forbid = null; // docs silent: planners "edit" published dates
+      // v0.37: nobody removes a musician from a published date (absent / sub instead).
       return { label: `remove ${NAMES[t.person_id] ?? "someone"} (${t.role}, ${f.st})`, sql: `delete from public.session_assignment where id='${t.id}'`, kind: "upd", forbid, res: f.residency_id, session: s };
     }],
     [10, async (p) => { // promote / demote (pick or swap the leader)
@@ -237,7 +238,7 @@ for (const SEED of seeds) {
       if (isPlanner(p, f.residency_id)) forbid = false;
       else if (f.st === "draft" && (await onRoster(p, f.residency_id)) && f.playing.includes(p)) {
         if (to === "leader" && f.leaders.length === 0) { forbid = null; tag = "Q1"; } else forbid = false;
-      } else if (f.st !== "draft" && isAL(p, f.residency_id)) { forbid = null; tag = "Q4"; }
+      } else if (f.st === "published" && isAL(p, f.residency_id)) forbid = false; // v0.37 (answers Q4)
       return { label: `${to === "leader" ? "promote" : "demote"} ${NAMES[t.person_id] ?? "someone"} (${f.st})`, sql: `update public.session_assignment set role='${to}' where id='${t.id}'`, kind: "upd", forbid, tag, res: f.residency_id, session: s, roleChange: true };
     }],
     [3, async (p) => { // change a status directly (subs go through the function)
@@ -361,6 +362,7 @@ for (const SEED of seeds) {
       const st = before.sessions.get(a.session_id)?.schedule_state ?? "draft", r = res(a.session_id), planner = isPlanner(actor, r);
       if (planner) continue;
       if (act?.sub && took && st === "published") continue; // recording one's own sub (checked by forbid above)
+      if (st === "published" && isAL(actor, r) && after.asg.has(a.id)) continue; // v0.37: the Admin Lead adds and sets leaders on published dates
       if (st !== "draft") { fail("I2 someone other than a planner changed who plays on a published/No Program date", { act: act?.label, actor: NAMES[actor], a }); continue; }
       if (playingBefore(a.session_id, actor)) continue;
       if (wasEmpty(a.session_id) && (await onRoster(actor, r))) { report("Q2", "a roster musician staffed an empty draft they don't play in", { act: act?.label }); continue; }
