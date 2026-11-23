@@ -131,7 +131,8 @@ r = await as(M2, `update public.session set location_id='${ROOM_B}' where id='${
 r = await as(M2, `update public.session set location_id='${ROOM2}' where id='${sessions[0]}'`); check("…but not to another partner's room", !r.ok, r);
 r = await as(M2, `update public.session set starts_at = starts_at + interval '1 hour' where id='${sessions[0]}'`); check("musician can't move a regular session's time", !r.ok, r);
 r = await as(M2, `update public.session set starts_at='2027-02-21 19:00-05' where id='${EVT}'`); check("musician moves a special event's date and time", r.ok && r.n === 1, r);
-r = await as(M2, `update public.session set schedule_state='canceled', cancellation_reason='other' where id='${sessions[1]}'`); check("musician can't cancel", !r.ok, r);
+// v0.35 (Lauren): any musician playing a draft date may make it "No Program"; someone not playing it (here the Admin Lead) may not.
+r = await as(L, `update public.session set schedule_state='canceled', cancellation_reason='other' where id='${sessions[1]}'`); check("a musician not playing a draft date can't make it No Program", !r.ok || r.n === 0, r);
 r = await as(M2, `update public.session set internal_note='Bring the songbooks' where id='${sessions[1]}'`); check("musician edits a draft's notes (v0.14)", r.ok && r.n === 1, r);
 r = await as(M2, `update public.session set public_note='x' where id='${sessions[1]}'`); check("musician can't edit the partner-facing note", !r.ok, r);
 r = await as(M2, `update public.session set billable=false where id='${sessions[1]}'`); check("musician can't edit other fields", !r.ok, r);

@@ -4,7 +4,8 @@
 -- 1. Locked after review (decided in v0.25, built now): once the point person
 --    marks a building's month reviewed, musicians can't change its draft
 --    dates any more (title, notes, room, who plays, leader, "No Program").
---    The point person and admins still can; the Admin Lead publishes.
+--    The point person, admins and the Admin Lead still can (the Admin Lead
+--    publishes and prepares later calendar versions).
 -- 2. "No Program" on a draft: any musician playing that date (not only its
 --    leader), until the month is reviewed. The Admin Lead is treated like any
 --    musician here: only dates they play (revises v0.28).
@@ -57,8 +58,10 @@ begin
           using errcode = '42501';
       end if;
     elsif not planner then
-      -- Locked after review (v0.25): musicians ask the point person.
-      if public.is_session_month_reviewed(old.id) then
+      -- Locked after review (v0.25): musicians ask the point person. The
+      -- Admin Lead keeps working on the month (step 5: dates added after
+      -- partner feedback go out with the next calendar version).
+      if public.is_session_month_reviewed(old.id) and not public.is_current_admin_lead(old.residency_id) then
         raise exception 'this month has been reviewed; ask the point person for changes' using errcode = '42501';
       end if;
       -- Musicians on a draft they play in: title, room and notes; date and
@@ -118,6 +121,7 @@ begin
   select * into se from public.session where id = coalesce(new.session_id, old.session_id);
   if se.id is not null and se.schedule_state = 'draft'
      and not public.can_schedule(se.residency_id)
+     and not public.is_current_admin_lead(se.residency_id)
      and public.is_session_month_reviewed(se.id) then
     raise exception 'this month has been reviewed; ask the point person for changes' using errcode = '42501';
   end if;
