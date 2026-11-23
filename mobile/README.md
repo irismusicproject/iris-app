@@ -11,6 +11,7 @@ as the website, and imports `../src/shared` as `@shared/...` (see `CLAUDE.md`,
 |---|---|
 | **Sign in**: email and password, or "Email me a code instead" | `/login`, `/login/code` |
 | **Upcoming**: the dates I play in the next four weeks; "N programs to document". Tap a date for who's playing (call or text them) and directions | calendar feed / program month view |
+| **Review my dates** (from Upcoming): a draft month building by building, "Done reviewing", and "No Program" on a draft date I play | month view |
 | **My week**: programs I led (document each), relationship building (log, delete, "Not me"), hours and **Submit my week**, the month's reflection | `/documentation` |
 | **More**: who's signed in, log out, My profile (phone, instruments), set my password, Iris staff directory, link to My invoices | Home, `/account/*` |
 

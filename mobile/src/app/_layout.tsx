@@ -23,6 +23,7 @@ export default function RootLayout() {
           <Stack.Screen name="log" options={{ title: "Log relationship building" }} />
           <Stack.Screen name="reflection" options={{ title: "Monthly reflection" }} />
           <Stack.Screen name="date/[id]" options={{ title: "Date" }} />
+          <Stack.Screen name="review" options={{ title: "Review my dates" }} />
           <Stack.Screen name="profile" options={{ title: "My profile" }} />
           <Stack.Screen name="password" options={{ title: "Password" }} />
         </Stack>

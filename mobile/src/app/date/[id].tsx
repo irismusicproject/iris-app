@@ -1,9 +1,10 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
-import { Linking, Text, View } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import { Alert, Linking, Text, View } from "react-native";
+import { CANCELLATION_REASON_LABELS, CANCELLATION_REASONS, type CancellationReason } from "@shared/domain/scheduling";
 import { weekStart } from "@shared/domain/documentation";
 import { formatDay, formatTime, localDateTime } from "@shared/domain/time";
-import { Button, Card, LinkButton, Loading, Muted, Problem, Screen, Tag, styles } from "@/components/ui";
+import { Button, Card, Choices, Field, LinkButton, Loading, Muted, Notice, Problem, Screen, Tag, styles } from "@/components/ui";
 import { supabase } from "@/lib/supabase";
 import { colors } from "@/lib/theme";
 import { friendly, useWeek } from "@/lib/week-context";
@@ -34,8 +35,11 @@ export default function DateDetail() {
   const [row, setRow] = useState<Row | null>(null);
   const [people, setPeople] = useState<Map<string, { name: string; phone: string | null; instruments: string[] }>>(new Map());
   const [problem, setProblem] = useState<string | null>(null);
+  const [reason, setReason] = useState<CancellationReason | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     (async () => {
       const { data, error } = await supabase
         .from("session")
@@ -61,6 +65,8 @@ export default function DateDetail() {
       setPeople(map);
     })();
   }, [id]);
+
+  useEffect(load, [load]);
 
   if (problem) return <Screen><Problem>{problem}</Problem></Screen>;
   if (!row || !me) return <Loading />;
@@ -116,6 +122,40 @@ export default function DateDetail() {
               </View>
             );
           })}
+        </Card>
+      )}
+
+      {message && <Notice>{message}</Notice>}
+      {row.schedule_state === "draft" && !past && playing.some((a) => a.person_id === me.id) && (
+        <Card title="Can't happen?">
+          <Muted>Any musician playing a draft date can make it &ldquo;No Program&rdquo; until the month is reviewed. The point person gets an email. This can&apos;t be undone here.</Muted>
+          <Field label="Reason">
+            <Choices options={CANCELLATION_REASONS.map((r) => ({ value: r, label: CANCELLATION_REASON_LABELS[r] }))} selected={reason ?? ("" as CancellationReason)} onToggle={setReason} />
+          </Field>
+          <Button
+            label="Make “No Program”"
+            kind="danger"
+            busy={busy}
+            disabled={!reason}
+            onPress={() =>
+              Alert.alert("No Program", `Mark ${formatDay(row.starts_at, tz)} as “No Program”? This can't be undone here.`, [
+                { text: "Cancel", style: "cancel" },
+                {
+                  text: "Yes, No Program",
+                  style: "destructive",
+                  onPress: async () => {
+                    setBusy(true);
+                    const { error, count } = await supabase.from("session").update({ schedule_state: "canceled", cancellation_reason: reason }, { count: "exact" }).eq("id", row.id);
+                    setBusy(false);
+                    if (error) return setMessage(friendly(error));
+                    if (!count) return setMessage("Only musicians playing the date (on drafts, until the month is reviewed), the admin lead, the point person or an admin can make it “No Program”.");
+                    setMessage("Marked “No Program”.");
+                    load();
+                  },
+                },
+              ])
+            }
+          />
         </Card>
       )}
 

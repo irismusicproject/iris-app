@@ -111,6 +111,12 @@ export default function Upcoming() {
           </Card>
         </Pressable>
       )}
+      <Pressable onPress={() => router.push("/review")} accessibilityRole="button" style={({ pressed }) => pressed && styles.pressed}>
+        <Card>
+          <Text style={{ color: colors.iris, fontSize: 16, fontWeight: "700" }}>Review next month&apos;s dates →</Text>
+          <Muted>Check your draft dates at each building, then tap Done reviewing.</Muted>
+        </Card>
+      </Pressable>
       {problem && <Problem>{problem}</Problem>}
       {rows && rows.length === 0 && <Muted>Nothing scheduled for you in the next four weeks.</Muted>}
       {[...groups.entries()].map(([date, list]) => (
