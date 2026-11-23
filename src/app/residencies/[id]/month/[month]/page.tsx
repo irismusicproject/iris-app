@@ -235,7 +235,7 @@ export default async function MonthPage({
   ).length;
 
   const card = "mt-6 rounded-xl border border-border bg-surface p-5 sm:p-6";
-  const cardProps = { residencyId: id, timeZone: tz, rooms, roster, onRoster: access.onRoster, canSchedule: access.canSchedule, isAdminLead: access.isAdminLead, myId: person.id };
+  const cardProps = { residencyId: id, timeZone: tz, rooms, roster, onRoster: access.onRoster, canSchedule: access.canSchedule, isAdminLead: access.isAdminLead, myId: person.id, monthReviewed: Boolean(latest) };
 
   return (
     <AppShell isAdmin={isAdmin}>
@@ -264,7 +264,9 @@ export default async function MonthPage({
       <p className="mt-2 text-sm text-muted">
         <Link href={`/residencies/${id}/season`} className="text-iris underline-offset-2 hover:underline">Season view</Link>
 
-        {access.onRoster && !access.canSchedule && " · On draft dates you play in, you can edit the title, notes, room, musicians and leader."}
+        {access.onRoster && !access.canSchedule && (latest
+          ? " · This month has been reviewed: ask the point person for any changes."
+          : " · On draft dates you play in, you can edit the title, notes, room, musicians and leader, or make the date “No Program”.")}
         {access.isAdminLead && !access.canSchedule && " As admin lead, you publish the month and update published dates after partner feedback."}
       </p>
 

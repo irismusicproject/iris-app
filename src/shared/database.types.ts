@@ -1078,6 +1078,9 @@ isOneToOne: false
 "is_session_leader":
 { Args: { "p_session": string }; Returns: boolean
                            },
+"is_session_month_reviewed":
+{ Args: { "p_session": string }; Returns: boolean
+                           },
 "is_week_approved":
 { Args: { "p_day": string,"p_person": string,"p_residency": string }; Returns: boolean
                            },

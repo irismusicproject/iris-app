@@ -27,7 +27,8 @@ const ok: ScheduleResult = { status: "saved" };
 function fail(error: { code?: string; message: string }): ScheduleResult {
   const m = error.message;
   if (error.code === "42501") {
-    if (m.includes("musicians can change")) return { status: "error", message: "On drafts you play in, you can change the title, room, notes and musicians (and a special event's date and time). The date's leader can make it “No Program”." };
+    if (m.includes("has been reviewed")) return { status: "error", message: "The point person has marked this month reviewed. Ask them for any changes." };
+    if (m.includes("musicians can change")) return { status: "error", message: "On drafts you play in, you can change the title, room, notes and musicians (and a special event's date and time). Musicians playing a draft date can make it “No Program”." };
     return { status: "error", message: "You don't have permission to make that change." };
   }
   if (error.code === "23514") {
@@ -290,7 +291,7 @@ export async function cancelSession(residencyId: string, sessionId: string, reas
     .update({ schedule_state: "canceled", cancellation_reason: reason }, { count: "exact" })
     .eq("id", sessionId);
   if (error) return fail(error);
-  if (!count) return { status: "error", message: "Only the date's leader (on drafts), the admin lead (on published dates), the point person or an admin can make it “No Program”." };
+  if (!count) return { status: "error", message: "Only musicians playing the date (on drafts, until the month is reviewed), the admin lead (on published dates), the point person or an admin can make it “No Program”." };
   // The database queued an email to the point person (v0.24); send it now.
   await deliverSoon();
   refresh(residencyId);
