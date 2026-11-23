@@ -13,7 +13,7 @@ as the website, and imports `../src/shared` as `@shared/...` (see `CLAUDE.md`,
 | **Upcoming**: the dates I play in the next four weeks; "N programs to document". Tap a date for who's playing (call or text them) and directions | calendar feed / program month view |
 | **Review my dates** (from Upcoming): a draft month building by building, "Done reviewing", and "No Program" on a draft date I play | month view |
 | **My week**: programs I led (document each), relationship building (log, delete, "Not me"), hours and **Submit my week**, the month's reflection | `/documentation` |
-| **More**: who's signed in, log out, My profile (phone, instruments), set my password, Iris staff directory, link to My invoices | Home, `/account/*` |
+| **More**: who's signed in, log out, My profile (phone, instruments), set my password, my private calendar link (create and share), Iris staff directory, link to My invoices | Home, `/account/*` |
 
 Invoices (linked) and everything admin stay on the website. It's
 **online only** for now: nothing is kept on the phone except the sign-in
