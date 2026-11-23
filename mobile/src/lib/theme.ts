@@ -6,5 +6,7 @@ export const colors = {
   muted: "#6B6470",
   border: "#DDD6E1",
   error: "#B3261E",
+  orange: "#B45309",
   white: "#FFFFFF",
+  page: "#FAF8FB",
 };
