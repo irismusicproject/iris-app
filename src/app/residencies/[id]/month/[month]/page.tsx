@@ -4,11 +4,12 @@ import { AppShell } from "@/components/app-shell";
 import { requirePerson } from "@/lib/auth";
 import { getResidencyAccess, getResidencyNames } from "@/lib/residency-access";
 import { createClient } from "@/lib/supabase/server";
-import type { CancellationReason, SessionKind } from "@/shared/domain/scheduling";
+import { recurrenceLabel, SESSION_KIND_LABELS, type CancellationReason, type Series, type SessionKind } from "@/shared/domain/scheduling";
 import { formatDay, formatMonth, formatTime, isMonth, localDateTime, monthWindow, shiftMonth } from "@/shared/domain/time";
 import { AddOneTimeForm, FillMonthButton } from "../month-controls";
 import { PublishPanel } from "../publish-panel";
 import { ScheduleHeader, SessionCard, type CardSession } from "../session-card";
+import { DeleteSeriesButton, EndSeriesForm, SeriesForm } from "../../season/series-form";
 
 // A month's schedule for one site, laid out like the partner calendar
 // (docs/GLOSSARY.md Part B): special events, then one block per weekly
@@ -42,17 +43,23 @@ type SessionRow = {
 };
 
 const firstName = (n: string) => n.split(" ")[0];
+const time12 = (t: string | null) => {
+  if (!t) return "No set time";
+  const [h, m] = t.split(":").map(Number);
+  return `${((h + 11) % 12) + 1}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
+};
+type SeriesRow = Series & { series_default_person: { person_id: string }[]; location: { site_id: string } | null };
 
 export default async function MonthPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string; month: string }>;
-  searchParams: Promise<{ site?: string }>;
+  searchParams: Promise<{ site?: string; ended?: string; deleted?: string; removed?: string }>;
 }) {
   const { isAdmin, person } = await requirePerson();
   const { id, month } = await params;
-  const { site: siteParam } = await searchParams;
+  const { site: siteParam, ended: endedParam, deleted: deletedParam, removed: removedParam } = await searchParams;
   if (!/^[0-9a-f-]{36}$/i.test(id) || !isMonth(month)) notFound();
 
   const supabase = await createClient();
@@ -87,7 +94,7 @@ export default async function MonthPage({
   // Sessions in a window around the month, then kept if they fall in the
   // month at this site in its own time zone.
   const w = monthWindow(month);
-  const [{ data: sessionRows }, { data: rosterRows }, { data: versions }, { data: upcomingRows }] = await Promise.all([
+  const [{ data: sessionRows }, { data: rosterRows }, { data: versions }, { data: upcomingRows }, { data: seriesRows }, { data: typeRows }] = await Promise.all([
     supabase
       .from("session")
       .select(
@@ -114,7 +121,42 @@ export default async function MonthPage({
       .gte("starts_at", monthWindow(shiftMonth(month, 1)).from)
       .order("starts_at")
       .limit(12),
+    // Weekly and monthly programs whose usual room is at this building (v0.34).
+    supabase
+      .from("series")
+      .select("*, series_default_person(person_id), location:default_location_id(site_id)")
+      .eq("residency_id", id)
+      .lte("active_from", `${shiftMonth(month, 1)}-01`)
+      .or(`active_until.is.null,active_until.gte.${month}-01`),
+    supabase.from("interaction_type").select("id, name").eq("active", true).order("sort_order"),
   ]);
+  const siteSeries = ((seriesRows ?? []) as unknown as SeriesRow[])
+    .filter((x) => x.location?.site_id === site.id && x.active_from < `${shiftMonth(month, 1)}-01`)
+    .sort((a, b) => Math.min(...a.weekdays) - Math.min(...b.weekdays) || (a.start_time ?? "99").localeCompare(b.start_time ?? "99"));
+  const { data: seriesDates } = siteSeries.length
+    ? await supabase.from("session").select("series_id").in("series_id", siteSeries.map((x) => x.id))
+    : { data: [] as { series_id: string }[] };
+  const dateCount = (sid: string) => (seriesDates ?? []).filter((d) => d.series_id === sid).length;
+  const types = (typeRows ?? []).map((t) => ({ id: t.id as string, label: t.name as string }));
+  const todayHere = localDateTime(new Date().toISOString(), tz).date;
+
+  // Result of ending or deleting a program (v0.34), shown after the page reloads.
+  const removedCount = Math.max(0, Number(removedParam) || 0);
+  const removedText = removedCount ? `${removedCount} draft date${removedCount === 1 ? "" : "s"} removed.` : "No draft dates to remove.";
+  let endedNote: { title: string; until: string; published: { id: string; starts_at: string; tz: string }[] } | null = null;
+  if (endedParam && /^[0-9a-f-]{36}$/i.test(endedParam)) {
+    const [{ data: ended }, { data: laterRows }] = await Promise.all([
+      supabase.from("series").select("title, active_until").eq("id", endedParam).maybeSingle(),
+      supabase.from("session").select("id, starts_at, location(site(timezone))").eq("series_id", endedParam).eq("schedule_state", "published").order("starts_at"),
+    ]);
+    if (ended?.active_until) {
+      type LaterRow = { id: string; starts_at: string; location: { site: { timezone: string } | null } | null };
+      const published = ((laterRows ?? []) as unknown as LaterRow[])
+        .map((r) => ({ id: r.id, starts_at: r.starts_at, tz: r.location?.site?.timezone ?? tz }))
+        .filter((r) => localDateTime(r.starts_at, r.tz).date > ended.active_until!);
+      endedNote = { title: ended.title, until: ended.active_until, published };
+    }
+  }
   type UpcomingRow = { id: string; title: string; starts_at: string; has_set_time: boolean; location: { display_name: string; site: { display_name: string; timezone: string } | null } | null };
   const upcoming = ((upcomingRows ?? []) as unknown as UpcomingRow[]).filter((u) => {
     const tz = u.location?.site?.timezone ?? tz0;
@@ -210,6 +252,31 @@ export default async function MonthPage({
         {access.isAdminLead && !access.canSchedule && " As admin lead, you publish the month and update published dates after partner feedback."}
       </p>
 
+      {endedNote && (
+        <section role="status" className="mt-5 rounded-xl border border-iris/40 bg-iris-soft p-4 text-sm">
+          <p>
+            <strong>{endedNote.title}</strong> ends on {formatDay(`${endedNote.until}T12:00:00Z`, "UTC")}. {removedText}
+          </p>
+          {endedNote.published.length > 0 && (
+            <p className="mt-1">
+              Still on the published calendar after that:{" "}
+              {endedNote.published.map((p, i) => (
+                <span key={p.id}>
+                  {i > 0 && ", "}
+                  <Link href={`${base}/${localDateTime(p.starts_at, p.tz).date.slice(0, 7)}?site=${site.id}`} className="text-iris underline-offset-2 hover:underline">{formatDay(p.starts_at, p.tz)}</Link>
+                </span>
+              ))}
+              . Open {endedNote.published.length === 1 ? "it" : "each"} and make {endedNote.published.length === 1 ? "it" : "them"} “No Program”, or keep {endedNote.published.length === 1 ? "it" : "them"}.
+            </p>
+          )}
+        </section>
+      )}
+      {deletedParam && (
+        <section role="status" className="mt-5 rounded-xl border border-iris/40 bg-iris-soft p-4 text-sm">
+          <strong>{deletedParam}</strong> was deleted{removedCount ? `, with ${removedCount} date${removedCount === 1 ? "" : "s"}` : ""}.
+        </section>
+      )}
+
       {upcoming.length > 0 && (
         <section className="mt-5 rounded-xl border border-brand-blue/40 bg-brand-blue/10 p-4">
           <h2 className="text-sm font-semibold">Coming up this season</h2>
@@ -228,6 +295,63 @@ export default async function MonthPage({
           </ul>
         </section>
       )}
+
+      <section className={card}>
+        <h2 className="text-lg font-semibold">Weekly and monthly programs at {site.display_name}</h2>
+        <p className="mt-1 text-sm text-muted">
+          {access.canSchedule
+            ? "Set up the recurring programs here; filling in the month uses them. Edit, end or delete one below."
+            : "The recurring programs at this building."}{" "}
+          Leaders for the whole season are on the <Link href={`/residencies/${id}/season`} className="text-iris underline-offset-2 hover:underline">Season view</Link>.
+        </p>
+        <div className="mt-3 divide-y divide-border">
+          {siteSeries.map((x) => (
+            <div key={x.id} className="py-3">
+              <p className="font-medium">
+                {x.title}
+                {x.kind === "relationship_building" && <span className="ml-2 rounded-full border border-border px-2 py-0.5 text-xs font-normal">{SESSION_KIND_LABELS[x.kind]}</span>}
+              </p>
+              <p className="text-sm text-muted">
+                {recurrenceLabel(x)} · {time12(x.start_time)}
+                {x.default_leader_id ? ` · Led by ${firstName(nameOf(x.default_leader_id))}` : ""}
+                {x.series_default_person.length ? ` · ${x.series_default_person.map((p) => firstName(nameOf(p.person_id))).join(", ")}` : ""}
+                {x.active_until ? ` · Ends ${formatDay(`${x.active_until}T12:00:00Z`, "UTC", false)}` : ""}
+              </p>
+              {access.canSchedule && (
+                <details className="mt-2">
+                  <summary className="cursor-pointer text-xs font-medium text-iris">Edit, end or delete</summary>
+                  <div className="mt-3 flex flex-col gap-5">
+                    <SeriesForm
+                      key={x.id}
+                      residencyId={id}
+                      series={x}
+                      defaultPeople={x.series_default_person.map((p) => p.person_id)}
+                      rooms={allRooms}
+                      musicians={roster}
+                      types={types}
+                    />
+                    <div className="border-t border-border pt-4">
+                      <h3 className="text-sm font-semibold">End this program</h3>
+                      <div className="mt-2"><EndSeriesForm key={x.active_until ?? ""} residencyId={id} series={x} today={todayHere} /></div>
+                    </div>
+                    <div className="border-t border-border pt-4">
+                      <h3 className="text-sm font-semibold">Delete this program</h3>
+                      <div className="mt-2"><DeleteSeriesButton residencyId={id} seriesId={x.id} title={x.title} dateCount={dateCount(x.id)} /></div>
+                    </div>
+                  </div>
+                </details>
+              )}
+            </div>
+          ))}
+          {siteSeries.length === 0 && <p className="py-3 text-sm text-muted">No weekly or monthly programs at {site.display_name} this month.</p>}
+        </div>
+        {access.canSchedule && (rooms.length > 0 || allRooms.length > 0) && (
+          <details className="mt-4 border-t border-border pt-4">
+            <summary className="cursor-pointer text-sm font-medium text-iris">Add a weekly or monthly program at {site.display_name}</summary>
+            <div className="mt-4"><SeriesForm residencyId={id} rooms={rooms.length ? rooms : allRooms} musicians={roster} types={types} /></div>
+          </details>
+        )}
+      </section>
 
       {access.canSchedule && (
         <div className="mt-5"><FillMonthButton residencyId={id} month={month} monthLabel={monthLabel} /></div>

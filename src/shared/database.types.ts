@@ -639,14 +639,14 @@ isOneToOne: false
                   ]
                 },"series": {
                   Row: {
-                    "active_from": string,"active_until": string | null,"created_at": string,"default_interaction_type_id": string | null,"default_leader_id": string | null,"default_location_id": string,"id": string,"kind": Database["public"]['Enums']["session_kind"],"minutes": number | null,"recurrence": string,"residency_id": string,"start_time": string | null,"title": string,"updated_at": string,"week_of_month": number | null,"weekdays": (number)[]
+                    "active_from": string,"active_until": string | null,"created_at": string,"default_interaction_type_id": string | null,"default_leader_id": string | null,"default_location_id": string,"id": string,"kind": Database["public"]['Enums']["session_kind"],"minutes": number | null,"recurrence": string,"residency_id": string,"skip_weeks_of_month": (number)[],"start_time": string | null,"title": string,"updated_at": string,"week_of_month": number | null,"weekdays": (number)[]
                   }
                   ComputedFields: never
                   Insert: {
-                    "active_from": string,"active_until"?: string | null,"created_at"?: string,"default_interaction_type_id"?: string | null,"default_leader_id"?: string | null,"default_location_id": string,"id"?: string,"kind"?: Database["public"]['Enums']["session_kind"],"minutes"?: number | null,"recurrence"?: string,"residency_id": string,"start_time"?: string | null,"title": string,"updated_at"?: string,"week_of_month"?: number | null,"weekdays": (number)[]
+                    "active_from": string,"active_until"?: string | null,"created_at"?: string,"default_interaction_type_id"?: string | null,"default_leader_id"?: string | null,"default_location_id": string,"id"?: string,"kind"?: Database["public"]['Enums']["session_kind"],"minutes"?: number | null,"recurrence"?: string,"residency_id": string,"skip_weeks_of_month"?: (number)[],"start_time"?: string | null,"title": string,"updated_at"?: string,"week_of_month"?: number | null,"weekdays": (number)[]
                   }
                   Update: {
-                    "active_from"?: string,"active_until"?: string | null,"created_at"?: string,"default_interaction_type_id"?: string | null,"default_leader_id"?: string | null,"default_location_id"?: string,"id"?: string,"kind"?: Database["public"]['Enums']["session_kind"],"minutes"?: number | null,"recurrence"?: string,"residency_id"?: string,"start_time"?: string | null,"title"?: string,"updated_at"?: string,"week_of_month"?: number | null,"weekdays"?: (number)[]
+                    "active_from"?: string,"active_until"?: string | null,"created_at"?: string,"default_interaction_type_id"?: string | null,"default_leader_id"?: string | null,"default_location_id"?: string,"id"?: string,"kind"?: Database["public"]['Enums']["session_kind"],"minutes"?: number | null,"recurrence"?: string,"residency_id"?: string,"skip_weeks_of_month"?: (number)[],"start_time"?: string | null,"title"?: string,"updated_at"?: string,"week_of_month"?: number | null,"weekdays"?: (number)[]
                   }
                   Relationships: [
                     {
@@ -987,10 +987,16 @@ isOneToOne: false
 "can_view_site":
 { Args: { "p_site": string }; Returns: boolean
                            },
+"delete_series":
+{ Args: { "p_series": string }; Returns: number
+                           },
 "documented_minutes":
 { Args: { "p_person": string,"p_residency": string,"p_week": string }; Returns: {
               "category": string,"minutes": number
             }[]
+                           },
+"end_series":
+{ Args: { "p_last": string,"p_series": string }; Returns: Json
                            },
 "generate_residency_month":
 { Args: { "p_month": string,"p_residency": string }; Returns: number
@@ -1095,6 +1101,9 @@ isOneToOne: false
 "refresh_week_hours":
 { Args: { "p_person": string,"p_residency": string,"p_state": Database["public"]['Enums']["time_state"],"p_week": string }; Returns: undefined
                            },
+"remove_session":
+{ Args: { "p_session": string }; Returns: undefined
+                           },
 "residency_people":
 { Args: { "p_residency": string }; Returns: {
               "id": string,"name": string
@@ -1117,6 +1126,9 @@ isOneToOne: false
 "session_has_musicians":
 { Args: { "p_session": string }; Returns: boolean
                            },
+"session_is_kept":
+{ Args: { "p_session": string }; Returns: boolean
+                           },
 "session_local_date":
 { Args: { "p_session": string }; Returns: string
                            },
@@ -1131,6 +1143,9 @@ isOneToOne: false
 "submit_week":
 { Args: { "p_residency": string,"p_week": string }; Returns: undefined
                            },
+"tidy_series_dates":
+{ Args: { "p_series": string }; Returns: Json
+                           },
 "undocumented_led_sessions":
 { Args: { "p_person": string,"p_residency": string,"p_week": string }; Returns: {
               "session_id": string,"starts_at": string,"title": string
@@ -1143,6 +1158,9 @@ isOneToOne: false
                            },
 "week_monday":
 { Args: { "p_day": string }; Returns: string
+                           },
+"week_of_month":
+{ Args: { "p_day": string }; Returns: number
                            }
           }
           Enums: {

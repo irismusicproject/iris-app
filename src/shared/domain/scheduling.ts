@@ -124,17 +124,21 @@ export type Series = {
   /** weekly, or monthly on the Nth (1-4) weekday (v0.18). */
   recurrence: "weekly" | "monthly";
   week_of_month: number | null;
+  /** Weekly programs: weeks of the month (1-4) printed as "No Program" instead (v0.34). */
+  skip_weeks_of_month: number[];
   /** Usual type: pre-selected when the leader documents (v0.21). */
   default_interaction_type_id: string | null;
 };
 
 export const WEEK_OF_MONTH_LABELS: Record<number, string> = { 1: "1st", 2: "2nd", 3: "3rd", 4: "4th" };
 
-/** "Tuesdays", "Tuesdays and Thursdays", "4th Monday of each month" */
-export function recurrenceLabel(s: Pick<Series, "recurrence" | "week_of_month" | "weekdays">): string {
+/** "Tuesdays", "Tuesdays and Thursdays", "4th Monday of each month", "Mondays, except the 2nd Monday" */
+export function recurrenceLabel(s: Pick<Series, "recurrence" | "week_of_month" | "weekdays"> & { skip_weeks_of_month?: number[] }): string {
   const days = WEEKDAYS.filter((d) => s.weekdays.includes(d.value)).map((d) => d.label);
   if (s.recurrence === "monthly") return `${WEEK_OF_MONTH_LABELS[s.week_of_month ?? 1]} ${days[0] ?? ""} of each month`;
-  return days.map((d) => `${d}s`).join(", ");
+  const skips = [...(s.skip_weeks_of_month ?? [])].sort().map((w) => WEEK_OF_MONTH_LABELS[w]);
+  const unit = days.length === 1 ? days[0] : "week";
+  return days.map((d) => `${d}s`).join(", ") + (skips.length ? `, except the ${skips.join(" and ")} ${unit}` : "");
 }
 
 export type Session = {
@@ -187,6 +191,7 @@ export type CalendarExport = {
 export type SeriesInput = {
   recurrence: "weekly" | "monthly";
   week_of_month: number | null;
+  skip_weeks_of_month?: number[];
   kind: SessionKind;
   title: string;
   default_location_id: string;
@@ -209,6 +214,9 @@ export function validateSeries(input: SeriesInput): Record<string, string> {
     if (!input.week_of_month || input.week_of_month < 1 || input.week_of_month > 4) errors.week_of_month = "Pick which week (1st–4th).";
   }
   if (input.weekdays.some((d) => !Number.isInteger(d) || d < 1 || d > 7)) errors.weekdays = "Pick valid days.";
+  const skips = input.skip_weeks_of_month ?? [];
+  if (skips.some((w) => !Number.isInteger(w) || w < 1 || w > 4)) errors.skip_weeks_of_month = "Pick weeks from the 1st to the 4th.";
+  else if (input.recurrence === "weekly" && skips.length === 4) errors.skip_weeks_of_month = "Leave at least one week, or make it a monthly program.";
   const timeOptional = input.kind === "relationship_building";
   if (input.start_time ? !/^\d{2}:\d{2}$/.test(input.start_time) : !timeOptional)
     errors.start_time = "Enter a start time.";
