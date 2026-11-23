@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Text } from "react-native";
 import type { ResidentInvolvement } from "@shared/domain/documentation";
 import { formatDay, formatTime } from "@shared/domain/time";
-import { Button, Card, Choices, Field, Input, LinkButton, Loading, Muted, Notice, Problem, Screen } from "@/components/ui";
+import { Button, Card, Choices, Field, Input, LinkButton, Loading, Muted, Notice, Problem, Screen, Stepper } from "@/components/ui";
 import { supabase } from "@/lib/supabase";
 import { colors } from "@/lib/theme";
 import { siteTimezone } from "@/lib/week";
@@ -88,7 +88,7 @@ export default function DocumentSession() {
         </Field>
       )}
       <Field label="Attendance" hint="Everyone present." error={errors.attendance}>
-        <Input value={attendance} onChangeText={setAttendance} keyboardType="number-pad" inputMode="numeric" placeholder="0" />
+        <Stepper value={attendance} onChange={setAttendance} />
       </Field>
       <Field label="Type" error={errors.type}>
         <Choices options={week.types.map((t) => ({ value: t.id, label: t.label }))} selected={typeId} onToggle={setTypeId} />
@@ -105,7 +105,7 @@ export default function DocumentSession() {
       </Field>
       {editLength ? (
         <Field label="How long it actually ran (minutes)" error={errors.minutes}>
-          <Input value={minutes} onChangeText={setMinutes} keyboardType="number-pad" inputMode="numeric" />
+          <Stepper value={minutes} onChange={setMinutes} step={5} min={5} />
           <LinkButton
             label={`Use the usual ${scheduled} min`}
             onPress={() => {

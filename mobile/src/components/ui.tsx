@@ -1,7 +1,9 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import {
   ActivityIndicator,
   Keyboard,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -249,6 +251,68 @@ export const styles = StyleSheet.create({
   tagTodo: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.orange },
   tagText: { fontSize: 12, color: colors.iris, fontWeight: "600" },
   tagTextTodo: { color: colors.orange },
+  stepBtn: { width: 52, height: 52, borderRadius: 26, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.white, alignItems: "center", justifyContent: "center" },
+  stepText: { fontSize: 26, color: colors.iris, fontWeight: "600" },
   row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
   divider: { height: 1, backgroundColor: colors.border, marginVertical: 4 },
 });
+
+/** "13:30" → "1:30 PM" */
+export function timeLabel(t: string): string {
+  const [h, m] = t.split(":").map(Number);
+  return `${((h + 11) % 12) + 1}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
+}
+
+/** Tap to pick a time with the phone's own clock dial; value is "HH:MM" or "". */
+export function TimeField({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder: string }) {
+  const [open, setOpen] = useState(false);
+  const now = new Date();
+  const initial = value ? new Date(2000, 0, 1, Number(value.slice(0, 2)), Number(value.slice(3, 5))) : new Date(2000, 0, 1, now.getHours(), Math.round(now.getMinutes() / 5) * 5);
+  return (
+    <View>
+      <Pressable
+        onPress={() => setOpen(true)}
+        accessibilityRole="button"
+        accessibilityLabel={value ? `${placeholder}: ${timeLabel(value)}. Change` : placeholder}
+        style={({ pressed }) => [styles.input, { justifyContent: "center" }, pressed && styles.pressed]}
+      >
+        <Text style={{ fontSize: 16, color: value ? colors.text : colors.muted }}>{value ? timeLabel(value) : placeholder}</Text>
+      </Pressable>
+      {open && (
+        <DateTimePicker
+          value={initial}
+          mode="time"
+          minuteInterval={5}
+          display={Platform.OS === "ios" ? "spinner" : "default"}
+          onChange={(event, date) => {
+            if (Platform.OS !== "ios") setOpen(false);
+            if (event.type === "set" && date) onChange(`${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`);
+          }}
+        />
+      )}
+      {open && Platform.OS === "ios" && <LinkButton label="Done" onPress={() => setOpen(false)} />}
+    </View>
+  );
+}
+
+/** − 12 + : a number with big buttons either side (attendance, minutes). */
+export function Stepper({ value, onChange, step = 1, min = 0 }: { value: string; onChange: (v: string) => void; step?: number; min?: number }) {
+  const n = Number(value) || 0;
+  const btn = (label: string, next: number, a11y: string) => (
+    <Pressable
+      onPress={() => onChange(String(Math.max(min, next)))}
+      accessibilityRole="button"
+      accessibilityLabel={a11y}
+      style={({ pressed }) => [styles.stepBtn, pressed && styles.pressed]}
+    >
+      <Text style={styles.stepText}>{label}</Text>
+    </Pressable>
+  );
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+      {btn("−", n - step, `${step} fewer`)}
+      <Input value={value} onChangeText={onChange} keyboardType="number-pad" inputMode="numeric" style={{ flex: 1, textAlign: "center", fontSize: 20 }} placeholder="0" />
+      {btn("+", n + step, `${step} more`)}
+    </View>
+  );
+}

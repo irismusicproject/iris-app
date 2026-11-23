@@ -1,7 +1,8 @@
+import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Text, View } from "react-native";
 import { ACTIVITY_KIND_LABELS, ACTIVITY_KINDS, addDays, residentsRequired, type ActivityKind } from "@shared/domain/documentation";
-import { Button, Card, Choices, Field, Input, Loading, Muted, Notice, Problem, Screen } from "@/components/ui";
+import { Button, Card, Choices, Field, Input, Loading, Muted, Notice, Problem, Screen, Stepper, TimeField } from "@/components/ui";
 import { supabase } from "@/lib/supabase";
 import { colors } from "@/lib/theme";
 import { friendly, useWeek } from "@/lib/week-context";
@@ -15,21 +16,10 @@ import { friendly, useWeek } from "@/lib/week-context";
 
 const short = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString("en-US", { timeZone: "UTC", weekday: "short", month: "short", day: "numeric" });
 
-/** "1:45 pm", "1345", "13:45" → "13:45"; anything else → null. */
-function parseTime(raw: string): string | null {
-  const m = raw.trim().toLowerCase().replace(/\s+/g, "").match(/^(\d{1,2}):?(\d{2})?(am|pm|a|p)?$/);
-  if (!m) return null;
-  let h = Number(m[1]);
-  const min = Number(m[2] ?? 0);
-  const ap = m[3]?.[0];
-  if (ap === "p" && h < 12) h += 12;
-  if (ap === "a" && h === 12) h = 0;
-  if (h > 23 || min > 59) return null;
-  return `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
-}
 const toMin = (t: string | null) => (t ? Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5)) : null);
 
 export default function LogActivity() {
+  const router = useRouter();
   const { me, week, reload } = useWeek();
   const programs = week?.programs ?? [];
   const lengths = week?.lengths ?? {};
@@ -54,7 +44,8 @@ export default function LogActivity() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
-  const [logged, setLogged] = useState(0);
+  const [logged, setLogged] = useState<string[]>([]);
+  const [search, setSearch] = useState("");
 
   if (!week || !me) return <Loading />;
   if (!programs.length) return <Screen><Muted>You&apos;re not on a program&apos;s roster for this week.</Muted></Screen>;
@@ -64,8 +55,8 @@ export default function LogActivity() {
   const detailed = !!site?.detailed_relationship_notes;
   const siteResidents = week.residents.filter((r) => r.siteId === siteId);
   const newList = newNames.split(",").map((n) => n.trim().replace(/\s+/g, " ")).filter(Boolean);
-  const start = parseTime(startTime);
-  const end = parseTime(endTime);
+  const start = startTime || null;
+  const end = endTime || null;
   const span = start && end ? toMin(end)! - toMin(start)! : null;
   const colleagues = week.colleagues[residencyId] ?? [];
   const last = week.last;
@@ -79,8 +70,8 @@ export default function LogActivity() {
     if (!residencyId || !siteId) e.site = "Pick a program and site.";
     if (!date) e.date = "Pick the date.";
     if (detailed) {
-      if (!start) e.start = "Enter the start time, like 1:30 pm.";
-      if (!end) e.end = "Enter the end time, like 2:00 pm.";
+      if (!start) e.start = "Pick the start time.";
+      if (!end) e.end = "Pick the end time.";
       else if (start && mins < 1) e.end = "The end must be after the start.";
       else if (mins > 600) e.end = "A visit can be at most 10 hours.";
       if (!note.trim()) e.note = "Write a note for the partner.";
@@ -152,6 +143,9 @@ export default function LogActivity() {
         if (linkError) throw linkError;
       }
       // Logged: clear who and how long; keep program, site, type and date.
+      const who = [...picked.map((id) => siteResidents.find((r) => r.id === id)?.name ?? ""), ...newList].filter(Boolean);
+      setLogged((cur) => [...cur, `${ACTIVITY_KIND_LABELS[kind].replace(/ \(.*\)$/, "")}${who.length ? ` with ${who.join(", ")}` : ""}, ${mins} min`]);
+      setSearch("");
       setPicked([]);
       setRooms({});
       setNewNames("");
@@ -162,7 +156,6 @@ export default function LogActivity() {
       setStartTime("");
       setEndTime("");
       setNote("");
-      setLogged((n) => n + 1);
       reload();
     } catch (err) {
       setProblem(friendly(err as { code?: string; message?: string }));
@@ -229,18 +222,23 @@ export default function LogActivity() {
         <View style={{ flexDirection: "row", gap: 12 }}>
           <View style={{ flex: 1 }}>
             <Field label="Start time" error={errors.start}>
-              <Input value={startTime} onChangeText={setStartTime} placeholder="1:30 pm" autoCapitalize="none" />
+              <TimeField value={startTime} onChange={setStartTime} placeholder="Start" />
             </Field>
           </View>
           <View style={{ flex: 1 }}>
             <Field label="End time" error={errors.end} hint={span != null ? (span > 0 ? `${span} minutes` : "Must be after the start") : undefined}>
-              <Input value={endTime} onChangeText={setEndTime} placeholder="2:00 pm" autoCapitalize="none" />
+              <TimeField value={endTime} onChange={setEndTime} placeholder="End" />
             </Field>
           </View>
         </View>
       ) : (
         <Field label="Minutes" error={errors.minutes}>
-          <Input value={minutes} onChangeText={setMinutes} keyboardType="number-pad" inputMode="numeric" />
+          <Stepper value={minutes} onChange={setMinutes} step={5} min={5} />
+          <Choices
+            options={[...new Set([usual(residencyId, kind), "15", "30", "45", "60"].filter(Boolean))].map((m) => ({ value: m, label: `${m} min` }))}
+            selected={minutes}
+            onToggle={setMinutes}
+          />
         </Field>
       )}
       <Field label="Collab?">
@@ -255,8 +253,16 @@ export default function LogActivity() {
       </Field>
 
       <Field label={`Residents${residentsRequired(kind) ? "" : " (optional for hallway concerts)"}`} error={errors.residents}>
+        {siteResidents.length > 10 && <Input value={search} onChangeText={setSearch} placeholder="Find a resident" autoCapitalize="words" autoCorrect={false} />}
         {siteResidents.length > 0 ? (
-          <Choices options={siteResidents.map((r) => ({ value: r.id, label: r.name }))} selected={picked} onToggle={(v) => setPicked((cur) => toggle(cur, v))} />
+          <Choices
+            options={siteResidents
+              .filter((r) => picked.includes(r.id) || !search.trim() || r.name.toLowerCase().includes(search.trim().toLowerCase()))
+              .sort((a, b) => Number(picked.includes(b.id)) - Number(picked.includes(a.id)))
+              .map((r) => ({ value: r.id, label: r.name }))}
+            selected={picked}
+            onToggle={(v) => setPicked((cur) => toggle(cur, v))}
+          />
         ) : (
           <Muted>No residents at this site yet. Add them below.</Muted>
         )}
@@ -314,8 +320,17 @@ export default function LogActivity() {
       )}
 
       {problem && <Problem>{problem}</Problem>}
-      {logged > 0 && !busy && <Notice>Logged{logged > 1 ? ` (${logged})` : ""}. Date and site are kept for the next one.</Notice>}
-      <Button label="Log activity" onPress={save} busy={busy} />
+      {logged.length > 0 && !busy && (
+        <Card>
+          <Notice>✓ Logged{logged.length === 1 ? "" : ` ${logged.length} activities`}</Notice>
+          {logged.map((l, i) => (
+            <Muted key={i}>{l}</Muted>
+          ))}
+          <Muted>Date and site are kept for the next one.</Muted>
+        </Card>
+      )}
+      <Button label={logged.length ? "Log another" : "Log activity"} onPress={save} busy={busy} />
+      {logged.length > 0 && <Button label="Done" kind="secondary" onPress={() => router.back()} />}
     </Screen>
   );
 }
