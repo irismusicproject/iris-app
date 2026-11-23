@@ -6,6 +6,7 @@ import { isValidEmail, normalizeCode } from "@shared/auth/password";
 import { useSession } from "@/lib/session";
 import { isConfigured, supabase } from "@/lib/supabase";
 import { colors } from "@/lib/theme";
+import { openWebsite } from "@/lib/website";
 
 // Sign-in (decided by Ryan, Nov 2026): email and password is the normal way
 // in; an emailed one-time code is the fallback. Same rules and messages as
@@ -155,7 +156,11 @@ export default function SignIn() {
               <Text style={styles.link}>Use my password instead</Text>
             </Pressable>
           )}
-          <Text style={styles.hint}>Forgot your password? Reset it on the website, then come back here.</Text>
+          <Pressable onPress={() => openWebsite("/forgot-password")} accessibilityRole="link" style={styles.linkWrap}>
+            <Text style={styles.hint}>
+              Forgot your password? <Text style={styles.link}>Reset it on the website</Text>, then come back here.
+            </Text>
+          </Pressable>
         </View>
     </Screen>
   );

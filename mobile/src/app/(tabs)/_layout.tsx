@@ -16,7 +16,8 @@ const icon = (glyph: string) =>
 
 export default function TabsLayout() {
   const { session, loading } = useSession();
-  const { noAccess } = useWeek();
+  const { noAccess, week } = useWeek();
+  const toDocument = week ? week.ledPast.filter((s) => !s.session_report).length : 0;
   if (loading) return <Loading />;
   if (!session) return <Redirect href="/sign-in" />;
   if (noAccess)
@@ -42,7 +43,7 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen name="index" options={{ title: "Upcoming", tabBarIcon: icon("♪") }} />
-      <Tabs.Screen name="week" options={{ title: "My week", tabBarIcon: icon("✎") }} />
+      <Tabs.Screen name="week" options={{ title: "My week", tabBarIcon: icon("✎"), tabBarBadge: toDocument || undefined, tabBarBadgeStyle: { backgroundColor: colors.orange } }} />
       <Tabs.Screen name="more" options={{ title: "More", tabBarIcon: icon("☰") }} />
     </Tabs>
   );

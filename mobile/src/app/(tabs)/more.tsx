@@ -1,3 +1,4 @@
+import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Linking, Text, View } from "react-native";
 import { Button, Card, LinkButton, Muted, Screen } from "@/components/ui";
@@ -5,6 +6,7 @@ import { useSession } from "@/lib/session";
 import { supabase } from "@/lib/supabase";
 import { colors } from "@/lib/theme";
 import { useWeek } from "@/lib/week-context";
+import { openWebsite } from "@/lib/website";
 
 // More: who's signed in, the Iris staff directory (v0.26), and what still
 // lives on the website (invoices, profile, password; admin work).
@@ -12,6 +14,7 @@ import { useWeek } from "@/lib/week-context";
 type Staff = { person_id: string; name: string; job_title: string | null; email: string; phone: string | null };
 
 export default function More() {
+  const router = useRouter();
   const { session } = useSession();
   const { me } = useWeek();
   const [staff, setStaff] = useState<Staff[]>([]);
@@ -28,8 +31,10 @@ export default function More() {
         {process.env.EXPO_PUBLIC_IRIS_ENVIRONMENT === "staging" && <Muted>Test version: connected to staging (fake data only).</Muted>}
         <Button label="Log out" kind="secondary" onPress={() => supabase.auth.signOut()} />
       </Card>
-      <Card title="On the website">
-        <Muted>Your invoices, your profile (phone and instruments), and changing your password are on the Iris website for now.</Muted>
+      <Card title="My account">
+        <Button label="My profile: phone and instruments" kind="secondary" onPress={() => router.push("/profile")} />
+        <Button label="Set or change my password" kind="secondary" onPress={() => router.push("/password")} />
+        <Button label="My invoices (opens the website)" kind="secondary" onPress={() => openWebsite("/invoices")} />
       </Card>
       {staff.length > 0 && (
         <Card title="Iris staff">

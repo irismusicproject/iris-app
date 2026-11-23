@@ -10,11 +10,11 @@ as the website, and imports `../src/shared` as `@shared/...` (see `CLAUDE.md`,
 | Tab / screen | Same as on the website |
 |---|---|
 | **Sign in**: email and password, or "Email me a code instead" | `/login`, `/login/code` |
-| **Upcoming**: the dates I play in the next four weeks; "N programs to document" | calendar feed / program month view |
+| **Upcoming**: the dates I play in the next four weeks; "N programs to document". Tap a date for who's playing (call or text them) and directions | calendar feed / program month view |
 | **My week**: programs I led (document each), relationship building (log, delete, "Not me"), hours and **Submit my week**, the month's reflection | `/documentation` |
-| **More**: who's signed in, log out, Iris staff directory | Home |
+| **More**: who's signed in, log out, My profile (phone, instruments), set my password, Iris staff directory, link to My invoices | Home, `/account/*` |
 
-Invoices, profile, password and everything admin stay on the website. It's
+Invoices (linked) and everything admin stay on the website. It's
 **online only** for now: nothing is kept on the phone except the sign-in
 (in the phone's secure store). Offline drafts are `docs/OFFLINE-SPEC.md`.
 

@@ -125,7 +125,8 @@ export default function Upcoming() {
             const others = r.everyone.filter((a) => a.person_id !== me.id && a.person_id !== leader?.person_id && a.status !== "absent").map((a) => (names.get(a.person_id) ?? "").split(" ")[0]).filter(Boolean);
             const iLead = r.mine.some((a) => a.role === "leader");
             return (
-              <Card key={r.id}>
+              <Pressable key={r.id} onPress={() => router.push({ pathname: "/date/[id]", params: { id: r.id } })} accessibilityRole="button" style={({ pressed }) => pressed && styles.pressed}>
+              <Card>
                 <View style={styles.row}>
                   <Text style={{ fontSize: 17, fontWeight: "700", color: canceled ? colors.muted : colors.text, flex: 1 }}>
                     {canceled ? `No Program (${r.title})` : r.title}
@@ -148,6 +149,7 @@ export default function Upcoming() {
                   </Muted>
                 )}
               </Card>
+              </Pressable>
             );
           })}
         </View>
