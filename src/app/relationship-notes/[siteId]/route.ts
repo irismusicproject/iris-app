@@ -1,4 +1,5 @@
 import { AlignmentType, BorderStyle, Document, HeadingLevel, Packer, Paragraph, Table, TableCell, TableRow, TextRun, WidthType } from "docx";
+import { formatTimeRange } from "@/shared/domain/time";
 import { getViewer } from "@/lib/auth";
 import { getResidencyNames } from "@/lib/residency-access";
 import { createClient } from "@/lib/supabase/server";
@@ -19,6 +20,9 @@ type Row = {
   minutes: number;
   collaborative: boolean;
   note: string | null;
+  visit_room: string | null;
+  start_time: string | null;
+  end_time: string | null;
   created_at: string;
   relationship_activity_resident: { resident: { display_name: string; disambiguator: string } | null }[];
 };
@@ -38,9 +42,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ site
 
   const { data } = await supabase
     .from("relationship_activity")
-    .select("residency_id, person_id, kind, minutes, collaborative, note, created_at, relationship_activity_resident(resident(display_name, disambiguator))")
+    .select("residency_id, person_id, kind, minutes, collaborative, note, visit_room, start_time, end_time, created_at, relationship_activity_resident(resident(display_name, disambiguator))")
     .eq("site_id", siteId)
     .eq("occurred_on", date)
+    .order("start_time", { nullsFirst: false })
     .order("created_at");
   const rows = (data ?? []) as unknown as Row[];
   const nameMaps = new Map<string, Map<string, string>>();
@@ -87,6 +92,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ site
               rows: [
                 new TableRow({ children: [labelCell("Type"), valueCell(ACTIVITY_KIND_LABELS[r.kind] ?? r.kind)] }),
                 new TableRow({ children: [labelCell("Musician"), valueCell(musician(r))] }),
+                ...(formatTimeRange(r.start_time, r.end_time) ? [new TableRow({ children: [labelCell("Time"), valueCell(formatTimeRange(r.start_time, r.end_time)!)] })] : []),
+                ...(r.visit_room ? [new TableRow({ children: [labelCell("Room"), valueCell(r.visit_room)] })] : []),
                 new TableRow({ children: [labelCell("Length"), valueCell(`${r.minutes} minutes${r.collaborative ? " · Collaborative" : ""}`)] }),
                 new TableRow({ children: [labelCell("Notes"), valueCell(r.note ?? "")] }),
               ],

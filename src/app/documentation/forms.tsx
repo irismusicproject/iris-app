@@ -186,6 +186,9 @@ export function ActivityForm({
   const [collab, setCollab] = useState("no");
   const [picked, setPicked] = useState<string[]>([]);
   const [withIds, setWithIds] = useState<string[]>([]);
+  // Detailed-notes buildings (v0.36): room and start/end time; minutes come from the times.
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
   const [seen, setSeen] = useState(state.savedAt);
   if (state.savedAt !== seen) {
     // Logged: clear who and how long, keep program, site, type and date.
@@ -194,9 +197,13 @@ export function ActivityForm({
     setWithIds([]);
     setCollab("no");
     setMinutes(usual(residencyId, kind));
+    setStartTime("");
+    setEndTime("");
   }
   const siteResidents = useMemo(() => residents.filter((r) => r.siteId === siteId), [residents, siteId]);
   const detailed = !!program?.sites.find((x) => x.id === siteId)?.detailedNotes;
+  const toMin = (t: string) => (/^\d{2}:\d{2}$/.test(t) ? Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5)) : null);
+  const span = toMin(startTime) != null && toMin(endTime) != null ? toMin(endTime)! - toMin(startTime)! : null;
   const lastUsable = last && programs.some((p) => p.id === last.residencyId && p.sites.some((x) => x.id === last.siteId));
   const e = state.errors;
   return (
@@ -258,10 +265,29 @@ export function ActivityForm({
             {ACTIVITY_KINDS.map((k) => <option key={k} value={k}>{ACTIVITY_KIND_LABELS[k]}</option>)}
           </select>
         </Field>
+        {detailed && (
+          <>
+            <Field label="Room" hint="Where the visit happened, e.g. “312” or “Library”." error={e?.visit_room}>
+              <input name="visit_room" maxLength={60} required className={inputClass} />
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Start time" error={e?.start_time}>
+                <input name="start_time" type="time" value={startTime} onChange={(ev) => setStartTime(ev.target.value)} required className={inputClass} />
+              </Field>
+              <Field label="End time" error={e?.end_time} hint={span != null ? (span > 0 ? `${span} minutes` : "Must be after the start") : undefined}>
+                <input name="end_time" type="time" value={endTime} onChange={(ev) => setEndTime(ev.target.value)} required className={inputClass} />
+              </Field>
+            </div>
+          </>
+        )}
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Minutes" error={e?.minutes}>
-            <input name="minutes" inputMode="numeric" value={minutes} onChange={(ev) => setMinutes(ev.target.value)} required className={inputClass} />
-          </Field>
+          {detailed ? (
+            <input type="hidden" name="minutes" value={span != null && span > 0 ? span : ""} />
+          ) : (
+            <Field label="Minutes" error={e?.minutes}>
+              <input name="minutes" inputMode="numeric" value={minutes} onChange={(ev) => setMinutes(ev.target.value)} required className={inputClass} />
+            </Field>
+          )}
           <Field label="Collab?">
             <select name="collaborative" value={collab} onChange={(ev) => setCollab(ev.target.value)} className={inputClass}>
               <option value="no">No</option>
@@ -322,8 +348,9 @@ export function ActivityForm({
         </fieldset>
       )}
       {detailed ? (
-        <Field label="Note for the partner (optional)" hint="A few sentences on what you did together; goes in the day's document for this site. No health information.">
-          <textarea name="note" maxLength={3000} rows={4} className={inputClass} />
+        <Field label="Note for the partner" hint="A few sentences on what you did together; goes in the day's document for this site. No health information." error={e?.note}>
+          <textarea name="note" maxLength={3000} rows={4} required className={inputClass} />
+          <input type="hidden" name="detailed" value="1" />
         </Field>
       ) : (
         <Field label="One-sentence note (optional)" hint="No health information.">

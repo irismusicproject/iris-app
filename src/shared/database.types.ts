@@ -417,14 +417,14 @@ isOneToOne: false
                   ]
                 },"relationship_activity": {
                   Row: {
-                    "collaborative": boolean,"created_at": string,"id": string,"kind": Database["public"]['Enums']["activity_kind"],"minutes": number,"note": string | null,"occurred_on": string,"person_id": string,"residency_id": string,"session_id": string | null,"site_id": string,"updated_at": string
+                    "collaborative": boolean,"created_at": string,"end_time": string | null,"id": string,"kind": Database["public"]['Enums']["activity_kind"],"minutes": number,"note": string | null,"occurred_on": string,"person_id": string,"residency_id": string,"session_id": string | null,"site_id": string,"start_time": string | null,"updated_at": string,"visit_room": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "collaborative"?: boolean,"created_at"?: string,"id"?: string,"kind": Database["public"]['Enums']["activity_kind"],"minutes": number,"note"?: string | null,"occurred_on": string,"person_id": string,"residency_id": string,"session_id"?: string | null,"site_id": string,"updated_at"?: string
+                    "collaborative"?: boolean,"created_at"?: string,"end_time"?: string | null,"id"?: string,"kind": Database["public"]['Enums']["activity_kind"],"minutes": number,"note"?: string | null,"occurred_on": string,"person_id": string,"residency_id": string,"session_id"?: string | null,"site_id": string,"start_time"?: string | null,"updated_at"?: string,"visit_room"?: string | null
                   }
                   Update: {
-                    "collaborative"?: boolean,"created_at"?: string,"id"?: string,"kind"?: Database["public"]['Enums']["activity_kind"],"minutes"?: number,"note"?: string | null,"occurred_on"?: string,"person_id"?: string,"residency_id"?: string,"session_id"?: string | null,"site_id"?: string,"updated_at"?: string
+                    "collaborative"?: boolean,"created_at"?: string,"end_time"?: string | null,"id"?: string,"kind"?: Database["public"]['Enums']["activity_kind"],"minutes"?: number,"note"?: string | null,"occurred_on"?: string,"person_id"?: string,"residency_id"?: string,"session_id"?: string | null,"site_id"?: string,"start_time"?: string | null,"updated_at"?: string,"visit_room"?: string | null
                   }
                   Relationships: [
                     {

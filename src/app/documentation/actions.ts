@@ -54,7 +54,15 @@ export async function logActivity(_prev: DocResult, form: FormData): Promise<Doc
   const siteId = String(form.get("site_id") ?? "");
   const occurredOn = String(form.get("occurred_on") ?? "");
   const kind = String(form.get("kind") ?? "") as ActivityKind;
-  const minutes = Number(form.get("minutes"));
+  // Detailed-notes buildings (v0.36): room, start and end time, and a note are
+  // required, and minutes come from the times. The database checks the same.
+  const detailed = form.get("detailed") === "1";
+  const visitRoom = String(form.get("visit_room") ?? "").trim();
+  const startTime = String(form.get("start_time") ?? "");
+  const endTime = String(form.get("end_time") ?? "");
+  const note = String(form.get("note") ?? "").trim();
+  const toMin = (t: string) => (/^\d{2}:\d{2}$/.test(t) ? Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5)) : null);
+  const minutes = detailed && toMin(startTime) != null && toMin(endTime) != null ? toMin(endTime)! - toMin(startTime)! : Number(form.get("minutes"));
   const sessionId = String(form.get("session_id") ?? "");
   const residentIds = form.getAll("resident_id").filter(isId);
   const newNames = String(form.get("new_residents") ?? "")
@@ -64,7 +72,15 @@ export async function logActivity(_prev: DocResult, form: FormData): Promise<Doc
   if (!isId(residencyId) || !isId(siteId)) e.site_id = "Pick a program and site.";
   if (!/^\d{4}-\d{2}-\d{2}$/.test(occurredOn)) e.occurred_on = "Enter the date.";
   if (!ACTIVITY_KINDS.includes(kind)) e.kind = "Pick a type.";
-  if (!Number.isInteger(minutes) || minutes < 1 || minutes > 600) e.minutes = "Enter minutes (1–600).";
+  if (detailed) {
+    if (!visitRoom) e.visit_room = "Enter the room.";
+    else if (visitRoom.length > 60) e.visit_room = "Keep the room short.";
+    if (toMin(startTime) == null) e.start_time = "Enter the start time.";
+    if (toMin(endTime) == null) e.end_time = "Enter the end time.";
+    else if (toMin(startTime) != null && minutes < 1) e.end_time = "The end must be after the start.";
+    else if (minutes > 600) e.end_time = "A visit can be at most 10 hours.";
+    if (!note) e.note = "Write a note for the partner.";
+  } else if (!Number.isInteger(minutes) || minutes < 1 || minutes > 600) e.minutes = "Enter minutes (1–600).";
   if (newNames.some((n) => n.length > 80)) e.new_residents = "Keep each name short: first name and last initial.";
   if (ACTIVITY_KINDS.includes(kind) && residentsRequired(kind) && !residentIds.length && !newNames.length)
     e.residents = "Pick or add at least one resident.";
@@ -90,7 +106,8 @@ export async function logActivity(_prev: DocResult, form: FormData): Promise<Doc
       kind,
       minutes,
       collaborative: form.get("collaborative") === "yes",
-      note: String(form.get("note") ?? "").trim() || null,
+      note: note || null,
+      ...(detailed ? { visit_room: visitRoom, start_time: startTime, end_time: endTime } : {}),
     })
     .select("id")
     .single();
