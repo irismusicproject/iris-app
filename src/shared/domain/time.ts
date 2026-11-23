@@ -79,3 +79,13 @@ export function monthWindow(month: string): { from: string; to: string } {
     to: new Date(Date.UTC(y, m, 1) + 86_400_000).toISOString(),
   };
 }
+
+/** "12:45 PM – 1:15 PM" from two "HH:MM[:SS]" times (detailed relationship notes, v0.36). */
+export function formatTimeRange(start: string | null, end: string | null): string | null {
+  if (!start || !end) return null;
+  const one = (t: string) => {
+    const [h, m] = t.split(":").map(Number);
+    return `${((h + 11) % 12) + 1}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
+  };
+  return `${one(start)} – ${one(end)}`;
+}

@@ -4,7 +4,7 @@ import { AppShell } from "@/components/app-shell";
 import { requirePerson } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { ACTIVITY_KIND_LABELS, addDays, dueLabel, formatWeek, weekStart, type ActivityKind, type ResidentInvolvement } from "@/shared/domain/documentation";
-import { formatDay, formatMonth, formatTime, localDateTime } from "@/shared/domain/time";
+import { formatDay, formatMonth, formatTime, formatTimeRange, localDateTime } from "@/shared/domain/time";
 import { ActivityForm, CalendarLinkCard, DeleteActivityButton, LeaveSharedButton, ReflectionForm, ReportRow, WeekHours, type LastActivity } from "./forms";
 import { getResidencyNames } from "@/lib/residency-access";
 
@@ -38,9 +38,11 @@ type ActivityRow = {
   minutes: number;
   collaborative: boolean;
   note: string | null;
+  start_time: string | null;
+  end_time: string | null;
   person_id: string;
   relationship_activity_musician: { person_id: string }[];
-  relationship_activity_resident: { resident: { display_name: string } | null }[];
+  relationship_activity_resident: { room: string | null; resident: { display_name: string } | null }[];
 };
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
@@ -88,10 +90,10 @@ export default async function MyWeek({ searchParams }: { searchParams: Promise<{
           .order("starts_at")
       : Promise.resolve({ data: [] }),
     supabase.from("interaction_type").select("id, name").eq("active", true).order("sort_order"),
-    siteById.size ? supabase.from("resident").select("id, site_id, display_name, disambiguator").in("site_id", [...siteById.keys()]).eq("active", true).order("display_name") : Promise.resolve({ data: [] }),
+    siteById.size ? supabase.from("resident").select("id, site_id, display_name, disambiguator, room").in("site_id", [...siteById.keys()]).eq("active", true).order("display_name") : Promise.resolve({ data: [] }),
     supabase
       .from("relationship_activity")
-      .select("id, residency_id, site_id, occurred_on, kind, minutes, collaborative, note, person_id, relationship_activity_musician(person_id), relationship_activity_resident(resident(display_name))")
+      .select("id, residency_id, site_id, occurred_on, kind, minutes, collaborative, note, start_time, end_time, person_id, relationship_activity_musician(person_id), relationship_activity_resident(room, resident(display_name))")
       .or(sharedIds.length ? `person_id.eq.${person.id},id.in.(${sharedIds.join(",")})` : `person_id.eq.${person.id}`)
       .gte("occurred_on", monday)
       .lte("occurred_on", sunday)
@@ -114,10 +116,11 @@ export default async function MyWeek({ searchParams }: { searchParams: Promise<{
   const ledFuture = led.filter((s) => s.starts_at > now);
   const playedNotLed = sessions.filter((s) => s.kind === "group_session" && mine(s) && !led.includes(s));
   const types = (typeRows ?? []).map((t) => ({ id: t.id as string, label: t.name as string }));
-  const residents = ((residentRows ?? []) as { id: string; site_id: string; display_name: string; disambiguator: string }[]).map((r) => ({
+  const residents = ((residentRows ?? []) as { id: string; site_id: string; display_name: string; disambiguator: string; room: string | null }[]).map((r) => ({
     id: r.id,
     siteId: r.site_id,
     name: r.disambiguator ? `${r.display_name} (${r.disambiguator})` : r.display_name,
+    room: r.room,
   }));
   const activities = (activityRows ?? []) as unknown as ActivityRow[];
 
@@ -301,7 +304,10 @@ export default async function MyWeek({ searchParams }: { searchParams: Promise<{
             <h2 className="text-lg font-semibold">Relationship building</h2>
             <ul className="mt-2 divide-y divide-border text-sm">
               {activities.map((a) => {
-                const names = a.relationship_activity_resident.map((x) => x.resident?.display_name).filter(Boolean).join(", ");
+                const names = a.relationship_activity_resident
+                  .map((x) => x.resident && (x.room ? `${x.resident.display_name} (Room ${x.room})` : x.resident.display_name))
+                  .filter(Boolean)
+                  .join(", ");
                 const label = `${ACTIVITY_KIND_LABELS[a.kind].replace(/ \(.*\)$/, "")}, ${a.occurred_on}`;
                 return (
                   <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
@@ -309,6 +315,7 @@ export default async function MyWeek({ searchParams }: { searchParams: Promise<{
                       <span className="font-medium">{new Date(`${a.occurred_on}T12:00:00Z`).toLocaleDateString("en-US", { timeZone: "UTC", weekday: "short", month: "short", day: "numeric" })}</span>
                       {" · "}{ACTIVITY_KIND_LABELS[a.kind].replace(/ \(.*\)$/, "")}
                       {names && <> · {names}</>}
+                      {formatTimeRange(a.start_time, a.end_time) && <> · {formatTimeRange(a.start_time, a.end_time)}</>}
                       {" · "}{a.minutes} min · Collab: {a.collaborative ? "Yes" : "No"}
                       {(() => {
                         const others = [a.person_id, ...a.relationship_activity_musician.map((m) => m.person_id)].filter((id) => id !== person.id);

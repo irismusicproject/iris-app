@@ -165,7 +165,7 @@ export function ActivityForm({
   colleagues = {},
 }: {
   programs: Program[];
-  residents: { id: string; siteId: string; name: string }[];
+  residents: { id: string; siteId: string; name: string; room?: string | null }[];
   defaultDate: string;
   minDate: string;
   maxDate: string;
@@ -186,6 +186,10 @@ export function ActivityForm({
   const [collab, setCollab] = useState("no");
   const [picked, setPicked] = useState<string[]>([]);
   const [withIds, setWithIds] = useState<string[]>([]);
+  // Detailed-notes buildings (v0.36): room and start/end time; minutes come from the times.
+  const [newNames, setNewNames] = useState("");
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
   const [seen, setSeen] = useState(state.savedAt);
   if (state.savedAt !== seen) {
     // Logged: clear who and how long, keep program, site, type and date.
@@ -194,9 +198,15 @@ export function ActivityForm({
     setWithIds([]);
     setCollab("no");
     setMinutes(usual(residencyId, kind));
+    setStartTime("");
+    setEndTime("");
+    setNewNames("");
   }
   const siteResidents = useMemo(() => residents.filter((r) => r.siteId === siteId), [residents, siteId]);
   const detailed = !!program?.sites.find((x) => x.id === siteId)?.detailedNotes;
+  const newList = newNames.split(",").map((n) => n.trim().replace(/\s+/g, " ")).filter(Boolean);
+  const toMin = (t: string) => (/^\d{2}:\d{2}$/.test(t) ? Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5)) : null);
+  const span = toMin(startTime) != null && toMin(endTime) != null ? toMin(endTime)! - toMin(startTime)! : null;
   const lastUsable = last && programs.some((p) => p.id === last.residencyId && p.sites.some((x) => x.id === last.siteId));
   const e = state.errors;
   return (
@@ -258,10 +268,26 @@ export function ActivityForm({
             {ACTIVITY_KINDS.map((k) => <option key={k} value={k}>{ACTIVITY_KIND_LABELS[k]}</option>)}
           </select>
         </Field>
+        {detailed && (
+          <>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Start time" error={e?.start_time}>
+                <input name="start_time" type="time" value={startTime} onChange={(ev) => setStartTime(ev.target.value)} required className={inputClass} />
+              </Field>
+              <Field label="End time" error={e?.end_time} hint={span != null ? (span > 0 ? `${span} minutes` : "Must be after the start") : undefined}>
+                <input name="end_time" type="time" value={endTime} onChange={(ev) => setEndTime(ev.target.value)} required className={inputClass} />
+              </Field>
+            </div>
+          </>
+        )}
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Minutes" error={e?.minutes}>
-            <input name="minutes" inputMode="numeric" value={minutes} onChange={(ev) => setMinutes(ev.target.value)} required className={inputClass} />
-          </Field>
+          {detailed ? (
+            <input type="hidden" name="minutes" value={span != null && span > 0 ? span : ""} />
+          ) : (
+            <Field label="Minutes" error={e?.minutes}>
+              <input name="minutes" inputMode="numeric" value={minutes} onChange={(ev) => setMinutes(ev.target.value)} required className={inputClass} />
+            </Field>
+          )}
           <Field label="Collab?">
             <select name="collaborative" value={collab} onChange={(ev) => setCollab(ev.target.value)} className={inputClass}>
               <option value="no">No</option>
@@ -297,9 +323,34 @@ export function ActivityForm({
             hint="First name and last initial, separated by commas, e.g. “Ruth K., Sam P.”. No health information."
             error={e?.new_residents}
           >
-            <input name="new_residents" className={inputClass} />
+            <input name="new_residents" value={newNames} onChange={(ev) => setNewNames(ev.target.value)} className={inputClass} />
           </Field>
         </div>
+        {detailed && (picked.length > 0 || newList.length > 0) && (
+          <div className="mt-3 rounded-lg border border-border p-3">
+            <p className="text-sm font-medium">Room numbers</p>
+            <p className="text-xs text-muted">Saved with each resident and filled in next time. Change it if they&apos;ve moved.</p>
+            {e?.rooms && <p className="text-xs text-red-600 dark:text-red-400">{e.rooms}</p>}
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              {picked.map((id) => {
+                const r = siteResidents.find((x) => x.id === id);
+                if (!r) return null;
+                return (
+                  <label key={id} className="flex items-center gap-2 text-sm">
+                    <span className="min-w-24">{r.name}</span>
+                    <input name={`room_${id}`} defaultValue={r.room ?? ""} maxLength={30} required placeholder="Room" className={`${inputClass} py-1.5`} />
+                  </label>
+                );
+              })}
+              {newList.map((n, i) => (
+                <label key={`${i}-${n}`} className="flex items-center gap-2 text-sm">
+                  <span className="min-w-24">{n} (new)</span>
+                  <input name={`new_room_${i}`} maxLength={30} required placeholder="Room" className={`${inputClass} py-1.5`} />
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
       </fieldset>
       {(colleagues[residencyId]?.length ?? 0) > 0 && (
         <fieldset>
@@ -322,8 +373,9 @@ export function ActivityForm({
         </fieldset>
       )}
       {detailed ? (
-        <Field label="Note for the partner (optional)" hint="A few sentences on what you did together; goes in the day's document for this site. No health information.">
-          <textarea name="note" maxLength={3000} rows={4} className={inputClass} />
+        <Field label="Note for the partner" hint="A few sentences on what you did together; goes in the day's document for this site. No health information." error={e?.note}>
+          <textarea name="note" maxLength={3000} rows={4} required className={inputClass} />
+          <input type="hidden" name="detailed" value="1" />
         </Field>
       ) : (
         <Field label="One-sentence note (optional)" hint="No health information.">
