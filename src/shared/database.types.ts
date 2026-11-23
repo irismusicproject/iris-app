@@ -417,14 +417,14 @@ isOneToOne: false
                   ]
                 },"relationship_activity": {
                   Row: {
-                    "collaborative": boolean,"created_at": string,"id": string,"kind": Database["public"]['Enums']["activity_kind"],"minutes": number,"note": string | null,"occurred_on": string,"person_id": string,"residency_id": string,"session_id": string | null,"site_id": string,"updated_at": string
+                    "collaborative": boolean,"created_at": string,"end_time": string | null,"id": string,"kind": Database["public"]['Enums']["activity_kind"],"minutes": number,"note": string | null,"occurred_on": string,"person_id": string,"residency_id": string,"session_id": string | null,"site_id": string,"start_time": string | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "collaborative"?: boolean,"created_at"?: string,"id"?: string,"kind": Database["public"]['Enums']["activity_kind"],"minutes": number,"note"?: string | null,"occurred_on": string,"person_id": string,"residency_id": string,"session_id"?: string | null,"site_id": string,"updated_at"?: string
+                    "collaborative"?: boolean,"created_at"?: string,"end_time"?: string | null,"id"?: string,"kind": Database["public"]['Enums']["activity_kind"],"minutes": number,"note"?: string | null,"occurred_on": string,"person_id": string,"residency_id": string,"session_id"?: string | null,"site_id": string,"start_time"?: string | null,"updated_at"?: string
                   }
                   Update: {
-                    "collaborative"?: boolean,"created_at"?: string,"id"?: string,"kind"?: Database["public"]['Enums']["activity_kind"],"minutes"?: number,"note"?: string | null,"occurred_on"?: string,"person_id"?: string,"residency_id"?: string,"session_id"?: string | null,"site_id"?: string,"updated_at"?: string
+                    "collaborative"?: boolean,"created_at"?: string,"end_time"?: string | null,"id"?: string,"kind"?: Database["public"]['Enums']["activity_kind"],"minutes"?: number,"note"?: string | null,"occurred_on"?: string,"person_id"?: string,"residency_id"?: string,"session_id"?: string | null,"site_id"?: string,"start_time"?: string | null,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -481,14 +481,14 @@ isOneToOne: false
                   ]
                 },"relationship_activity_resident": {
                   Row: {
-                    "activity_id": string,"resident_id": string
+                    "activity_id": string,"resident_id": string,"room": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "activity_id": string,"resident_id": string
+                    "activity_id": string,"resident_id": string,"room"?: string | null
                   }
                   Update: {
-                    "activity_id"?: string,"resident_id"?: string
+                    "activity_id"?: string,"resident_id"?: string,"room"?: string | null
                   }
                   Relationships: [
                     {
@@ -553,14 +553,14 @@ isOneToOne: false
                   ]
                 },"resident": {
                   Row: {
-                    "active": boolean,"created_at": string,"created_by": string | null,"disambiguator": string,"display_name": string,"id": string,"site_id": string
+                    "active": boolean,"created_at": string,"created_by": string | null,"disambiguator": string,"display_name": string,"id": string,"room": string | null,"site_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "active"?: boolean,"created_at"?: string,"created_by"?: string | null,"disambiguator"?: string,"display_name": string,"id"?: string,"site_id": string
+                    "active"?: boolean,"created_at"?: string,"created_by"?: string | null,"disambiguator"?: string,"display_name": string,"id"?: string,"room"?: string | null,"site_id": string
                   }
                   Update: {
-                    "active"?: boolean,"created_at"?: string,"created_by"?: string | null,"disambiguator"?: string,"display_name"?: string,"id"?: string,"site_id"?: string
+                    "active"?: boolean,"created_at"?: string,"created_by"?: string | null,"disambiguator"?: string,"display_name"?: string,"id"?: string,"room"?: string | null,"site_id"?: string
                   }
                   Relationships: [
                     {
@@ -614,6 +614,38 @@ isOneToOne: false
       columns: ["season_id"]
 isOneToOne: false
       referencedRelation: "season"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"schedule_check": {
+                  Row: {
+                    "changed_at": string | null,"checked_at": string,"id": string,"month": string,"person_id": string,"residency_id": string,"site_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "changed_at"?: string | null,"checked_at"?: string,"id"?: string,"month": string,"person_id": string,"residency_id": string,"site_id": string
+                  }
+                  Update: {
+                    "changed_at"?: string | null,"checked_at"?: string,"id"?: string,"month"?: string,"person_id"?: string,"residency_id"?: string,"site_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "schedule_check_person_id_fkey"
+      columns: ["person_id"]
+isOneToOne: false
+      referencedRelation: "person"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "schedule_check_residency_id_fkey"
+      columns: ["residency_id"]
+isOneToOne: false
+      referencedRelation: "residency"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "schedule_check_site_id_fkey"
+      columns: ["site_id"]
+isOneToOne: false
+      referencedRelation: "site"
       referencedColumns: ["id"]
     }
                   ]
@@ -1001,6 +1033,9 @@ isOneToOne: false
 "end_series":
 { Args: { "p_last": string,"p_series": string }; Returns: Json
                            },
+"flag_schedule_check_changed":
+{ Args: { "p_session": string }; Returns: undefined
+                           },
 "generate_residency_month":
 { Args: { "p_month": string,"p_residency": string }; Returns: number
                            },
@@ -1046,6 +1081,9 @@ isOneToOne: false
 "is_session_leader":
 { Args: { "p_session": string }; Returns: boolean
                            },
+"is_session_month_reviewed":
+{ Args: { "p_session": string }; Returns: boolean
+                           },
 "is_week_approved":
 { Args: { "p_day": string,"p_person": string,"p_residency": string }; Returns: boolean
                            },
@@ -1057,6 +1095,9 @@ isOneToOne: false
                            },
 "mark_month_reviewed":
 { Args: { "p_month": string,"p_residency": string,"p_site": string }; Returns: string
+                           },
+"mark_schedule_checked":
+{ Args: { "p_month": string,"p_residency": string,"p_site": string }; Returns: boolean
                            },
 "may_change_approved":
 { Args: Record<PropertyKey, never>; Returns: boolean
@@ -1073,6 +1114,9 @@ isOneToOne: false
 { Args: { "p_residency": string,"p_week": string }; Returns: {
               "documented_minutes": number,"hours_state": string,"person_id": string,"undocumented": number
             }[]
+                           },
+"month_players":
+{ Args: { "p_month": string,"p_residency": string,"p_site": string }; Returns: string[]
                            },
 "month_sessions":
 { Args: { "p_month": string,"p_residency": string,"p_site": string }; Returns: string[]
@@ -1135,8 +1179,14 @@ isOneToOne: false
 "session_local_date":
 { Args: { "p_session": string }; Returns: string
                            },
+"set_resident_room":
+{ Args: { "p_resident": string,"p_room": string }; Returns: undefined
+                           },
 "set_series_leader":
 { Args: { "p_person": string,"p_series": string }; Returns: number
+                           },
+"site_has_detailed_notes":
+{ Args: { "p_site": string }; Returns: boolean
                            },
 "staff_directory":
 { Args: Record<PropertyKey, never>; Returns: {
@@ -1148,6 +1198,9 @@ isOneToOne: false
                            },
 "tidy_series_dates":
 { Args: { "p_series": string }; Returns: Json
+                           },
+"undo_schedule_checked":
+{ Args: { "p_month": string,"p_residency": string,"p_site": string }; Returns: undefined
                            },
 "undocumented_led_sessions":
 { Args: { "p_person": string,"p_residency": string,"p_week": string }; Returns: {

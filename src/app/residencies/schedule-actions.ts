@@ -27,7 +27,8 @@ const ok: ScheduleResult = { status: "saved" };
 function fail(error: { code?: string; message: string }): ScheduleResult {
   const m = error.message;
   if (error.code === "42501") {
-    if (m.includes("musicians can change")) return { status: "error", message: "On drafts you play in, you can change the title, room, notes and musicians (and a special event's date and time). The date's leader can make it “No Program”." };
+    if (m.includes("has been reviewed")) return { status: "error", message: "The point person has marked this month reviewed. Ask them for any changes." };
+    if (m.includes("musicians can change")) return { status: "error", message: "On drafts you play in, you can change the title, room, notes and musicians (and a special event's date and time). Musicians playing a draft date can make it “No Program”." };
     return { status: "error", message: "You don't have permission to make that change." };
   }
   if (error.code === "23514") {
@@ -145,6 +146,33 @@ export async function deleteSeries(residencyId: string, seriesId: string): Promi
   }
   refresh(residencyId);
   return { status: "saved", removed: data as number };
+}
+
+// "Done reviewing" (v0.35): a musician has checked their dates at one building for one draft month.
+export async function markScheduleChecked(residencyId: string, siteId: string, month: string): Promise<ScheduleResult & { allDone?: boolean }> {
+  await requirePerson();
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("mark_schedule_checked", { p_residency: residencyId, p_site: siteId, p_month: `${month}-01` });
+  if (error) {
+    if (error.message.includes("already been reviewed")) return { status: "error", message: "The point person has already marked this month reviewed. Ask them for any changes." };
+    if (error.message.includes("aren't playing")) return { status: "error", message: "You aren't playing at this building this month." };
+    return fail(error);
+  }
+  if (data) await deliverSoon();
+  refresh(residencyId);
+  return { status: "saved", allDone: Boolean(data) };
+}
+
+export async function undoScheduleChecked(residencyId: string, siteId: string, month: string): Promise<ScheduleResult> {
+  await requirePerson();
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("undo_schedule_checked", { p_residency: residencyId, p_site: siteId, p_month: `${month}-01` });
+  if (error) {
+    if (error.message.includes("already been reviewed")) return { status: "error", message: "The point person has already marked this month reviewed." };
+    return fail(error);
+  }
+  refresh(residencyId);
+  return ok;
 }
 
 export async function fillMonth(residencyId: string, month: string): Promise<ScheduleResult & { created?: number }> {
@@ -285,7 +313,7 @@ export async function cancelSession(residencyId: string, sessionId: string, reas
     .update({ schedule_state: "canceled", cancellation_reason: reason }, { count: "exact" })
     .eq("id", sessionId);
   if (error) return fail(error);
-  if (!count) return { status: "error", message: "Only the date's leader (on drafts), the admin lead (on published dates), the point person or an admin can make it “No Program”." };
+  if (!count) return { status: "error", message: "Only musicians playing the date (on drafts, until the month is reviewed), the admin lead (on published dates), the point person or an admin can make it “No Program”." };
   // The database queued an email to the point person (v0.24); send it now.
   await deliverSoon();
   refresh(residencyId);

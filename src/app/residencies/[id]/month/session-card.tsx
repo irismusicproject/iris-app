@@ -77,6 +77,7 @@ export function SessionCard({
   canSchedule,
   isAdminLead,
   myId,
+  monthReviewed = false,
 }: {
   residencyId: string;
   timeZone: string;
@@ -88,6 +89,8 @@ export function SessionCard({
   canSchedule: boolean;
   isAdminLead: boolean;
   myId: string;
+  /** The point person marked this building's month reviewed: drafts lock for musicians (v0.25, built v0.35). */
+  monthReviewed?: boolean;
 }) {
   const [pending, start] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
@@ -100,13 +103,14 @@ export function SessionCard({
   // DOMAIN-MODEL v0.18: musicians edit drafts they play in; the point person
   // and admins edit everything; the Admin Lead updates published dates.
   const playingMe = session.assignments.some((a) => a.personId === myId && a.status !== "absent");
-  const canEdit = isDraft && (canSchedule || (onRoster && playingMe));
+  // Drafts lock for musicians once the month is reviewed; the Admin Lead keeps working on it (v0.35).
+  const canEdit = isDraft && (canSchedule || (onRoster && playingMe && (!monthReviewed || isAdminLead)));
   // Published dates: the Admin Lead, the point person and admins (v0.18; who plays built v0.37).
   const canEditPublished = (isAdminLead || canSchedule) && session.state === "published";
   const canEditDetails = canEdit || canEditPublished;
-  const iLead = session.assignments.some((a) => a.personId === myId && a.role === "leader" && a.status !== "absent");
-  // The point person/admins; the Admin Lead on published dates; a draft date's own leader.
-  const canCancel = canSchedule || canEditPublished || (isDraft && iLead);
+  // The point person/admins; the Admin Lead on published dates; any musician
+  // playing a draft date, until the month is reviewed (v0.35).
+  const canCancel = canSchedule || canEditPublished || (isDraft && onRoster && playingMe && !monthReviewed);
   const canRestore = canSchedule || isAdminLead;
   const playing = session.assignments.filter((a) => a.status !== "absent");
   const leader = playing.find((a) => a.role === "leader");
