@@ -36,7 +36,7 @@ test("point person opens the month; a musician marks 'I can't play'; the point p
   const res = must(await d.from("residency").insert({ partner_id: partner.id, name: `Cedar ${run}`, display_name: `Iris at Cedar ${run}`, status: "active" }).select("id").single(), "residency");
   must(await d.from("residency_site").insert({ residency_id: res.id, site_id: site.id }).select(), "residency site");
   const season = must(await d.from("season").insert({ residency_id: res.id, name: `Spring ${year}`, starts_on: `${year}-01-01`, ends_on: `${year}-06-30`, kind: "semester" }).select("id").single(), "season");
-  must(await d.from("roster_member").insert([{ season_id: season.id, person_id: lead.id, is_admin_lead: true }, { season_id: season.id, person_id: mus.id }]).select(), "roster");
+  must(await d.from("roster_member").insert([{ season_id: season.id, person_id: lead.id, is_admin_lead: true }, { season_id: season.id, person_id: mus.id, is_admin_lead: false }]).select(), "roster");
   must(await d.from("staff_assignment").insert({ residency_id: res.id, person_id: point.id, role: "point_person", starts_on: "2020-01-01" }).select(), "point person");
   const dates = must(await d.from("session").insert([
     { residency_id: res.id, title: "Music Café", location_id: room.id, starts_at: `${year}-03-10T18:00:00Z`, scheduled_minutes: 60 },
