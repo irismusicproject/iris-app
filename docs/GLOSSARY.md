@@ -1,6 +1,6 @@
 # Iris App — Glossary (Languages 2 and 3)
 
-_Draft v0.22, November 22, 2026 (v0.22: residents' room numbers and the time of a detailed one-to-one; v0.21: "Done reviewing"; v0.20: skip a week, end or delete a weekly program; v0.19: pre-adding people and import; v0.18: roster phone and instruments; v0.17: community contacts, staff directory, links; v0.16: shared logs, building, follow-up, outbox; v0.15: custom invoices; v0.14: community invoices built, billable hours per musician; v0.13: usual type and lengths, Submit my week, daily one-to-one notes document; v0.12: Collab? Yes/No, hours approval and musician invoices; v0.11: monthly programs; v0.10: usual leader, calendar link; v0.9: documentation words from the CESLC workbook; v0.8: partner calendar layout from the Dec 2026 sample; "Lessons"; v0.7: D14, D15 settled; v0.6: D10, D11, D16 settled; "No Program" and roster words added; v0.5: D9, D13 settled: partner billing words added; v0.4: D2, D4, D6, D7, D8 settled; v0.3: D1, D3, D5 settled; schedule review and sending words added). Translates the words people use into the objects
+_Draft v0.23, November 23, 2026 (v0.23: the monthly cycle: opening a month, team version, can't play, leader swap, draft and final calendar, day-of cancellation, "I wasn't there", To do; v0.22: residents' room numbers and the time of a detailed one-to-one; v0.21: "Done reviewing"; v0.20: skip a week, end or delete a weekly program; v0.19: pre-adding people and import; v0.18: roster phone and instruments; v0.17: community contacts, staff directory, links; v0.16: shared logs, building, follow-up, outbox; v0.15: custom invoices; v0.14: community invoices built, billable hours per musician; v0.13: usual type and lengths, Submit my week, daily one-to-one notes document; v0.12: Collab? Yes/No, hours approval and musician invoices; v0.11: monthly programs; v0.10: usual leader, calendar link; v0.9: documentation words from the CESLC workbook; v0.8: partner calendar layout from the Dec 2026 sample; "Lessons"; v0.7: D14, D15 settled; v0.6: D10, D11, D16 settled; "No Program" and roster words added; v0.5: D9, D13 settled: partner billing words added; v0.4: D2, D4, D6, D7, D8 settled; v0.3: D1, D3, D5 settled; schedule review and sending words added). Translates the words people use into the objects
 defined in DOMAIN-MODEL.md (Language 1), which is authoritative._
 
 - **Part A: Team language.** How Iris staff and musicians talk, and which object each word means.
@@ -68,7 +68,7 @@ enough context to tell which object it is.
 | "administrative project lead", "Project Admin Lead", "admin lead" [CH][WB] | `RosterMember.is_admin_lead` | One per residency season, covering all its sites (D5); stipend via `Contract` |
 | "point person", "designated Iris staff member" [CH] | `StaffAssignment.role = point_person` | |
 | "admin", "core team", "core salaried team" | `Person.system_roles ∋ admin` | Sees and does everything across every residency, with its own admin view (D5). In scheduling talk, "the admin" usually means the **admin lead**; check context |
-| "sub", "substitute", "Musician Absent" [WB] | `SessionAssignment.status` = `substitute` / `absent` | Recorded by the absent musician; any active person; joins the roster (D11, D16) |
+| "sub", "substitute", "Musician Absent" [WB] | `SessionAssignment.status` = `substitute` / `absent` | Recorded by the absent musician; any active person; joins the roster (D11, D16). After a month is final, a `ChangeRequest` the point person approves (v0.23) |
 | "No Program" | A canceled `Session` (any reason; e.g. a planned absence before the 10th, D11, or a holiday) | Prints as "No Program" on the partner calendar. Can be restored as a draft (v0.17) |
 | "Lessons" (on a schedule) | A `Series`/`Session` with `kind = relationship_building`, often without a set time | Documented as `RelationshipActivity` records, not a session report |
 | "missed sessions" | A musician's `absent` assignments and musician-reason cancellations in a season | Warning past `Setting.max_musician_absences_per_season` (D11) |
@@ -131,10 +131,20 @@ enough context to tell which object it is.
 | "draft the schedule", "the draft" | `Session`s with `schedule_state = draft` | Drafted by the admin lead |
 | "done reviewing", "I've checked my dates" (a musician) | `ScheduleCheck` for that building and month | The point person sees a checklist and gets one email when all are done (v0.21) |
 | "review the schedule" (with the point person) | `CalendarExport` version 1, `state = reviewed` | Point person marks it after the review call (D5) |
-| "publish", "send the calendar to the community" | **Publish and download**: sessions become `published`; `CalendarExport` version 1, `state = sent` | The admin lead emails the PDF from their own email, point person cc'd |
+| "publish", "send the calendar to the community" | **Publish and download**: sessions become `published`; `CalendarExport` version 1, `state = sent` | The admin lead emails the PDF from their own email, point person cc'd. **v0.23:** the app will send it ("draft calendar", below) |
 | "partner feedback", "changes from the community" | `CalendarExport.partner_feedback`, then edits to published `Session`s | Internal; never prints |
 | "updated calendar", "revised calendar" | The next `CalendarExport.version` | |
 | "change request" (from a musician) | `ChangeRequest` | For published sessions |
+| "open January (for the team)" | `ScheduleMonth` created, `stage = team_editing` | By the point person or an admin, about the 1st of the month before (v0.23) |
+| "the team's version", "confirm January" | `ScheduleMonth.stage = team_confirmed` | The point person, by the 10th; locks dates for musicians |
+| "I can't play [date]", "I'm not available" (before the 10th) | `SessionAssignment.status = absent`, marked on the date in the calendar while the month is in team editing | No approval; the point person finds cover or makes it "No Program" |
+| "leader swap", "can Cleo lead instead?" | `ChangeRequest(kind = leader_swap)` | The point person approves in one tap |
+| "draft calendar" (sent on the 10th) | `CalendarExport` version 1, sent with `ScheduleMonth.stage = sent_to_partner` | The app emails it to the building's calendar contacts, point person and admin lead copied |
+| "partner changes" (Dec 10–15) | `ScheduleMonth.stage = partner_changes`: the admin lead's edits to published dates | Each change logged; musicians emailed |
+| "final calendar", "January is final" | `ScheduleMonth.stage = final` and the last `CalendarExport` version | Locked; changes are `ChangeRequest`s the point person approves |
+| "day-of cancellation", "canceled day-of" | A canceled `Session` marked by the leader when documenting, with `cancellation_reason` | After a phone call to the point person; `canceled_at` = the date's start time |
+| "I wasn't there" | The musician's own `SessionAssignment.status = absent`, marked when documenting | The program went on without them |
+| "To do", "my tasks" | Calculated from `ScheduleMonth` stages, `ChangeRequest`s and missing work | Not stored; each task has a deadline and an email reminder |
 
 ### Time, pay and paperwork
 

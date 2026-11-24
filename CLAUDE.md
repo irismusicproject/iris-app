@@ -103,6 +103,8 @@ D1: the review suggested "Ensemble Program"; the model uses `Residency`).
 | D14 | Residents as records; how they're identified | **Decided:** first name + last initial, added by musicians as they work; roster + point person + admins see them; partners confirmed comfortable. Nov 22: room numbers too, only at detailed-notes buildings (partners comfortable) |
 | D15 | Attendance counting; individually led vs. multi-musician | **Decided:** one total of everyone present; led-by derived from musician count |
 | D16 | Ensemble vs. roster (`RosterMember.is_core`) | **Decided:** roster = everyone who plays that season; core = ensemble; subs join as non-core |
+| D17 | Monthly scheduling cycle (`ScheduleMonth`) | **Decided Nov 23 (Lauren), not built yet:** five stages per residency × site × month (team editing → team confirmed → sent to partner → partner changes → final); titles only by the date's leader during team editing; "I can't play" on the calendar date, no approval, no limit for now; leader swaps and every change after final are `ChangeRequest`s the point person approves; the admin lead may send without the confirm step; the app emails the partner calendar to calendar contacts, point person and admin lead cc'd; same-day cancellations by phone, then "Canceled day-of" (reason required, counted at the start time) or "I wasn't there" when documenting; tasks calculated by the database; no timer |
+| D18 | Offline on the phone app (OFFLINE-SPEC O5, O7, O8) | **Decided Nov 23 (Lauren), built (PR #78):** residents added offline (name clash → Needs attention); resident names (no rooms) kept encrypted on the phone, read logging after B5; 14 days offline since the last confirmed sign-in |
 
 Treat **Open** and **Assumed** items as ask-first. **Decided** items are recorded in `DOMAIN-MODEL.md`.
 
@@ -157,10 +159,14 @@ the same backend:
 - **One notification layer.** All reminders and alerts go through a single
   module that starts with email (Resend) and can add push notifications
   later.
-- **Offline-friendly drafts.** Documentation forms keep drafts on the device
-  and submit when there's a connection. Not built yet; the draft plan, with a
-  verdict on each proposal, is `docs/OFFLINE-SPEC.md`. Its Ask items are
-  ask-first, and `DOMAIN-MODEL.md` wins where they differ.
+- **Offline-friendly drafts.** In the phone app, relationship-building logs
+  and new program reports are saved on the phone and sent when there's a
+  connection (D18, PR #78). The web form drafts (O1) and the rest of
+  `docs/OFFLINE-SPEC.md` aren't built yet; `DOMAIN-MODEL.md` wins where they
+  differ.
+- **Where each action is best done (D17, `REQUIREMENTS.md` 5.1).** Only
+  building the schedule's skeleton needs a computer; everything else is a
+  few-tap task on the phone, and every action works on both.
 - **Sign-in (decided by Ryan, Nov 2026).** Email and **password** is the
   normal way in, with a minimum of 12 characters. The rule lives in
   `src/shared/auth/password.ts` and in Supabase. An emailed **one-time

@@ -1,4 +1,4 @@
-# Iris App — Requirements (Draft v0.8)
+# Iris App — Requirements (Draft v0.9)
 
 _Status: draft for discussion. Owner: Lauren Latessa. Last updated: November 2026._
 
@@ -209,6 +209,15 @@ can reuse the same backend:
 - **Shared TypeScript types and validation** for each domain object, which
   native apps can reuse.
 - **Phone-first musician screens.**
+- **Where each action is best done (v0.9, Lauren, Nov 23, 2026).** Only the
+  Iris admin's work of creating and reshaping the schedule's skeleton
+  (weekly programs with their days, times, rooms, musicians and leaders)
+  needs a computer. **Everything else is filling in, flagging or confirming:
+  a single task with a deadline that takes a few taps on a phone.** Every
+  action stays possible on both phone and computer ("best on" is not
+  "only on"), and each is one backend operation with its permission check
+  inside it, so it behaves the same on every device (DOMAIN-MODEL
+  `ScheduleMonth`).
 - **An installable web app** (home-screen manifest) until the native apps
   exist.
 - **A single notification layer** that starts with email and can add push
