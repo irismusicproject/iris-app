@@ -12,12 +12,14 @@ const URL_ = process.env.EXPO_PUBLIC_SUPABASE_URL ?? "";
 const KEY = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? "";
 const PASSWORD = process.env.STAGING_TEST_PASSWORD ?? "";
 
+// Fetched with the page's own sign-in cookies (a browser hands a PDF to its
+// downloader instead of loading it as a page), plus Vercel's bypass header.
 async function expectPdf(page: Page, path: string, what: string) {
-  const res = await page.goto(path);
-  expect(res, `${what}: no response`).not.toBeNull();
-  expect(res!.status(), `${what}: status`).toBe(200);
-  expect(res!.headers()["content-type"], `${what}: content type`).toContain("application/pdf");
-  const body = await res!.body();
+  const bypass = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+  const res = await page.context().request.get(path, { headers: bypass ? { "x-vercel-protection-bypass": bypass } : {} });
+  expect(res.status(), `${what}: status`).toBe(200);
+  expect(res.headers()["content-type"], `${what}: content type`).toContain("application/pdf");
+  const body = await res.body();
   expect(body.subarray(0, 4).toString("latin1"), `${what}: a real PDF file`).toBe("%PDF");
   expect(body.length, `${what}: not empty`).toBeGreaterThan(2000);
 }
@@ -31,7 +33,7 @@ test("the partner calendar PDF opens (admin)", async ({ page }) => {
   const month = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(new Date()).slice(0, 7);
 
   expect(await logIn(page, "persona+admin@example.com")).toBe("ok");
-  await expectPdf(page, `/residencies/${data!.residency_id}/month/${month}/calendar?site=${data!.site_id}&view=1`, "calendar PDF");
+  await expectPdf(page, `/residencies/${data!.residency_id}/month/${month}/calendar?site=${data!.site_id}`, "calendar PDF");
 });
 
 test("a musician's own invoice PDF opens", async ({ page }) => {
@@ -41,5 +43,5 @@ test("a musician's own invoice PDF opens", async ({ page }) => {
   const link = page.locator('a[href^="/invoices/20"]').first();
   await expect(link, "a pay period listed on Invoices").toBeVisible();
   const href = (await link.getAttribute("href"))!.replace(/\/pdf.*$/, "");
-  await expectPdf(page, `${href}/pdf?view=1`, "invoice PDF");
+  await expectPdf(page, `${href}/pdf`, "invoice PDF");
 });
