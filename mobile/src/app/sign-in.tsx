@@ -85,6 +85,8 @@ export default function SignIn() {
             <>
               <Text style={styles.label}>Email</Text>
               <Input
+                testID="sign-in-email"
+                accessibilityLabel="Email"
                 value={email}
                 onChangeText={setEmail}
                 autoCapitalize="none"
@@ -105,6 +107,8 @@ export default function SignIn() {
             <>
               <Text style={styles.label}>Password</Text>
               <Input
+                testID="sign-in-password"
+                accessibilityLabel="Password"
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry

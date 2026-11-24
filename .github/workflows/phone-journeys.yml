@@ -95,5 +95,5 @@ jobs:
           path: |
             mobile/maestro-report.xml
             mobile/maestro-output/
-            ~/.maestro/tests/
+            mobile/*.png
           retention-days: 14
