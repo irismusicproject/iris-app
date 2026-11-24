@@ -127,11 +127,12 @@ jobs:
             maestro test .maestro/musician-tour.yaml --format junit --output maestro-tour-large-text.xml --test-output-dir maestro-output/large-text
             mkdir -p shots/large-text && mv *.png shots/large-text/
 
-      # Dex, website half: the number from the phone shows on the staging
-      # website, which then puts the original back. Runs even if a phone
-      # journey failed, so staging is never left with the test's number.
-      - name: Dex on the website (staging)
-        if: always() && env.MAESTRO_DEX_DAY != ''
+      # The website halves, on the real staging deployment: Dex (the number
+      # from the phone shows, then the original goes back; runs even if a
+      # phone journey failed, so staging is never left with the test's
+      # number) and every PDF (e2e/staging-journeys/pdfs.spec.ts).
+      - name: Website journeys on staging (Dex, PDFs)
+        if: always()
         working-directory: .
         env:
           STAGING_URL: ${{ secrets.STAGING_URL }}
