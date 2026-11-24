@@ -58,7 +58,8 @@ tags:
       - assertVisible: "Who's playing"
       - scrollUntilVisible:
           element: "Canceling today\\?"
-      - assertVisible: "Call .*"
+      - scrollUntilVisible:
+          element: "Call .*"
       - takeScreenshot: tour-2-canceling-today
       - back
 
