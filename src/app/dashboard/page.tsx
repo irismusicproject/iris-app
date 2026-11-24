@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { AuthCard } from "@/components/auth-card";
+import { TodoList, type Task } from "@/components/todo-list";
 import { getViewer } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { AddLinkForm, RemoveLinkButton } from "./links-editor";
@@ -37,10 +38,12 @@ export default async function Dashboard({
   const { password } = await searchParams;
   const link = "font-medium text-iris underline-offset-2 hover:underline";
   const supabase = await createClient();
-  const [{ data: staff }, { data: links }] = await Promise.all([
+  const [{ data: staff }, { data: links }, { data: tasks }] = await Promise.all([
     supabase.rpc("staff_directory"),
     supabase.from("resource_link").select("id, label, url").eq("active", true).order("sort_order").order("created_at"),
+    supabase.rpc("my_tasks"),
   ]);
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
   const card = "mt-8 rounded-xl border border-border bg-surface p-5 sm:p-6";
 
   return (
@@ -56,6 +59,7 @@ export default async function Dashboard({
       <p className="mt-3 text-muted">
         Your Iris programs, documentation, hours and invoices.
       </p>
+      <TodoList tasks={(tasks ?? []) as Task[]} today={today} />
       <ul className="mt-6 space-y-2 text-sm">
         <li>
           <Link href="/residencies" className={link}>Programs</Link>: {isAdmin ? "set up programs, seasons, rosters and point persons" : "the programs you're part of"}

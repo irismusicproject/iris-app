@@ -28,6 +28,10 @@ function fail(error: { code?: string; message: string }): ScheduleResult {
   const m = error.message;
   if (error.code === "42501") {
     if (m.includes("has been reviewed")) return { status: "error", message: "The point person has marked this month reviewed. Ask them for any changes." };
+    // The monthly cycle (DOMAIN-MODEL v0.41).
+    if (m.includes("leader changes its title")) return { status: "error", message: "While the team edits, only this date's leader changes its title." };
+    if (m.includes("propose a leader swap")) return { status: "error", message: "Propose a leader swap under More; the point person approves it." };
+    if (m.includes("is final")) return { status: "error", message: "This month is final. Ask the point person for changes." };
     if (m.includes("musicians can change")) return { status: "error", message: "On drafts you play in, you can change the title, room, notes and musicians (and a special event's date and time). Musicians playing a draft date can make it “No Program”." };
     return { status: "error", message: "You don't have permission to make that change." };
   }

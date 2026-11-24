@@ -11,6 +11,9 @@ import {
   type ActivityKind,
   type ResidentInvolvement,
 } from "@/shared/domain/documentation";
+import { cancelDayOf, markNotThere, takeLeadToDocument } from "@/app/residencies/month-cycle-actions";
+import { CANCELLATION_REASON_LABELS, CANCELLATION_REASONS, type CancellationReason } from "@/shared/domain/scheduling";
+import { useRouter } from "next/navigation";
 import { createCalendarLink, deleteActivity, leaveSharedActivity, logActivity, resetCalendarLink, saveReflection, saveSessionReport, submitWeek, type DocResult } from "./actions";
 
 const small = "rounded-full border border-border px-3 py-1 text-xs hover:bg-iris-soft disabled:opacity-60";
@@ -51,6 +54,10 @@ export function ReportRow({
   // The length comes from the program (set by the point person or an admin,
   // v0.20). The leader only changes it when the session ran longer or shorter.
   const [editLength, setEditLength] = useState(!!r && r.minutes !== session.scheduledMinutes);
+  // "Canceled day-of" (v0.41): after calling the point person, the leader records it instead of documenting.
+  const [dayOf, setDayOf] = useState(false);
+  const [reason, setReason] = useState<CancellationReason | "">("");
+  const router = useRouter();
 
   return (
     <li className="py-4">
@@ -61,6 +68,37 @@ export function ReportRow({
         </span>
       </div>
       <p className="text-sm text-muted">{session.day}{session.time ? ` · ${session.time}` : ""} · {session.place}</p>
+      {!done && (
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+          <label className="flex items-center gap-2">
+            <input type="checkbox" checked={dayOf} onChange={(e) => setDayOf(e.target.checked)} />
+            Canceled day-of
+          </label>
+          {dayOf && (
+            <>
+              <select aria-label="Why it was canceled" value={reason} onChange={(e) => setReason(e.target.value as CancellationReason)} className={`${inputClass} py-1 text-sm`}>
+                <option value="">Why?</option>
+                {CANCELLATION_REASONS.map((x) => <option key={x} value={x}>{CANCELLATION_REASON_LABELS[x]}</option>)}
+              </select>
+              <ConfirmButton
+                disabled={pending || !reason}
+                className={small}
+                label="Record it"
+                question="Record this date as canceled day-of (“No Program”)? You should already have called the point person. Nobody is paid for it, and a partner cancellation after 9 am can be billed."
+                confirmLabel="Yes, record it"
+                onConfirm={() =>
+                  start(async () => {
+                    const res = await cancelDayOf(session.id, reason as CancellationReason);
+                    setMsg(res.message);
+                    if (res.ok) router.refresh();
+                  })
+                }
+              />
+            </>
+          )}
+        </div>
+      )}
+      {dayOf && !done ? null : (
       <form
         className="mt-3 grid gap-3 sm:grid-cols-[6rem_1fr_8rem]"
         onSubmit={(ev) => {
@@ -139,6 +177,7 @@ export function ReportRow({
           {msg && <span role="status" className="text-xs text-iris">{msg}</span>}
         </div>
       </form>
+      )}
     </li>
   );
 }
@@ -567,5 +606,36 @@ export function WeekHours({ week, residencies: residencies, toDocument }: { week
       )}
       {msg && <p role="status" className="text-sm text-iris">{msg}</p>}
     </div>
+  );
+}
+
+// ---- A program I played but didn't lead: "I wasn't there" (v0.41) ----
+
+export function PlayedRow({ session }: { session: { id: string; label: string; started: boolean; leaderAbsent: boolean; documented: boolean } }) {
+  const [pending, start] = useTransition();
+  const [msg, setMsg] = useState<string | null>(null);
+  const router = useRouter();
+  return (
+    <li className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+      <span>{session.label}</span>
+      <span className="flex flex-wrap gap-2">
+        {session.started && session.leaderAbsent && !session.documented && (
+          <button type="button" disabled={pending} className={small} onClick={() => start(async () => { const r = await takeLeadToDocument(session.id); setMsg(r.message); if (r.ok) router.refresh(); })}>
+            Document it (the leader wasn&apos;t there)
+          </button>
+        )}
+        {session.started && (
+          <ConfirmButton
+            disabled={pending}
+            className={small}
+            label="I wasn't there"
+            question="The program went on without you? You won't be paid for it, and the point person is told."
+            confirmLabel="Yes, I wasn't there"
+            onConfirm={() => start(async () => { const r = await markNotThere(session.id, true); setMsg(r.message); if (r.ok) router.refresh(); })}
+          />
+        )}
+      </span>
+      {msg && <span role="status" className="w-full text-xs text-iris">{msg}</span>}
+    </li>
   );
 }

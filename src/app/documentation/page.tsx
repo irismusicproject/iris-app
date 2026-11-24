@@ -5,7 +5,7 @@ import { requirePerson } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { ACTIVITY_KIND_LABELS, addDays, dueLabel, formatWeek, weekStart, type ActivityKind, type ResidentInvolvement } from "@/shared/domain/documentation";
 import { formatDay, formatMonth, formatTime, formatTimeRange, localDateTime } from "@/shared/domain/time";
-import { ActivityForm, CalendarLinkCard, DeleteActivityButton, LeaveSharedButton, ReflectionForm, ReportRow, WeekHours, type LastActivity } from "./forms";
+import { ActivityForm, CalendarLinkCard, DeleteActivityButton, LeaveSharedButton, PlayedRow, ReflectionForm, ReportRow, WeekHours, type LastActivity } from "./forms";
 import { getResidencyNames } from "@/lib/residency-access";
 
 // "My week": a musician's documentation for one week (Monday–Sunday), due
@@ -294,9 +294,28 @@ export default async function MyWeek({ searchParams }: { searchParams: Promise<{
               </p>
             )}
             {playedNotLed.length > 0 && (
-              <p className="mt-3 text-sm text-muted">
-                You also played in {playedNotLed.length} program{playedNotLed.length === 1 ? "" : "s"} led by someone else; the leader documents those.
-              </p>
+              <>
+                <p className="mt-3 text-sm text-muted">
+                  You also played in {playedNotLed.length} program{playedNotLed.length === 1 ? "" : "s"} led by someone else; the leader documents those. Weren&apos;t there? Say so here.
+                </p>
+                <ul className="divide-y divide-border">
+                  {playedNotLed.map((s) => {
+                    const tz = siteById.get(s.location!.site_id)!.timezone;
+                    return (
+                      <PlayedRow
+                        key={s.id}
+                        session={{
+                          id: s.id,
+                          label: `${s.title}, ${formatDay(s.starts_at, tz)}`,
+                          started: s.starts_at <= now,
+                          leaderAbsent: !s.session_assignment.some((a) => a.role === "leader" && a.status !== "absent"),
+                          documented: !!s.session_report,
+                        }}
+                      />
+                    );
+                  })}
+                </ul>
+              </>
             )}
           </section>
 

@@ -9,6 +9,7 @@ import { formatDay, formatMonth, formatTime, isMonth, localDateTime, monthWindow
 import { AddOneTimeForm, FillMonthButton } from "../month-controls";
 import { PublishPanel, type ScheduleCheckRow } from "../publish-panel";
 import { ScheduleHeader, SessionCard, type CardSession } from "../session-card";
+import { StagePanel, type Stage } from "../stage-panel";
 import { DeleteSeriesButton, EndSeriesForm, SeriesForm } from "../../season/series-form";
 
 // A month's schedule for one site, laid out like the partner calendar
@@ -130,6 +131,18 @@ export default async function MonthPage({
       .or(`active_until.is.null,active_until.gte.${month}-01`),
     supabase.from("interaction_type").select("id, name").eq("active", true).order("sort_order"),
   ]);
+  // The monthly cycle (DOMAIN-MODEL ScheduleMonth, v0.41).
+  const { data: sm } = await supabase
+    .from("schedule_month")
+    .select("stage, team_due_on, final_due_on")
+    .eq("residency_id", id)
+    .eq("site_id", site.id)
+    .eq("month", `${month}-01`)
+    .maybeSingle();
+  const stage = (sm?.stage ?? null) as Stage | null;
+  const { data: openRequests } = await supabase.from("change_request").select("session_id").eq("status", "open").eq("requested_by", person.id);
+  const myOpenRequests = new Set(((openRequests ?? []) as { session_id: string }[]).map((r) => r.session_id));
+
   const { data: checkRows } = await supabase
     .from("schedule_check")
     .select("person_id, changed_at")
@@ -236,7 +249,7 @@ export default async function MonthPage({
   ).length;
 
   const card = "mt-6 rounded-xl border border-border bg-surface p-5 sm:p-6";
-  const cardProps = { residencyId: id, timeZone: tz, rooms, roster, onRoster: access.onRoster, canSchedule: access.canSchedule, isAdminLead: access.isAdminLead, myId: person.id, monthReviewed: Boolean(latest) };
+  const cardProps = { residencyId: id, timeZone: tz, rooms, roster, onRoster: access.onRoster, canSchedule: access.canSchedule, isAdminLead: access.isAdminLead, myId: person.id, monthReviewed: Boolean(latest), stage, myOpenRequests: [...myOpenRequests] };
 
   return (
     <AppShell isAdmin={isAdmin}>
@@ -376,7 +389,23 @@ export default async function MonthPage({
         <div className="mt-5"><FillMonthButton residencyId={id} month={month} monthLabel={monthLabel} /></div>
       )}
 
-      {sessions.length > 0 && (
+      {(stage || access.canSchedule) && (
+        <StagePanel
+          residencyId={id}
+          siteId={site.id}
+          siteName={site.display_name}
+          month={month}
+          monthLabel={monthLabel}
+          stage={stage}
+          dueTeam={sm?.team_due_on ?? null}
+          dueFinal={sm?.final_due_on ?? null}
+          canSchedule={access.canSchedule}
+          isAdminLead={access.isAdminLead}
+        />
+      )}
+
+      {/* Months not opened through the cycle keep the earlier review-and-publish steps. */}
+      {sessions.length > 0 && !stage && (
         <PublishPanel
           residencyId={id}
           siteId={site.id}
