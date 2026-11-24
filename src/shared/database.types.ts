@@ -649,6 +649,56 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"schedule_month": {
+                  Row: {
+                    "confirmed_at": string | null,"confirmed_by": string | null,"final_due_on": string,"finalized_at": string | null,"finalized_by": string | null,"id": string,"month": string,"opened_at": string,"opened_by": string | null,"residency_id": string,"sent_at": string | null,"sent_by": string | null,"site_id": string,"stage": Database["public"]['Enums']["schedule_month_stage"],"team_due_on": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "confirmed_at"?: string | null,"confirmed_by"?: string | null,"final_due_on": string,"finalized_at"?: string | null,"finalized_by"?: string | null,"id"?: string,"month": string,"opened_at"?: string,"opened_by"?: string | null,"residency_id": string,"sent_at"?: string | null,"sent_by"?: string | null,"site_id": string,"stage"?: Database["public"]['Enums']["schedule_month_stage"],"team_due_on": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "confirmed_at"?: string | null,"confirmed_by"?: string | null,"final_due_on"?: string,"finalized_at"?: string | null,"finalized_by"?: string | null,"id"?: string,"month"?: string,"opened_at"?: string,"opened_by"?: string | null,"residency_id"?: string,"sent_at"?: string | null,"sent_by"?: string | null,"site_id"?: string,"stage"?: Database["public"]['Enums']["schedule_month_stage"],"team_due_on"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "schedule_month_confirmed_by_fkey"
+      columns: ["confirmed_by"]
+isOneToOne: false
+      referencedRelation: "person"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "schedule_month_finalized_by_fkey"
+      columns: ["finalized_by"]
+isOneToOne: false
+      referencedRelation: "person"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "schedule_month_opened_by_fkey"
+      columns: ["opened_by"]
+isOneToOne: false
+      referencedRelation: "person"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "schedule_month_residency_id_fkey"
+      columns: ["residency_id"]
+isOneToOne: false
+      referencedRelation: "residency"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "schedule_month_sent_by_fkey"
+      columns: ["sent_by"]
+isOneToOne: false
+      referencedRelation: "person"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "schedule_month_site_id_fkey"
+      columns: ["site_id"]
+isOneToOne: false
+      referencedRelation: "site"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"season": {
                   Row: {
                     "created_at": string,"ends_on": string,"id": string,"kind": Database["public"]['Enums']["season_kind"],"name": string,"residency_id": string,"starts_on": string,"updated_at": string
@@ -1001,6 +1051,9 @@ isOneToOne: false
               "canceled": boolean,"has_set_time": boolean,"is_special_event": boolean,"minutes": number,"musicians": string,"residency_name": string,"room": string,"session_id": string,"site_name": string,"starts_at": string,"timezone": string,"title": string,"updated_at": string
             }[]
                            },
+"calendar_recipients":
+{ Args: { "p_residency": string,"p_site": string }; Returns: Json
+                           },
 "can_add_site_residents":
 { Args: { "p_site": string }; Returns: boolean
                            },
@@ -1019,6 +1072,9 @@ isOneToOne: false
 "can_view_site":
 { Args: { "p_site": string }; Returns: boolean
                            },
+"confirm_schedule_month":
+{ Args: { "p_month": string,"p_residency": string,"p_site": string }; Returns: undefined
+                           },
 "delete_one_time_session":
 { Args: { "p_session": string }; Returns: undefined
                            },
@@ -1032,6 +1088,9 @@ isOneToOne: false
                            },
 "end_series":
 { Args: { "p_last": string,"p_series": string }; Returns: Json
+                           },
+"finalize_schedule_month":
+{ Args: { "p_month": string,"p_residency": string,"p_site": string }; Returns: Json
                            },
 "flag_schedule_check_changed":
 { Args: { "p_session": string }; Returns: undefined
@@ -1132,6 +1191,12 @@ isOneToOne: false
 "new_calendar_version":
 { Args: { "p_month": string,"p_partner_feedback"?: string,"p_residency": string,"p_site": string }; Returns: string
                            },
+"notify_point_people":
+{ Args: { "p_body": string,"p_dedupe": string,"p_kind": string,"p_residency": string,"p_subject": string }; Returns: undefined
+                           },
+"open_schedule_month":
+{ Args: { "p_month": string,"p_residency": string,"p_site": string }; Returns: number
+                           },
 "partner_billable_minutes":
 { Args: { "p_agreement": string,"p_from": string,"p_to": string }; Returns: {
               "approved_minutes": number,"category": string,"site_id": string,"undocumented": number,"waiting_minutes": number
@@ -1154,6 +1219,31 @@ isOneToOne: false
 "remove_session":
 { Args: { "p_session": string }; Returns: undefined
                            },
+"require_schedule_month":
+{ Args: { "p_month": string,"p_residency": string,"p_site": string }; Returns: {
+              "confirmed_at": string | null,
+"confirmed_by": string | null,
+"final_due_on": string,
+"finalized_at": string | null,
+"finalized_by": string | null,
+"id": string,
+"month": string,
+"opened_at": string,
+"opened_by": string | null,
+"residency_id": string,
+"sent_at": string | null,
+"sent_by": string | null,
+"site_id": string,
+"stage": Database["public"]['Enums']["schedule_month_stage"],
+"team_due_on": string,
+"updated_at": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "schedule_month"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "residency_people":
 { Args: { "p_residency": string }; Returns: {
               "id": string,"name": string
@@ -1173,6 +1263,15 @@ isOneToOne: false
 "save_site_contact":
 { Args: { "p_contact": string,"p_email": string,"p_name": string,"p_phone": string,"p_site": string,"p_title": string }; Returns: string
                            },
+"schedule_due_on":
+{ Args: { "p_default": number,"p_key": string,"p_month": string }; Returns: string
+                           },
+"schedule_month_send_info":
+{ Args: { "p_month": string,"p_residency": string,"p_site": string }; Returns: Json
+                           },
+"send_schedule_month":
+{ Args: { "p_month": string,"p_residency": string,"p_site": string }; Returns: Json
+                           },
 "session_has_musicians":
 { Args: { "p_session": string }; Returns: boolean
                            },
@@ -1182,6 +1281,31 @@ isOneToOne: false
 "session_local_date":
 { Args: { "p_session": string }; Returns: string
                            },
+"session_schedule_month":
+{ Args: { "p_session": string }; Returns: {
+              "confirmed_at": string | null,
+"confirmed_by": string | null,
+"final_due_on": string,
+"finalized_at": string | null,
+"finalized_by": string | null,
+"id": string,
+"month": string,
+"opened_at": string,
+"opened_by": string | null,
+"residency_id": string,
+"sent_at": string | null,
+"sent_by": string | null,
+"site_id": string,
+"stage": Database["public"]['Enums']["schedule_month_stage"],
+"team_due_on": string,
+"updated_at": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "schedule_month"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "set_resident_room":
 { Args: { "p_resident": string,"p_room": string }; Returns: undefined
                            },
@@ -1201,6 +1325,9 @@ isOneToOne: false
                            },
 "tidy_series_dates":
 { Args: { "p_series": string }; Returns: Json
+                           },
+"undo_confirm_schedule_month":
+{ Args: { "p_month": string,"p_residency": string,"p_site": string }; Returns: undefined
                            },
 "undo_schedule_checked":
 { Args: { "p_month": string,"p_residency": string,"p_site": string }; Returns: undefined
@@ -1223,7 +1350,7 @@ isOneToOne: false
                            }
           }
           Enums: {
-            "activity_kind": "one_to_one"|"mini_group"|"hallway_concert","assignment_role": "leader"|"participant","assignment_status": "assigned"|"absent"|"substitute","billing_basis": "per_hour"|"installments","calendar_state": "reviewed"|"sent","cancellation_reason": "partner"|"weather"|"musician"|"other","care_level": "independent"|"assisted"|"memory_care"|"skilled_nursing"|"adult_day"|"affordable_housing"|"other","employment_type": "contractor_1099"|"employee_w2"|"volunteer","model_type": "performance"|"small_group"|"one_to_one","overhead_billing": "same_invoice"|"separate_invoice","partner_invoice_kind": "site"|"overhead"|"contract","partner_invoice_state": "sent"|"paid","residency_status": "planned"|"active"|"paused"|"ended","resident_involvement": "none"|"co_facilitated"|"co_led","schedule_state": "draft"|"published"|"canceled","season_kind": "semester"|"season"|"summer_session"|"other","session_kind": "group_session"|"relationship_building","staff_role": "point_person"|"support","stipend_kind": "project_support"|"admin_lead"|"training"|"other","system_role": "admin","time_state": "draft"|"submitted"|"approved"
+            "activity_kind": "one_to_one"|"mini_group"|"hallway_concert","assignment_role": "leader"|"participant","assignment_status": "assigned"|"absent"|"substitute","billing_basis": "per_hour"|"installments","calendar_state": "reviewed"|"sent","cancellation_reason": "partner"|"weather"|"musician"|"other","care_level": "independent"|"assisted"|"memory_care"|"skilled_nursing"|"adult_day"|"affordable_housing"|"other","employment_type": "contractor_1099"|"employee_w2"|"volunteer","model_type": "performance"|"small_group"|"one_to_one","overhead_billing": "same_invoice"|"separate_invoice","partner_invoice_kind": "site"|"overhead"|"contract","partner_invoice_state": "sent"|"paid","residency_status": "planned"|"active"|"paused"|"ended","resident_involvement": "none"|"co_facilitated"|"co_led","schedule_month_stage": "team_editing"|"team_confirmed"|"sent_to_partner"|"partner_changes"|"final","schedule_state": "draft"|"published"|"canceled","season_kind": "semester"|"season"|"summer_session"|"other","session_kind": "group_session"|"relationship_building","staff_role": "point_person"|"support","stipend_kind": "project_support"|"admin_lead"|"training"|"other","system_role": "admin","time_state": "draft"|"submitted"|"approved"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -1339,7 +1466,7 @@ export type CompositeTypes<
 export const Constants = {
   "public": {
           Enums: {
-            "activity_kind": ["one_to_one", "mini_group", "hallway_concert"],"assignment_role": ["leader", "participant"],"assignment_status": ["assigned", "absent", "substitute"],"billing_basis": ["per_hour", "installments"],"calendar_state": ["reviewed", "sent"],"cancellation_reason": ["partner", "weather", "musician", "other"],"care_level": ["independent", "assisted", "memory_care", "skilled_nursing", "adult_day", "affordable_housing", "other"],"employment_type": ["contractor_1099", "employee_w2", "volunteer"],"model_type": ["performance", "small_group", "one_to_one"],"overhead_billing": ["same_invoice", "separate_invoice"],"partner_invoice_kind": ["site", "overhead", "contract"],"partner_invoice_state": ["sent", "paid"],"residency_status": ["planned", "active", "paused", "ended"],"resident_involvement": ["none", "co_facilitated", "co_led"],"schedule_state": ["draft", "published", "canceled"],"season_kind": ["semester", "season", "summer_session", "other"],"session_kind": ["group_session", "relationship_building"],"staff_role": ["point_person", "support"],"stipend_kind": ["project_support", "admin_lead", "training", "other"],"system_role": ["admin"],"time_state": ["draft", "submitted", "approved"]
+            "activity_kind": ["one_to_one", "mini_group", "hallway_concert"],"assignment_role": ["leader", "participant"],"assignment_status": ["assigned", "absent", "substitute"],"billing_basis": ["per_hour", "installments"],"calendar_state": ["reviewed", "sent"],"cancellation_reason": ["partner", "weather", "musician", "other"],"care_level": ["independent", "assisted", "memory_care", "skilled_nursing", "adult_day", "affordable_housing", "other"],"employment_type": ["contractor_1099", "employee_w2", "volunteer"],"model_type": ["performance", "small_group", "one_to_one"],"overhead_billing": ["same_invoice", "separate_invoice"],"partner_invoice_kind": ["site", "overhead", "contract"],"partner_invoice_state": ["sent", "paid"],"residency_status": ["planned", "active", "paused", "ended"],"resident_involvement": ["none", "co_facilitated", "co_led"],"schedule_month_stage": ["team_editing", "team_confirmed", "sent_to_partner", "partner_changes", "final"],"schedule_state": ["draft", "published", "canceled"],"season_kind": ["semester", "season", "summer_session", "other"],"session_kind": ["group_session", "relationship_building"],"staff_role": ["point_person", "support"],"stipend_kind": ["project_support", "admin_lead", "training", "other"],"system_role": ["admin"],"time_state": ["draft", "submitted", "approved"]
           }
         }
 } as const

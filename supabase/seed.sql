@@ -640,6 +640,27 @@ begin
               date_trunc('month', current_date), interval '1 month') g) m
   where rs.residency_id = any (array['f48a6586-0201-4e93-81ad-28a94efc492d'::uuid, 'cfeac2f1-4700-4130-856e-3a3e284e0d6c'::uuid, '88bbf4f8-63e3-46f1-8c60-0ce5ccf24db1'::uuid, '40d55bbb-a67f-4501-85ec-adf3ba390d2a'::uuid, 'ed63467d-f1f6-4e3e-8fdb-79bf0aed9cf8'::uuid, '7b5b246f-91df-4c8f-8823-9bb8dc4bbaf7'::uuid, '58d45b65-f9f9-43f4-838e-8f97b7eb50d9'::uuid, 'f695ccda-396e-4524-860c-1ffb83b4ffbd'::uuid])
   on conflict do nothing;
+
+  -- The monthly cycle (DOMAIN-MODEL ScheduleMonth, v0.41): months already sent
+  -- are final; next month is open for the team (team editing).
+  if to_regclass('public.schedule_month') is not null then
+    insert into public.schedule_month (residency_id, site_id, month, stage, team_due_on, final_due_on,
+                                       opened_by, confirmed_at, confirmed_by, sent_at, sent_by, finalized_at, finalized_by)
+    select ce.residency_id, ce.site_id, ce.month, 'final',
+           (ce.month - interval '1 month')::date + 9, (ce.month - interval '1 month')::date + 14,
+           ce.reviewed_by, now(), ce.reviewed_by, now(), ce.reviewed_by, now(), ce.reviewed_by
+    from public.calendar_export ce
+    where ce.version = 1 and ce.residency_id = any (array['f48a6586-0201-4e93-81ad-28a94efc492d'::uuid, 'cfeac2f1-4700-4130-856e-3a3e284e0d6c'::uuid, '88bbf4f8-63e3-46f1-8c60-0ce5ccf24db1'::uuid, '40d55bbb-a67f-4501-85ec-adf3ba390d2a'::uuid, 'ed63467d-f1f6-4e3e-8fdb-79bf0aed9cf8'::uuid, '7b5b246f-91df-4c8f-8823-9bb8dc4bbaf7'::uuid, '58d45b65-f9f9-43f4-838e-8f97b7eb50d9'::uuid, 'f695ccda-396e-4524-860c-1ffb83b4ffbd'::uuid])
+    on conflict do nothing;
+    insert into public.schedule_month (residency_id, site_id, month, stage, team_due_on, final_due_on, opened_by)
+    select distinct on (rs.residency_id, rs.site_id) rs.residency_id, rs.site_id,
+           date_trunc('month', current_date + interval '1 month')::date, 'team_editing',
+           date_trunc('month', current_date)::date + 9, date_trunc('month', current_date)::date + 14, sa.person_id
+    from public.residency_site rs
+    join public.staff_assignment sa on sa.residency_id = rs.residency_id and sa.role = 'point_person'
+    where rs.residency_id = any (array['f48a6586-0201-4e93-81ad-28a94efc492d'::uuid, 'cfeac2f1-4700-4130-856e-3a3e284e0d6c'::uuid, '88bbf4f8-63e3-46f1-8c60-0ce5ccf24db1'::uuid, '40d55bbb-a67f-4501-85ec-adf3ba390d2a'::uuid, 'ed63467d-f1f6-4e3e-8fdb-79bf0aed9cf8'::uuid, '7b5b246f-91df-4c8f-8823-9bb8dc4bbaf7'::uuid, '58d45b65-f9f9-43f4-838e-8f97b7eb50d9'::uuid, 'f695ccda-396e-4524-860c-1ffb83b4ffbd'::uuid])
+    on conflict do nothing;
+  end if;
 end $$;
 
 -- Documentation: residents, session reports, relationship building, monthly

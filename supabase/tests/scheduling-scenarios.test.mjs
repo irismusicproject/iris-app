@@ -192,7 +192,11 @@ check("the previous leader stays on as a participant", r[0].n === future.length,
 const cafeB = (await sessionsOf(CAFE, B)).map((x) => x.id);
 const openB = (await sessionsOf(OPEN, B)).map((x) => x.id);
 const d0 = cafeB[0];
-r = await as(M1, `update public.session set title='Music Café: Motown' where id='${d0}'`); check("musician playing a draft edits its title", r.ok && r.n === 1, r);
+// v0.41 (Lauren, Nov 23, 2026): while the team edits, only the date's leader changes its title.
+r = await su(`select p.id from public.session_assignment a join public.person p on p.id = a.person_id where a.session_id='${d0}' and a.role='leader' and a.status <> 'absent'`);
+const d0Leader = r[0]?.id;
+r = await as(M1 === d0Leader ? M2 : M1, `update public.session set title='Music Café: Motown' where id='${d0}'`); check("v0.41: a musician playing a draft but not leading it can't change its title", !r.ok && /leader/.test(r.err), r);
+r = await as(d0Leader ?? P, `update public.session set title='Music Café: Motown' where id='${d0}'`); check("…the date's leader can", r.ok && r.n === 1, r);
 r = await as(M1, `update public.session set location_id='${R2}' where id='${d0}'`); check("…its room", r.ok && r.n === 1, r);
 r = await as(M1, `update public.session set internal_note='Bring the songbooks' where id='${d0}'`); check("…its notes", r.ok && r.n === 1, r);
 r = await as(M1, `update public.session set location_id='${R9}' where id='${d0}'`); check("…but not to another partner's room", !r.ok, r);

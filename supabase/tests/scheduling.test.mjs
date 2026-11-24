@@ -126,7 +126,9 @@ check("admin lead staffs the special event", r.ok, r);
 
 // ---- Musicians edit DRAFT dates they play in (DOMAIN-MODEL v0.18): title, room,
 // notes, who plays, and pick or swap the leader; date/time only for special events.
-r = await as(M2, `update public.session set title='Jam Band: Motown' where id='${sessions[0]}'`); check("roster musician edits a draft title", r.ok && r.n === 1, r);
+// v0.41 (Lauren, Nov 23, 2026): while the team edits, only the date's leader changes its title. sessions[0] has no leader yet.
+r = await as(M2, `update public.session set title='Jam Band: Motown' where id='${sessions[0]}'`); check("v0.41: a musician who doesn't lead the date can't change its title", !r.ok && /leader/.test(r.err), r);
+r = await as(P, `update public.session set title='Jam Band: Motown' where id='${sessions[0]}'`); check("…the point person can", r.ok && r.n === 1, r);
 r = await as(M2, `update public.session set location_id='${ROOM_B}' where id='${sessions[0]}'`); check("roster musician changes a draft's room", r.ok && r.n === 1, r);
 r = await as(M2, `update public.session set location_id='${ROOM2}' where id='${sessions[0]}'`); check("…but not to another partner's room", !r.ok, r);
 r = await as(M2, `update public.session set starts_at = starts_at + interval '1 hour' where id='${sessions[0]}'`); check("musician can't move a regular session's time", !r.ok, r);
