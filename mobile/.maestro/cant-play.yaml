@@ -1,0 +1,43 @@
+# The phone side of docs/ACCEPTANCE.md C1, C3 and C7: a musician marks
+# "I can't play" on a date in an open month, sees it on their calendar, and
+# undoes it. The website side is e2e/month-cycle.spec.ts.
+#
+# Runs against STAGING (fake data) with the fake musician. Needs:
+#   MAESTRO_EMAIL, MAESTRO_PASSWORD           the fake musician's sign-in
+#   MAESTRO_DATE_TITLE, MAESTRO_MONTHS_AHEAD  from prepare-staging.mjs
+# Screenshots (cant-play-*.png) let a person check the colors: Maestro
+# can't read colors, and the orange is exactly what this journey is about.
+appId: org.irismusicproject.iris
+name: "I can't play: mark, see it on the calendar, undo"
+tags:
+  - month-cycle
+---
+- launchApp:
+    clearState: true
+- tapOn: "Email"
+- inputText: ${MAESTRO_EMAIL}
+- tapOn: "Password"
+- inputText: ${MAESTRO_PASSWORD}
+- tapOn: "Log in"
+- extendedWaitUntil:
+    visible: "Calendar"
+    timeout: 30000
+- tapOn: "Calendar"
+- repeat:
+    times: ${MAESTRO_MONTHS_AHEAD}
+    commands:
+      - tapOn: "Next →"
+- scrollUntilVisible:
+    element: ".*${MAESTRO_DATE_TITLE}.*"
+- tapOn: ".*${MAESTRO_DATE_TITLE}.*"
+- tapOn: "I can't play this date"
+- assertVisible: "Marked\\..*can't play this season\\."
+- takeScreenshot: cant-play-1-date-marked
+- back
+- takeScreenshot: cant-play-2-calendar-shows-it
+- assertVisible: ".*Orange: you can.t play.*"
+# Undo, so staging is left as it was.
+- tapOn: ".*${MAESTRO_DATE_TITLE}.*"
+- tapOn: "Marked: I can't play \\(tap to undo\\)"
+- assertVisible: "Undone: you're playing it again."
+- takeScreenshot: cant-play-3-undone

@@ -1,0 +1,37 @@
+# The phone side of docs/ACCEPTANCE.md C1, C3, C7 ("I can't play"), run on
+# demand in Expo's cloud: build the staging test app, start an Android
+# emulator, get staging ready (prepare-staging.mjs), then drive the app with
+# Maestro (.maestro/cant-play.yaml). Screenshots are in the run's artifacts.
+# Needs the EAS secret STAGING_TEST_PASSWORD in the preview environment.
+# Run: npx eas-cli@latest workflow:run .eas/workflows/phone-journey-cant-play.yml
+name: Phone journey - I can't play (staging)
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  build_android:
+    name: Build the staging test app
+    type: build
+    params:
+      platform: android
+      profile: preview
+
+  cant_play:
+    name: Drive the app with Maestro
+    needs: [build_android]
+    type: maestro
+    environment: preview
+    runs_on: linux-medium-nested-virtualization
+    params:
+      build_id: ${{ needs.build_android.outputs.build_id }}
+      flow_path: .maestro/cant-play.yaml
+    hooks:
+      before_maestro_tests:
+        - name: Get staging ready (fake data)
+          run: |
+            node .maestro/prepare-staging.mjs > /tmp/prep.env
+            cat /tmp/prep.env
+            while IFS='=' read -r k v; do set-env "$k" "$v"; done < /tmp/prep.env
+            set-env MAESTRO_EMAIL "persona+musician@example.com"
+            set-env MAESTRO_PASSWORD "$STAGING_TEST_PASSWORD"
