@@ -1,0 +1,88 @@
+# A musician's tour of the phone app, read-only (docs/ACCEPTANCE.md P1, P2,
+# P4, P6, M4, D1): the test-version label, the three tabs, My week and
+# Account one tap away, a date's details, the month's stage on the calendar,
+# "Canceling today? Call ...", and logging out. Changes nothing on staging.
+#
+# Runs against STAGING (fake data) with the fake musician. Needs:
+#   MAESTRO_EMAIL, MAESTRO_PASSWORD           the fake musician's sign-in
+#   MAESTRO_DATE_TITLE, MAESTRO_MONTHS_AHEAD  a draft date in an open month
+#   MAESTRO_SOON_TITLE                        their next published date (may be empty)
+# All from prepare-staging.mjs.
+appId: org.irismusicproject.iris
+name: "Musician's tour: tabs, My week, Account, dates, month stage, log out"
+tags:
+  - tour
+---
+- launchApp:
+    clearState: true
+# P6: a test build says so before anyone signs in.
+- assertVisible: "Test version: staging, fake data only."
+- tapOn:
+    id: "sign-in-email"
+- inputText: ${MAESTRO_EMAIL}
+- tapOn:
+    id: "sign-in-password"
+- inputText: ${MAESTRO_PASSWORD}
+- hideKeyboard
+- tapOn: "Log in"
+# P2 (password) and P1: signed in, three tabs.
+- extendedWaitUntil:
+    visible: "Calendar"
+    timeout: 30000
+- assertVisible: "To do"
+- assertVisible: "Today"
+- takeScreenshot: tour-0-today
+
+# P1: My week is one tap from Today.
+- tapOn: "My week →"
+- assertVisible: "Hours and submit"
+- takeScreenshot: tour-1-my-week
+- back
+
+# P1, P6: Account is one tap away and says it's the staging test version.
+- tapOn: "Account"
+- assertVisible: "Test version: connected to staging \\(fake data only\\)\\."
+- back
+
+# D1: on an upcoming published date, "Canceling today?" offers a call to
+# the point person. Skipped when staging has no such date in the next two weeks.
+- runFlow:
+    when:
+      true: ${MAESTRO_SOON_TITLE != ''}
+    commands:
+      - scrollUntilVisible:
+          element: ".*${MAESTRO_SOON_TITLE}.*"
+      - tapOn: ".*${MAESTRO_SOON_TITLE}.*"
+      - assertVisible: "Who's playing"
+      - scrollUntilVisible:
+          element: "Canceling today\\?"
+      - assertVisible: "Call .*"
+      - takeScreenshot: tour-2-canceling-today
+      - back
+
+# M4: the calendar shows each building's stage for the month.
+- tapOn: "Calendar"
+- repeat:
+    times: ${MAESTRO_MONTHS_AHEAD}
+    commands:
+      - tapOn: "Next →"
+- scrollUntilVisible:
+    element: "Stage 1 of 5: Team editing"
+- takeScreenshot: tour-3-month-stage
+
+# P4: a date's details show who's playing, with the leader marked.
+- scrollUntilVisible:
+    element: ".*${MAESTRO_DATE_TITLE}.*"
+- tapOn: ".*${MAESTRO_DATE_TITLE}.*"
+- assertVisible: "Who's playing"
+- assertVisible: ".*· leading.*"
+- assertVisible: "You"
+- takeScreenshot: tour-4-date-details
+- back
+
+# Logging out returns to the sign-in screen (nothing unsent on this phone).
+- tapOn: "Account"
+- tapOn: "Log out"
+- extendedWaitUntil:
+    visible: "Log in"
+    timeout: 15000

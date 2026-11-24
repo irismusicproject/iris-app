@@ -51,6 +51,18 @@ for (const ahead of [1, 2]) {
     console.log(`MAESTRO_EMAIL=${a.person.email}`);
     console.log(`MAESTRO_DATE_TITLE=${d.title.trim()}`);
     console.log(`MAESTRO_MONTHS_AHEAD=${ahead}`);
+    // For the tour (musician-tour.yaml, ACCEPTANCE D1): this musician's next
+    // published date in the coming two weeks, where "Canceling today? Call
+    // [point person]" shows. Empty if there isn't one; the tour then skips it.
+    const now = new Date(), twoWeeks = new Date(now.getTime() + 14 * 86400_000);
+    const { data: soon } = await admin
+      .from("session")
+      .select("title, starts_at, session_assignment!inner(status, person!session_assignment_person_id_fkey!inner(email))")
+      .eq("schedule_state", "published").eq("kind", "group_session")
+      .eq("session_assignment.person.email", a.person.email).neq("session_assignment.status", "absent")
+      .gte("starts_at", now.toISOString()).lt("starts_at", twoWeeks.toISOString())
+      .order("starts_at").limit(1);
+    console.log(`MAESTRO_SOON_TITLE=${soon?.[0]?.title?.trim() ?? ""}`);
     process.exit(0);
   }
 }
