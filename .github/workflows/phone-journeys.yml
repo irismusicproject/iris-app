@@ -1,0 +1,99 @@
+name: Phone journeys (Android emulator, staging)
+
+# Drives the real Android app with Maestro (mobile/.maestro/*.yaml), free on
+# GitHub's machines instead of Expo's paid cloud (Ryan, Nov 24, 2026):
+#  1. build the app from this commit, pointed at STAGING (fake data);
+#  2. get staging ready (mobile/.maestro/prepare-staging.mjs, public key only);
+#  3. start an Android emulator and run the flows; screenshots are uploaded.
+# The website side of the same promises is in e2e/ (docs/ACCEPTANCE.md).
+#
+# Runs on pull requests that change the phone app, and on demand.
+# Needs: repository variables STAGING_SUPABASE_URL and
+# STAGING_SUPABASE_PUBLISHABLE_KEY (both public by design) and the secret
+# STAGING_TEST_PASSWORD (the fake people's shared password).
+
+on:
+  pull_request:
+    paths:
+      - "mobile/**"
+      - "src/shared/**"
+      - ".github/workflows/phone-journeys.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phone-journeys-staging # one at a time: the flows change staging's fake data
+  cancel-in-progress: false
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: mobile
+    env:
+      EXPO_PUBLIC_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+      EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+      EXPO_PUBLIC_IRIS_ENVIRONMENT: staging
+      STAGING_TEST_PASSWORD: ${{ secrets.STAGING_TEST_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - run: npm ci
+
+      - name: Build the app (release build, this commit's code, no over-the-air updates)
+        run: |
+          npx expo prebuild --platform android --no-install
+          # Test this commit's code, not the latest published update.
+          sed -i 's#android:name="expo.modules.updates.ENABLED" android:value="true"#android:name="expo.modules.updates.ENABLED" android:value="false"#' android/app/src/main/AndroidManifest.xml
+          cd android && ./gradlew assembleRelease --no-daemon -q
+          ls -la app/build/outputs/apk/release/
+
+      - name: Get staging ready (fake data)
+        run: |
+          node .maestro/prepare-staging.mjs | tee -a "$GITHUB_ENV"
+          echo "MAESTRO_PASSWORD=$STAGING_TEST_PASSWORD" >> "$GITHUB_ENV"
+
+      - name: Install Maestro
+        run: |
+          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Let the emulator use hardware acceleration
+        working-directory: .
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run the phone journeys on an Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          working-directory: mobile
+          script: |
+            adb install -r android/app/build/outputs/apk/release/app-release.apk
+            maestro test .maestro/cant-play.yaml --format junit --output maestro-report.xml --test-output-dir maestro-output
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phone-journeys
+          path: |
+            mobile/maestro-report.xml
+            mobile/maestro-output/
+            ~/.maestro/tests/
+          retention-days: 14
