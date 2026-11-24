@@ -497,6 +497,27 @@ begin
               date_trunc('month', current_date), interval '1 month') g) m
   where rs.residency_id = any (${resIds})
   on conflict do nothing;
+
+  -- The monthly cycle (DOMAIN-MODEL ScheduleMonth, v0.41): months already sent
+  -- are final; next month is open for the team (team editing).
+  if to_regclass('public.schedule_month') is not null then
+    insert into public.schedule_month (residency_id, site_id, month, stage, team_due_on, final_due_on,
+                                       opened_by, confirmed_at, confirmed_by, sent_at, sent_by, finalized_at, finalized_by)
+    select ce.residency_id, ce.site_id, ce.month, 'final',
+           (ce.month - interval '1 month')::date + 9, (ce.month - interval '1 month')::date + 14,
+           ce.reviewed_by, now(), ce.reviewed_by, now(), ce.reviewed_by, now(), ce.reviewed_by
+    from public.calendar_export ce
+    where ce.version = 1 and ce.residency_id = any (${resIds})
+    on conflict do nothing;
+    insert into public.schedule_month (residency_id, site_id, month, stage, team_due_on, final_due_on, opened_by)
+    select distinct on (rs.residency_id, rs.site_id) rs.residency_id, rs.site_id,
+           date_trunc('month', current_date + interval '1 month')::date, 'team_editing',
+           date_trunc('month', current_date)::date + 9, date_trunc('month', current_date)::date + 14, sa.person_id
+    from public.residency_site rs
+    join public.staff_assignment sa on sa.residency_id = rs.residency_id and sa.role = 'point_person'
+    where rs.residency_id = any (${resIds})
+    on conflict do nothing;
+  end if;
 end $$;
 `);
 

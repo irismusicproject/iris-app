@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:db": "node supabase/tests/rls.test.mjs && node supabase/tests/scheduling.test.mjs && node supabase/tests/scheduling-scenarios.test.mjs && node supabase/tests/scheduling-invariants.test.mjs && node supabase/tests/money-scenarios.test.mjs && node supabase/tests/money-invariants.test.mjs",
+    "test:db": "node supabase/tests/rls.test.mjs && node supabase/tests/scheduling.test.mjs && node supabase/tests/month-cycle.test.mjs && node supabase/tests/scheduling-scenarios.test.mjs && node supabase/tests/scheduling-invariants.test.mjs && node supabase/tests/money-scenarios.test.mjs && node supabase/tests/money-invariants.test.mjs",
     "test:e2e": "playwright test",
     "dev:local": "node scripts/local-supabase.mjs dev",
     "db:reset": "node scripts/local-supabase.mjs reset",

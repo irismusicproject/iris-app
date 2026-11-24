@@ -69,22 +69,15 @@ test("point person fills a month and sets leaders, musicians edit drafts, point 
   await expect(pointPage.getByRole("heading", { name: "Lessons" })).toBeVisible();
   await expect(pointPage.getByText("3:00 PM").first()).toBeVisible();
 
-  // 2. A roster musician edits a draft's title and room. They can't fill the
-  //    month, and (not being the date's leader) can't make it No Program.
+  // 2. A roster musician changes a draft's room. They can't fill the month,
+  //    and (not being the date's leader) can't make it No Program.
   const musPage = await as(browser, mus, path);
   await expect(musPage.getByRole("button", { name: /^Fill in/ })).toHaveCount(0);
   await expect(musPage.getByRole("button", { name: /No Program/ })).toHaveCount(0);
-  const firstTitle = musPage.getByLabel(/^Title for Tuesday/).first();
-  await firstTitle.fill("Jam Band: Motown");
-  // Workbook-style cells (#35): a title saves on Enter or when you click away.
-  await firstTitle.press("Enter");
-  await expect(musPage.getByText("Title saved.")).toBeVisible();
   // The room menu sits under each date's "More" (workbook layout, #35).
   await musPage.getByRole("button", { name: "More" }).first().click();
   await musPage.getByLabel(/^Room for Tuesday/).first().selectOption({ label: "Lounge" });
   await expect(musPage.getByText("Room saved.")).toBeVisible();
-  await musPage.reload();
-  await expect(musPage.getByLabel(/^Title for Tuesday/).first()).toHaveValue("Jam Band: Motown");
 
   // 3. The point person assigns the first date's leader.
   await pointPage.reload();
@@ -98,6 +91,17 @@ test("point person fills a month and sets leaders, musicians edit drafts, point 
   await pointPage.reload();
   // The Leader column keeps the choice after a reload (workbook layout, #35).
   await expect(pointPage.getByLabel(/^Leader for Tuesday/).first().locator("option:checked")).toHaveText("Mira");
+
+  // 3b. v0.41 (Lauren, Nov 23, 2026): while the team edits, the date's leader
+  //     adds its title. Mira now leads the first Tuesday.
+  await musPage.reload();
+  const firstTitle = musPage.getByLabel(/^Title for Tuesday/).first();
+  await firstTitle.fill("Jam Band: Motown");
+  // Workbook-style cells (#35): a title saves on Enter or when you click away.
+  await firstTitle.press("Enter");
+  await expect(musPage.getByText("Title saved.")).toBeVisible();
+  await musPage.reload();
+  await expect(musPage.getByLabel(/^Title for Tuesday/).first()).toHaveValue("Jam Band: Motown");
 
   // 4. The point person marks the last Jam Band date "No Program" (on drafts
   //    that's the point person or the date's leader; the Admin Lead handles
