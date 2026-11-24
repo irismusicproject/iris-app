@@ -71,6 +71,8 @@ jobs:
           node .maestro/prepare-staging.mjs | tee -a "$GITHUB_ENV"
           # Dex: a documented date to change on the phone, then check on the website.
           PHONE_TIME_ZONE=America/Phoenix node .maestro/prepare-dex.mjs | tee -a "$GITHUB_ENV"
+          # Gus: three draft dates he plays in a month open for the team.
+          node .maestro/prepare-gus.mjs | tee -a "$GITHUB_ENV"
           echo "MAESTRO_PASSWORD=$STAGING_TEST_PASSWORD" >> "$GITHUB_ENV"
 
       - name: Install Maestro
@@ -116,6 +118,9 @@ jobs:
             adb shell settings put global auto_time 1
             maestro test .maestro/violet-away-3.yaml --format junit --output maestro-violet-3.xml --test-output-dir maestro-output
             node .maestro/check-offline-sent.mjs --email "$MAESTRO_VIOLET_EMAIL" --expect away=1
+            # Gus (docs/PERSONAS.md): double taps, the season count, a leader swap. Cleanup runs even if the journey fails.
+            maestro test .maestro/gus-edges.yaml --format junit --output maestro-gus.xml --test-output-dir maestro-output || { node .maestro/prepare-gus.mjs --cleanup; exit 1; }
+            node .maestro/prepare-gus.mjs --cleanup
             mkdir -p shots/normal-text && mv *.png shots/normal-text/
             # Vera (docs/PERSONAS.md): the same tour with the phone's text at its largest.
             adb shell settings put system font_scale 2.0
