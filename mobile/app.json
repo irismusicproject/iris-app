@@ -48,6 +48,12 @@
     "platforms": [
       "ios",
       "android"
-    ]
+    ],
+    "updates": {
+      "url": "https://u.expo.dev/033f430f-9133-4cf5-bd62-dfe9a02f8ce4"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    }
   }
 }
