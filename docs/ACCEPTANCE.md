@@ -57,7 +57,7 @@ a fake person (`persona+musician@example.com`, `persona+point-person@…`,
 
 | # | Promise | DB | Web | Phone | Hand |
 |---|---|---|---|---|---|
-| S1 | The Admin Lead (or point person, admin) sends the calendar; sending also confirms; the dates are published | ✅ schedule-month | — | — | |
+| S1 | The Admin Lead (or point person, admin) sends the calendar; sending also confirms; the dates are published | ✅ schedule-month, clara-two-hats (Admin Lead powers stay at her own building) | — | — | |
 | S2 | The app makes the PDF and emails it to the building's calendar contacts, copying the point person and Admin Lead; on staging it says plainly that email is off | — | — | — | |
 | S3 | The first change after sending moves the month to "partner changes"; the Admin Lead enters changes on phone or computer | ✅ schedule-month | — | — | |
 | S4 | The date's musicians are emailed about each partner change | — | — | — | |
