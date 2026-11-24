@@ -82,7 +82,14 @@ export async function monthAction(action: "send" | "finalize" | "resend", reside
       body: JSON.stringify({ action, residencyId, siteId, month: month.slice(0, 7) }),
     });
     const body = (await res.json().catch(() => null)) as SendResult | null;
-    return body ?? { ok: false, message: "We couldn't reach the Iris website. Try again." };
+    if (body) return body;
+    // The website answered, but with an error page (a crash after the
+    // database step, Nov 24). The month may already be sent, so say so
+    // instead of "couldn't reach", and don't invite a blind retry.
+    return {
+      ok: false,
+      message: `The Iris website had a problem (error ${res.status}). The stage below shows whether it went through. If it says sent, use "Email it again", or open the PDF and send it yourself; otherwise try again.`,
+    };
   } catch {
     return { ok: false, message: "No connection. Check your signal and try again." };
   }
