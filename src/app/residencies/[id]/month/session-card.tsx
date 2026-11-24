@@ -22,6 +22,8 @@ import {
   setSessionWhen,
   type ScheduleResult,
 } from "../../schedule-actions";
+import { askForSub, proposeLeader, setUnavailable, type CycleResult } from "../../month-cycle-actions";
+import type { Stage } from "./stage-panel";
 
 // One date on the month schedule, laid out like the workbook scheduling tab:
 // Day | Time | Program Title | Program Leader | Notes, with musicians, room and
@@ -78,6 +80,8 @@ export function SessionCard({
   isAdminLead,
   myId,
   monthReviewed = false,
+  stage = null,
+  myOpenRequests = [],
 }: {
   residencyId: string;
   timeZone: string;
@@ -91,6 +95,10 @@ export function SessionCard({
   myId: string;
   /** The point person marked this building's month reviewed: drafts lock for musicians (v0.25, built v0.35). */
   monthReviewed?: boolean;
+  /** This building's month in the cycle (DOMAIN-MODEL ScheduleMonth, v0.41), if opened. */
+  stage?: Stage | null;
+  /** Dates I've already asked the point person about. */
+  myOpenRequests?: string[];
 }) {
   const [pending, start] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
@@ -98,23 +106,42 @@ export function SessionCard({
   const [note, setNote] = useState(session.internalNote ?? "");
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState<CancellationReason>("other");
+  const [swapTo, setSwapTo] = useState("");
+  const [subWho, setSubWho] = useState("");
   const isDraft = session.state === "draft";
   const canceled = session.state === "canceled";
   // DOMAIN-MODEL v0.18: musicians edit drafts they play in; the point person
   // and admins edit everything; the Admin Lead updates published dates.
   const playingMe = session.assignments.some((a) => a.personId === myId && a.status !== "absent");
   // Drafts lock for musicians once the month is reviewed; the Admin Lead keeps working on it (v0.35).
-  const canEdit = isDraft && (canSchedule || (onRoster && playingMe && (!monthReviewed || isAdminLead)));
+  const final = stage === "final";
+  const canEdit = isDraft && !final && (canSchedule || (onRoster && playingMe && (!monthReviewed || isAdminLead)));
   // Published dates: the Admin Lead, the point person and admins (v0.18; who plays built v0.37).
-  const canEditPublished = (isAdminLead || canSchedule) && session.state === "published";
+  // After final, only the point person and admins (v0.41).
+  const canEditPublished = (canSchedule || (isAdminLead && !final)) && session.state === "published";
   const canEditDetails = canEdit || canEditPublished;
   // The point person/admins; the Admin Lead on published dates; any musician
   // playing a draft date, until the month is reviewed (v0.35).
-  const canCancel = canSchedule || canEditPublished || (isDraft && onRoster && playingMe && !monthReviewed);
+  const canCancel = canSchedule || canEditPublished || (isDraft && !final && onRoster && playingMe && !monthReviewed);
   const canRestore = canSchedule || isAdminLead;
   const playing = session.assignments.filter((a) => a.status !== "absent");
   const leader = playing.find((a) => a.role === "leader");
   const notOnIt = roster.filter((r) => !session.assignments.some((a) => a.personId === r.id));
+  const mine = session.assignments.find((a) => a.personId === myId);
+  const iLead = !!leader && leader.personId === myId;
+  // v0.41: while the team edits, only the date's leader changes its title; musicians propose leader swaps.
+  const teamEditing = stage === "team_editing" || (!stage && !monthReviewed);
+  const canEditTitle = canEditDetails && (canSchedule || !isDraft || iLead || (isAdminLead && !teamEditing));
+  const canPickLeader = canSchedule || (isAdminLead && (canEdit || canEditPublished));
+  const asked = myOpenRequests.includes(session.id);
+  const canMarkOff = stage === "team_editing" && isDraft && !!mine && mine.status !== "substitute";
+  const canPropose = stage === "team_editing" && isDraft && playingMe && !!leader && !canSchedule && !asked && playing.some((a) => a.role !== "leader");
+  const canAskSub = final && playingMe && session.state === "published" && !canSchedule && !asked;
+  const cycle = (fn: () => Promise<CycleResult>) =>
+    start(async () => {
+      const r = await fn();
+      setMessage(r.message);
+    });
 
   const run = (fn: () => Promise<ScheduleResult>, done?: string) =>
     start(async () => {
@@ -139,7 +166,7 @@ export function SessionCard({
             {CANCELED_FOR_ABSENCE_CALENDAR_TEXT}
             {session.cancellationReason && <span className="text-xs text-muted"> ({CANCELLATION_REASON_LABELS[session.cancellationReason]})</span>}
           </span>
-        ) : canEditDetails ? (
+        ) : canEditTitle ? (
           <input
             aria-label={`Title for ${session.dayLabel}`}
             value={title}
@@ -154,7 +181,7 @@ export function SessionCard({
 
         {canceled || session.kind !== "group_session" ? (
           <span className="text-sm text-muted">–</span>
-        ) : canEdit || canEditPublished ? (
+        ) : canPickLeader ? (
           <select
             aria-label={`Leader for ${session.dayLabel}`}
             value={leader?.personId ?? ""}
@@ -271,6 +298,34 @@ export function SessionCard({
                   <button disabled={pending} className={small}>Move</button>
                 </form>
               )}
+            </div>
+          )}
+          {(canMarkOff || canPropose || canAskSub || asked) && (
+            <div className="flex flex-wrap items-center gap-2 border-b border-border pb-2">
+              {canMarkOff && (
+                <button type="button" disabled={pending} className={small} onClick={() => cycle(() => setUnavailable(session.id, mine?.status !== "absent"))}>
+                  {mine?.status === "absent" ? "Marked: I can't play (undo)" : "I can't play this date"}
+                </button>
+              )}
+              {canPropose && (
+                <>
+                  <select aria-label={`Propose a leader for ${session.dayLabel}`} value={swapTo} onChange={(e) => setSwapTo(e.target.value)} className={`${inputClass} py-1 text-sm`}>
+                    <option value="">Propose a different leader…</option>
+                    {playing.filter((a) => a.role !== "leader").map((a) => <option key={a.personId} value={a.personId}>{a.name}</option>)}
+                  </select>
+                  <button type="button" disabled={pending || !swapTo} className={small} onClick={() => cycle(() => proposeLeader(session.id, swapTo))}>Send to the point person</button>
+                </>
+              )}
+              {canAskSub && (
+                <>
+                  <select aria-label={`Sub for ${session.dayLabel}`} value={subWho} onChange={(e) => setSubWho(e.target.value)} className={`${inputClass} py-1 text-sm`}>
+                    <option value="">Ask for a sub…</option>
+                    {notOnIt.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
+                  </select>
+                  <button type="button" disabled={pending || !subWho} className={small} onClick={() => cycle(() => askForSub(session.id, subWho))}>Ask the point person</button>
+                </>
+              )}
+              {asked && <span className="text-xs text-muted">You&apos;ve asked the point person about this date; they&apos;ll decide.</span>}
             </div>
           )}
           {canCancel && (
