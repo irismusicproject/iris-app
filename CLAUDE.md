@@ -243,6 +243,11 @@ with **[Lauren's side]** or **[Ryan's side]**.
   (permission from Lauren, Nov 2026). **Merging:** feature PRs are merged by
   Ryan's side after testing; Lauren's side merges only docs-only PRs. None
   of this replaces the stop-and-ask rules above.
+- **Ryan's Claude merges to `main` without asking** (Ryan, Nov 24, 2026):
+  its own PRs and reviewed ones, as soon as CI is green, after pulling
+  `main` and re-running checks on the combination. Speed over ceremony; a bad
+  merge is reverted with a new PR. Releases to production still need Ryan's
+  approval click in the Release workflow.
 - Lauren and Ryan may be working in the repo at the same time:
   - Resolve trivial conflicts yourself: non-overlapping changes,
     formatting, lockfile updates.
