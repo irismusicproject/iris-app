@@ -89,7 +89,7 @@ purpose.
 | Vera, largest text | Musician's tour on Android with text at 200% (`phone-journeys.yml`); iOS by hand | Found on iOS Nov 24: calendar day numbers overlap, header titles clip, month name splits; fixed, waiting for a build to confirm |
 | Fern, offline documenting | `fern-no-lock.yaml` (no screen lock: nothing kept, O3), then a PIN and `fern-offline.yaml` (airplane mode on, log, off: sent by itself, O1, O4); `check-offline-sent.mjs` asks staging that it arrived exactly once (O2) and deletes the run's test logs | written Nov 24; first run pending |
 | Dex, phone then web | Maestro documents; Playwright checks the website sees it | to build |
-| Hollis, web at 200% zoom, the deadline | Playwright with zoom, a code sign-in, and the clock at 4:59 and 5:01 pm Tuesday | to build |
+| Hollis, web at 200% zoom, the deadline | `e2e/hollis-deadline.spec.ts`: emailed-code sign-in at 200% zoom (nothing scrolls sideways); week A submitted at 4:59 pm, week B at 5:01 pm; the database's reminders run at Monday 12:30, Tuesday 4:59, 5:01 and 5:06 pm, and Thursday 8:30 am; the point person's Follow-up shows 1 on time, 1 late | written Nov 24; first run pending |
 | Clara, two hats | Database permission test (one person, two rosters) | to build |
 | Violet, 14 days away | Phone test with the clock moved forward | to build |
 | Gus, edges | Maestro: several "I can't play", swap proposals, an approved week | to build |
