@@ -2,6 +2,7 @@ import { Redirect } from "expo-router";
 import { Tabs } from "expo-router/js-tabs";
 import { Text, View, type ColorValue } from "react-native";
 import { Button, Loading, styles } from "@/components/ui";
+import { useOutbox } from "@/lib/offline/outbox";
 import { useSession } from "@/lib/session";
 import { supabase } from "@/lib/supabase";
 import { colors } from "@/lib/theme";
@@ -17,7 +18,8 @@ const icon = (glyph: string) =>
 export default function TabsLayout() {
   const { session, loading } = useSession();
   const { noAccess, week } = useWeek();
-  const toDocument = week ? week.ledPast.filter((s) => !s.session_report).length : 0;
+  const outbox = useOutbox();
+  const toDocument = week ? week.ledPast.filter((s) => !s.session_report && !outbox.items.some((i) => i.kind === "report" && i.payload.session_id === s.id)).length : 0;
   if (loading) return <Loading />;
   if (!session) return <Redirect href="/sign-in" />;
   if (noAccess)

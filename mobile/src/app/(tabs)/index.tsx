@@ -3,7 +3,10 @@ import { useCallback, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { addDays } from "@shared/domain/documentation";
 import { formatDay, formatTime, localDateTime } from "@shared/domain/time";
+import { lastUpdated } from "@/components/offline";
 import { Card, Loading, Muted, Problem, Screen, Tag, styles } from "@/components/ui";
+import { isNetworkError, useOutbox } from "@/lib/offline/outbox";
+import { cacheGet, cacheSet } from "@/lib/offline/store";
 import { supabase } from "@/lib/supabase";
 import { colors } from "@/lib/theme";
 import { todayIso } from "@/lib/week";
@@ -33,10 +36,12 @@ const DAYS_AHEAD = 28;
 export default function Upcoming() {
   const router = useRouter();
   const { me, week } = useWeek();
+  const outbox = useOutbox();
   const [rows, setRows] = useState<Row[] | null>(null);
   const [names, setNames] = useState<Map<string, string>>(new Map());
   const [problem, setProblem] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [cachedAt, setCachedAt] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!me) return;
@@ -53,7 +58,16 @@ export default function Upcoming() {
       .gte("starts_at", from)
       .lt("starts_at", to)
       .order("starts_at");
-    if (error) return setProblem(friendly(error));
+    if (error) {
+      // No signal: show the copy kept on the phone.
+      const saved = isNetworkError(error) ? await cacheGet<{ rows: Row[]; names: Map<string, string> }>("upcoming") : null;
+      if (!saved) return setProblem(friendly(error));
+      setRows(saved.value.rows.filter((r) => localDateTime(r.starts_at, r.location?.site?.timezone ?? "America/New_York").date >= todayIso()));
+      setNames(saved.value.names);
+      setCachedAt(saved.savedAt);
+      return setProblem(null);
+    }
+    setCachedAt(null);
     const list = (data ?? []) as unknown as Row[];
     // Today's dates stay all day (to log relationship building after), then earlier days drop off.
     const upcoming = list.filter((r) => localDateTime(r.starts_at, r.location?.site?.timezone ?? "America/New_York").date >= todayIso());
@@ -66,6 +80,7 @@ export default function Upcoming() {
       for (const p of (people ?? []) as { id: string; name: string }[]) map.set(p.id, p.name);
     }
     setNames(map);
+    cacheSet("upcoming", { rows: upcoming, names: map });
   }, [me]);
 
   useFocusEffect(
@@ -76,7 +91,7 @@ export default function Upcoming() {
 
   if (!me || (!rows && !problem)) return <Loading />;
 
-  const toDocument = week ? week.ledPast.filter((s) => !s.session_report).length : 0;
+  const toDocument = week ? week.ledPast.filter((s) => !s.session_report && !outbox.items.some((i) => i.kind === "report" && i.payload.session_id === s.id)).length : 0;
   const first = me.name.trim().split(/\s+/)[0];
 
   // Group by the building's local date.
@@ -113,6 +128,7 @@ export default function Upcoming() {
           <Muted>Check your draft dates at each building, then tap Done reviewing.</Muted>
         </Card>
       </Pressable>
+      {cachedAt && <Muted>{lastUpdated(cachedAt)}</Muted>}
       {problem && <Problem>{problem}</Problem>}
       {rows && rows.length === 0 && <Muted>Nothing scheduled for you in the next four weeks.</Muted>}
       {[...groups.entries()].map(([date, list]) => (

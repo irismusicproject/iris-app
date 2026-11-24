@@ -1,5 +1,6 @@
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { OutboxProvider } from "@/lib/offline/outbox";
 import { SessionProvider } from "@/lib/session";
 import { colors } from "@/lib/theme";
 import { WeekProvider } from "@/lib/week-context";
@@ -8,6 +9,7 @@ export default function RootLayout() {
   return (
     <SessionProvider>
       <WeekProvider>
+      <OutboxProvider>
         <StatusBar style="dark" />
         <Stack
           screenOptions={{
@@ -27,6 +29,7 @@ export default function RootLayout() {
           <Stack.Screen name="profile" options={{ title: "My profile" }} />
           <Stack.Screen name="password" options={{ title: "Password" }} />
         </Stack>
+      </OutboxProvider>
       </WeekProvider>
     </SessionProvider>
   );

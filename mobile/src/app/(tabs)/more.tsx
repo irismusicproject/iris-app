@@ -2,6 +2,8 @@ import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Alert, Linking, Share, Text, View } from "react-native";
 import { Button, Card, LinkButton, Muted, Screen } from "@/components/ui";
+import { useOutbox } from "@/lib/offline/outbox";
+import { wipe } from "@/lib/offline/store";
 import { useSession } from "@/lib/session";
 import { supabase } from "@/lib/supabase";
 import { colors } from "@/lib/theme";
@@ -17,6 +19,7 @@ export default function More() {
   const router = useRouter();
   const { session } = useSession();
   const { me } = useWeek();
+  const outbox = useOutbox();
   const [staff, setStaff] = useState<Staff[]>([]);
   const [feed, setFeed] = useState<string | null | undefined>(undefined);
   const [feedBusy, setFeedBusy] = useState(false);
@@ -50,7 +53,25 @@ export default function More() {
         <Text style={{ fontSize: 16, color: colors.text }}>{me?.name}</Text>
         <Muted>{session?.user.email}</Muted>
         {process.env.EXPO_PUBLIC_IRIS_ENVIRONMENT === "staging" && <Muted>Test version: connected to staging (fake data only).</Muted>}
-        <Button label="Log out" kind="secondary" onPress={() => supabase.auth.signOut()} />
+        <Button
+          label="Log out"
+          kind="secondary"
+          onPress={() => {
+            const out = async () => {
+              await wipe();
+              await supabase.auth.signOut();
+            };
+            if (!outbox.items.length) return out();
+            Alert.alert(
+              "Unsent work on this phone",
+              `${outbox.items.length} item${outbox.items.length === 1 ? " hasn't" : "s haven't"} been sent yet. Logging out deletes ${outbox.items.length === 1 ? "it" : "them"} from this phone.`,
+              [
+                { text: "Cancel", style: "cancel" },
+                { text: "Log out and delete", style: "destructive", onPress: out },
+              ],
+            );
+          }}
+        />
       </Card>
       <Card title="Add Iris to your calendar">
         <Muted>

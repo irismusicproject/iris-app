@@ -1090,6 +1090,9 @@ isOneToOne: false
 "location_in_residency":
 { Args: { "p_location": string,"p_residency": string }; Returns: boolean
                            },
+"log_relationship_activity":
+{ Args: { "p_collaborative": boolean,"p_end_time": string,"p_id": string,"p_kind": Database["public"]['Enums']["activity_kind"],"p_minutes": number,"p_new_residents": Json,"p_note": string,"p_occurred_on": string,"p_residency": string,"p_residents": Json,"p_shared_with": (string)[],"p_site": string,"p_start_time": string }; Returns: string
+                           },
 "mark_absent_with_substitute":
 { Args: { "p_session": string,"p_substitute": string }; Returns: string
                            },
