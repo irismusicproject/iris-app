@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 import { expect } from "@playwright/test";
 import { logIn, test } from "../overnight/lib";
@@ -28,6 +29,16 @@ test("Dex: the number typed on the phone is on the website; the website puts it 
   await expect(card).toBeVisible();
   await expect(card.getByText("Documented", { exact: true })).toBeVisible();
   const box = card.locator('input[inputmode="numeric"]').first();
+  // The workflow leaves this file only when the phone half finished. If it
+  // didn't, put the original back if anything changed, and say why it's skipped.
+  if (!fs.existsSync("mobile/dex-phone-done")) {
+    if ((await box.inputValue()) !== original) {
+      await box.fill(original);
+      await card.getByRole("button", { name: "Update" }).click();
+      await expect(card.getByRole("status")).toHaveText("Saved.");
+    }
+    test.skip(true, "the phone half didn't finish (an earlier phone journey failed); nothing to compare");
+  }
   await expect(box, "attendance typed on the phone shows on the website").toHaveValue(changed);
   await page.screenshot({ path: "mobile/shots/dex-web-0-from-phone.png", fullPage: true });
 

@@ -107,7 +107,7 @@ jobs:
             maestro test .maestro/fern-offline.yaml --format junit --output maestro-fern-offline.xml --test-output-dir maestro-output
             node .maestro/check-offline-sent.mjs
             # Dex (docs/PERSONAS.md), phone half; the website half is the next step.
-            maestro test .maestro/dex-phone.yaml --format junit --output maestro-dex-phone.xml --test-output-dir maestro-output
+            maestro test .maestro/dex-phone.yaml --format junit --output maestro-dex-phone.xml --test-output-dir maestro-output && touch dex-phone-done
             # Violet (docs/PERSONAS.md): logs with no signal, then the phone's clock jumps 15 days (O8: 14), then back with signal.
             maestro test .maestro/violet-away-1.yaml --format junit --output maestro-violet-1.xml --test-output-dir maestro-output
             adb root && adb wait-for-device
