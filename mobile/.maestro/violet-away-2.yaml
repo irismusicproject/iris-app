@@ -1,0 +1,14 @@
+# Violet, part 2 of 3: fifteen days later, still no signal. The phone says
+# it's been more than 14 days since it last reached Iris, stops saving new
+# work offline, and keeps the visit she logged (O8).
+appId: org.irismusicproject.iris
+name: "Violet, away part 2 - fifteen days later, still offline"
+tags:
+  - offline
+---
+- launchApp
+- extendedWaitUntil:
+    visible: "You're offline, and it's been more than 14 days since this phone last reached Iris\\..*"
+    timeout: 30000
+- assertVisible: "1 item saved on this phone, not sent yet\\."
+- takeScreenshot: violet-1-fifteen-days-later

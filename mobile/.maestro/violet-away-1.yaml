@@ -1,0 +1,60 @@
+# Violet (docs/PERSONAS.md), part 1 of 3: today, at Arbor Place with no
+# signal, she logs a visit; the phone keeps it. Between parts 1 and 2 the
+# workflow moves the phone's clock 15 days ahead, still with no signal
+# (OFFLINE-SPEC O8: 14 days, docs/ACCEPTANCE.md O1, O5).
+#
+# Needs: MAESTRO_VIOLET_EMAIL, MAESTRO_PASSWORD, MAESTRO_RUN. The phone must
+# have a screen lock (the workflow sets a PIN for Fern before this).
+appId: org.irismusicproject.iris
+name: "Violet, away part 1 - logs a visit with no signal"
+tags:
+  - offline
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    id: "sign-in-email"
+- inputText: ${MAESTRO_VIOLET_EMAIL}
+- tapOn:
+    id: "sign-in-password"
+- inputText: ${MAESTRO_PASSWORD}
+- hideKeyboard
+- tapOn: "Log in"
+- extendedWaitUntil:
+    visible: "My week →"
+    timeout: 30000
+- tapOn: "My week →"
+- extendedWaitUntil:
+    visible: "Log an activity"
+    timeout: 30000
+- setAirplaneMode: enabled
+- extendedWaitUntil:
+    visible: "You're offline\\. Your work is saved on this phone.*"
+    timeout: 20000
+- scrollUntilVisible:
+    element: "Log an activity"
+- tapOn: "Log an activity"
+- tapOn: "Arbor Place"
+- scrollUntilVisible:
+    element: "30 min"
+- tapOn: "30 min"
+- scrollUntilVisible:
+    element:
+      id: "log-new-residents"
+- tapOn:
+    id: "log-new-residents"
+- inputText: "Phone Test V."
+- scrollUntilVisible:
+    element:
+      id: "log-note"
+- tapOn:
+    id: "log-note"
+- inputText: "[phone test ${MAESTRO_RUN}] away"
+- hideKeyboard
+- scrollUntilVisible:
+    element: "Log activity"
+- tapOn: "Log activity"
+- extendedWaitUntil:
+    visible: "Saved on this phone\\. It sends by itself when you're back online\\."
+    timeout: 20000
+- takeScreenshot: violet-0-saved-today

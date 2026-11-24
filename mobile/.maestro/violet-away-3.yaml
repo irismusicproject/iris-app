@@ -1,0 +1,14 @@
+# Violet, part 3 of 3: back at today's date, with signal again. The visit
+# she logged before she went away sends by itself, once
+# (check-offline-sent.mjs --expect away=1 confirms it on staging).
+appId: org.irismusicproject.iris
+name: "Violet, away part 3 - signal again, the visit sends"
+tags:
+  - offline
+---
+- launchApp
+- setAirplaneMode: disabled
+- extendedWaitUntil:
+    visible: "All caught up\\. 1 item sent\\."
+    timeout: 90000
+- takeScreenshot: violet-2-caught-up

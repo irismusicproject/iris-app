@@ -43,6 +43,7 @@ jobs:
       STAGING_TEST_PASSWORD: ${{ secrets.STAGING_TEST_PASSWORD }}
       # Fern (docs/PERSONAS.md): her journeys write this run's id into their notes.
       MAESTRO_FERN_EMAIL: fern.flute@example.com
+      MAESTRO_VIOLET_EMAIL: violet.viola@example.com
       MAESTRO_RUN: ${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - uses: actions/checkout@v4
@@ -105,6 +106,16 @@ jobs:
             node .maestro/check-offline-sent.mjs
             # Dex (docs/PERSONAS.md), phone half; the website half is the next step.
             maestro test .maestro/dex-phone.yaml --format junit --output maestro-dex-phone.xml --test-output-dir maestro-output
+            # Violet (docs/PERSONAS.md): logs with no signal, then the phone's clock jumps 15 days (O8: 14), then back with signal.
+            maestro test .maestro/violet-away-1.yaml --format junit --output maestro-violet-1.xml --test-output-dir maestro-output
+            adb root && adb wait-for-device
+            adb shell settings put global auto_time 0
+            adb shell date "$(TZ=America/Phoenix date -d '+15 days' +%m%d%H%M%Y.%S)"
+            maestro test .maestro/violet-away-2.yaml --format junit --output maestro-violet-2.xml --test-output-dir maestro-output
+            adb shell date "$(TZ=America/Phoenix date +%m%d%H%M%Y.%S)"
+            adb shell settings put global auto_time 1
+            maestro test .maestro/violet-away-3.yaml --format junit --output maestro-violet-3.xml --test-output-dir maestro-output
+            node .maestro/check-offline-sent.mjs --email "$MAESTRO_VIOLET_EMAIL" --expect away=1
             mkdir -p shots/normal-text && mv *.png shots/normal-text/
             # Vera (docs/PERSONAS.md): the same tour with the phone's text at its largest.
             adb shell settings put system font_scale 2.0
