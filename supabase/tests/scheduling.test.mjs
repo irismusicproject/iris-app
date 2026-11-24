@@ -143,11 +143,12 @@ r = await as(M2, `insert into public.session_assignment (session_id,person_id) v
 // QUESTION for Lauren: DOMAIN-MODEL says musicians pick the leader "after the point
 // person has set it", but the database lets a musician add a leader to a date that
 // has none. This check records today's behavior; revisit when she answers.
-r = await as(M2, `insert into public.session_assignment (session_id,person_id,role) values ('${sessions[2]}','${L}','leader')`); check("(current behavior) musician can add a leader to a leaderless draft they play in", r.ok, r);
-r = await as(P, `delete from public.session_assignment where session_id='${sessions[2]}' and person_id='${L}'`); check("point person removes that leader again", r.ok && r.n === 1, r);
+// v0.41 (Lauren, Nov 23, 2026): musicians no longer set leaders; they propose a swap and the point person approves it.
+r = await as(M2, `insert into public.session_assignment (session_id,person_id,role) values ('${sessions[2]}','${L}','leader')`); check("v0.41: a musician can't add a leader to a draft", !r.ok && /leader swap/.test(r.err), r);
 r = await as(M2, `delete from public.session_assignment where session_id='${sessions[1]}' and person_id='${L}'`); check("roster musician removes a musician from a draft", r.ok && r.n === 1, r);
 r = await as(O, `update public.session_assignment set role='leader' where session_id='${sessions[1]}'`); check("outsider can't pick a leader (0 rows)", r.ok && r.n === 0, r);
-r = await as(M2, `update public.session_assignment set role='leader' where session_id='${sessions[1]}' and person_id='${M2}'`); check("musician picks themselves as leader on a draft they play in (v0.18)", r.ok && r.n === 1, r);
+r = await as(M2, `update public.session_assignment set role='leader' where session_id='${sessions[1]}' and person_id='${M2}'`); check("v0.41: a musician can't make themselves leader", !r.ok && /leader swap/.test(r.err), r);
+r = await as(P, `update public.session_assignment set role='leader' where session_id='${sessions[1]}' and person_id='${M2}'`); check("…the point person sets M2 as leader", r.ok && r.n === 1, r);
 r = await as(M2, `update public.session_assignment set status='absent' where session_id='${sessions[1]}' and person_id='${M1}'`); check("…but can't change anyone's status directly", !r.ok, r);
 r = await as(M1, `delete from public.session_assignment where session_id='${sessions[1]}' and person_id='${M2}'`); check("musician can't remove a leader (0 rows)", r.ok && r.n === 0, r);
 r = await as(L, `update public.session_assignment set role='participant' where session_id='${sessions[1]}' and person_id='${M2}'`); check("admin lead not playing that date can't change its leader (0 rows)", r.ok && r.n === 0, r);

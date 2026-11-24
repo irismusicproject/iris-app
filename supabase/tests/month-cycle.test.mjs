@@ -139,5 +139,79 @@ r = await as(M1, `select public.schedule_month_send_info(${M})`); check("…a mu
 r = await as(L, `insert into public.session (residency_id,title,location_id,starts_at,scheduled_minutes,is_special_event) values ('${RES}','Surprise','${ROOM}','2027-02-20 19:00-05',60,true)`);
 check("final: the Admin Lead can't add a date to the month", !r.ok && /final/.test(r.err), r);
 
+// ===========================================================================
+// Part 2: requests, "I can't play", "I wasn't there", "Canceled day-of", To do
+// ===========================================================================
+await as(P, `select public.generate_series_month('${SER}','2027-03-01')`);
+const march = (await as(P, `select id from public.session where series_id='${SER}' and starts_at >= '2027-03-01' order by starts_at`)).rows.map((x) => x.id);
+await as(P, `update public.session_assignment set role='leader' where person_id='${M1}' and session_id in (${march.map((x) => `'${x}'`).join(",")})`);
+await as(P, `select public.open_schedule_month('${RES}', null, '2027-03-01')`);
+
+// Leader swaps
+r = await as(M2, `update public.session_assignment set role='leader' where session_id='${march[0]}' and person_id='${M2}'`);
+check("a musician can't make themselves leader", !r.ok && /leader swap/.test(r.err), r);
+r = await as(O, `select public.request_leader_swap('${march[0]}','${M2}')`); check("someone not on the date can't propose a swap", !r.ok, r);
+r = await as(M2, `select public.request_leader_swap('${march[0]}','${O}')`); check("…nor swap to someone not playing it", !r.ok, r);
+r = await as(M2, `select public.request_leader_swap('${march[0]}','${M2}') as id`); const SW = r.rows?.[0]?.id;
+check("a musician on the date proposes themselves as leader", r.ok && !!SW, r);
+r = await as(M2, `select public.request_leader_swap('${march[0]}','${M2}')`); check("one open swap per person and date", !r.ok, r);
+r = await as(A, `select count(*)::int as n from public.notification where kind='change_requested'`); check("the point person is emailed", r.ok && r.rows[0].n === 1, r);
+r = await as(M1, `select id from public.change_request`); check("the program's people see the request", r.ok && r.rows.length === 1, r);
+r = await as(O, `select id from public.change_request`); check("…others don't", r.ok && r.rows.length === 0, r);
+r = await as(L, `select public.decide_change_request('${SW}', true)`); check("the Admin Lead can't approve requests", !r.ok, r);
+r = await as(P, `select kind from public.my_tasks() where kind='approve'`); check("the point person's To do has 'Approve leader swap'", r.ok && r.rows.length === 1, r);
+r = await as(P, `select public.decide_change_request('${SW}', true)`); check("the point person approves it", r.ok, r);
+r = await as(A, `select person_id from public.session_assignment where session_id='${march[0]}' and role='leader' and status<>'absent'`);
+check("…and M2 now leads, still exactly one leader", r.ok && r.rows.length === 1 && r.rows[0].person_id === M2, r);
+r = await as(A, `select count(*)::int as n from public.notification where kind='change_decided' and person_id='${M2}'`); check("…and M2 is emailed", r.ok && r.rows[0].n === 1, r);
+r = await as(P, `select public.decide_change_request('${SW}', false)`); check("a decided request can't be decided again", !r.ok, r);
+
+// "I can't play": on the date, while the team edits, no approval
+r = await as(M2, `select public.set_unavailable('${march[1]}', true) as n`); check("M2 marks a March date they can't play (1 this season)", r.ok && r.rows[0].n === 1, r);
+r = await as(A, `select status from public.session_assignment where session_id='${march[1]}' and person_id='${M2}'`); check("…recorded at once", r.rows?.[0]?.status === "absent", r);
+r = await as(P, `select title from public.my_tasks() where kind='cover'`); check("…and the point person gets 'Mo Two can't play …'", r.ok && r.rows.length === 1 && /Mo Two/.test(r.rows[0].title), r);
+r = await as(M2, `select public.set_unavailable('${march[1]}', false) as n`); check("…they can undo it", r.ok && r.rows[0].n === 0, r);
+r = await as(M2, `select public.set_unavailable('${sessions[2]}', true)`); check("February is final: can't mark it any more", !r.ok && /point person/.test(r.err), r);
+r = await as(O, `select public.set_unavailable('${march[1]}', true)`); check("someone not on the date can't mark it", !r.ok, r);
+
+// To do for each role
+r = await as(M1, `select kind from public.my_tasks()`); check("M1's To do: titles for the March dates they lead", r.ok && r.rows.some((x) => x.kind === "titles"), r);
+r = await as(P, `select kind from public.my_tasks()`); check("the point person's To do: review and confirm March", r.ok && r.rows.some((x) => x.kind === "confirm"), r);
+r = await as(L, `select kind from public.my_tasks()`); check("the Admin Lead's To do: send March", r.ok && r.rows.some((x) => x.kind === "send"), r);
+r = await as(O, `select kind from public.my_tasks()`); check("someone off the roster has nothing to do", r.ok && r.rows.length === 0, r);
+
+// After final: a sub is a request the point person approves
+r = await as(M2, `select public.mark_absent_with_substitute('${sessions[3]}','${L}')`); check("final: a musician can't record a sub directly", !r.ok, r);
+r = await as(M2, `select public.request_change('${sessions[3]}','sub','${O}')`); check("…a sub must be on the roster", !r.ok, r);
+r = await as(M2, `select public.request_change('${sessions[3]}','other', null, '')`); check("…another change needs a note", !r.ok, r);
+r = await as(M2, `select public.request_change('${sessions[3]}','sub','${L}') as id`); const SUB = r.rows?.[0]?.id; check("…they ask for Lee as sub", r.ok && !!SUB, r);
+r = await as(P, `select public.decide_change_request('${SUB}', true)`); check("the point person approves the sub", r.ok, r);
+r = await as(A, `select person_id, status, substitute_for_id from public.session_assignment where session_id='${sessions[3]}' order by status`);
+check("…M2 absent, Lee substitute for M2", r.ok && r.rows.some((x) => x.person_id === M2 && x.status === "absent") && r.rows.some((x) => x.person_id === L && x.status === "substitute" && x.substitute_for_id === M2), r);
+
+// Dates that have happened: "I wasn't there", taking the lead to document, "Canceled day-of"
+const FALL = (await one(A, `insert into public.season (residency_id,name,starts_on,ends_on,kind) values ('${RES}','Fall 2026','2026-09-01','2026-12-31','semester') returning id`)).id;
+await as(A, `insert into public.roster_member (season_id,person_id,is_core) values ('${FALL}','${M1}',true),('${FALL}','${M2}',true)`);
+const past = async (t) => {
+  const sid = (await one(P, `insert into public.session (residency_id,title,location_id,starts_at,scheduled_minutes,is_special_event) values ('${RES}','${t}','${ROOM}','2026-11-02 14:00-05',45,true) returning id`)).id;
+  await as(P, `insert into public.session_assignment (session_id,person_id,role) values ('${sid}','${M1}','leader'),('${sid}','${M2}','participant')`);
+  return sid;
+};
+const P1 = await past("Past one"), P2 = await past("Past two"), P3 = await past("Past three");
+r = await as(M2, `select public.mark_not_there('${P1}', true)`); check("M2 marks 'I wasn't there' on a date that happened", r.ok, r);
+r = await as(A, `select status from public.session_assignment where session_id='${P1}' and person_id='${M2}'`); check("…counted at once (absent)", r.rows?.[0]?.status === "absent", r);
+r = await as(A, `select count(*)::int as n from public.notification where kind='not_there'`); check("…and the point person is emailed", r.ok && r.rows[0].n === 1, r);
+r = await as(M2, `select public.mark_not_there('${march[2]}', true)`); check("'I wasn't there' only after the date", !r.ok, r);
+r = await as(M1, `select public.mark_not_there('${P3}', true)`); check("the leader wasn't there either (P3)", r.ok, r);
+r = await as(M2, `select public.take_lead_to_document('${P3}')`); check("…so M2, who played, takes the lead to document it", r.ok, r);
+r = await as(A, `select person_id from public.session_assignment where session_id='${P3}' and role='leader' and status<>'absent'`); check("…and is now its one leader", r.rows?.length === 1 && r.rows[0].person_id === M2, r);
+r = await as(M2, `select public.cancel_day_of('${P2}','partner')`); check("only the leader records a day-of cancellation", !r.ok, r);
+r = await as(M1, `select public.cancel_day_of('${P2}', null)`); check("…a reason is required", !r.ok, r);
+r = await as(M1, `select public.cancel_day_of('${march[3]}','weather')`); check("…not for a later date", !r.ok, r);
+r = await as(M1, `select public.cancel_day_of('${P2}','partner')`); check("the leader records 'Canceled day-of' (partner)", r.ok, r);
+r = await as(A, `select schedule_state, cancellation_reason, canceled_at = starts_at as at_start from public.session where id='${P2}'`);
+check("…No Program, reason partner, counted at the start time", r.rows?.[0]?.schedule_state === "canceled" && r.rows[0].cancellation_reason === "partner" && r.rows[0].at_start === true, r);
+r = await as(M1, `select public.cancel_day_of('${P2}','partner')`); check("…only once", !r.ok, r);
+
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

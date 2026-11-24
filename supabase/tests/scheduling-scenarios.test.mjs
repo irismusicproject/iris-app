@@ -224,13 +224,18 @@ r = await as(M1, `update public.session_assignment set status='absent' where ses
 const d1 = cafeB[1];
 r = await as(M1, `update public.session_assignment set role='leader' where session_id='${d1}' and person_id='${M1}'`); check("two leaders on one date are refused", !r.ok, r);
 r = await as(M3, `update public.session_assignment set role='participant' where session_id='${d1}' and person_id='${M2}'`); check("musician not on the date can't touch its leader (0 rows)", r.ok && r.n === 0, r);
+// v0.41 (Lauren, Nov 23, 2026): a musician proposes a leader swap; the point person approves it in one step.
 r = await as(M1, `update public.session_assignment set role='participant' where session_id='${d1}' and person_id='${M2}'`);
-const r2 = await as(M1, `update public.session_assignment set role='leader' where session_id='${d1}' and person_id='${M1}'`);
-check("musician swaps the leader to themselves (demote, then promote)", r.ok && r.n === 1 && r2.ok && r2.n === 1 && JSON.stringify(await leadersOf(d1)) === JSON.stringify([M1]), [r, r2]);
+check("v0.41: a musician can't change the leader directly", !r.ok && /leader swap/.test(r.err), r);
+r = await as(M1, `select public.request_leader_swap('${d1}','${M1}') as id`); const swapId = r.rows?.[0]?.id;
+check("…they propose a swap instead", r.ok && !!swapId, r);
+r = await as(M1, `select public.decide_change_request('${swapId}', true)`); check("…which they can't approve themselves", !r.ok, r);
+r = await as(P, `select public.decide_change_request('${swapId}', true)`);
+check("the point person approves it: the leader is swapped in one step", r.ok && JSON.stringify(await leadersOf(d1)) === JSON.stringify([M1]), r);
 
 // Q1: naming a leader where the point person hasn't set one.
 r = await as(M1, `update public.session_assignment set role='leader' where session_id='${openB[0]}' and person_id='${M1}'`);
-check("musician can't name a leader before the point person has (Open Rehearsal)", r.ok && r.n === 0 || !r.ok, r, "Q1");
+check("musician can't name a leader before the point person has (Open Rehearsal; answered by v0.41)", r.ok && r.n === 0 || !r.ok, r);
 r = await as(P, `update public.session_assignment set role='leader' where person_id='${M1}' and session_id in (${list(openB)})`);
 check(`point person sets the Open Rehearsal leaders (${openB.length})`, r.ok && r.n === openB.length, r);
 

@@ -219,7 +219,9 @@ for (const SEED of seeds) {
       let forbid = true, tag;
       if (isPlanner(p, f.residency_id)) forbid = false;
       else if (f.st === "draft" && !locked(p, f) && (await onRoster(p, f.residency_id))) {
-        if (f.playing.includes(p)) { if (role === "leader" && f.leaders.length === 0) { forbid = null; tag = "Q1"; } else forbid = false; }
+        // v0.41: musicians propose leader swaps; only planners and the Admin Lead set leaders.
+        if (role === "leader" && !isAL(p, f.residency_id)) forbid = true;
+        else if (f.playing.includes(p)) { if (role === "leader" && f.leaders.length === 0) { forbid = null; tag = "Q1"; } else forbid = false; }
         else if (f.n === 0) { forbid = null; tag = "Q2"; }
       } else if (f.st === "published" && isAL(p, f.residency_id)) forbid = false; // v0.37 (answers Q4)
       return { label: `add ${NAMES[who]} as ${role} (${f.st})`, sql: `insert into public.session_assignment (session_id,person_id,role) values ('${s}','${who}','${role}')`, kind: "ins", forbid, tag, res: f.residency_id, session: s };
@@ -242,7 +244,9 @@ for (const SEED of seeds) {
       let forbid = true, tag;
       if (isPlanner(p, f.residency_id)) forbid = false;
       else if (f.st === "draft" && !locked(p, f) && (await onRoster(p, f.residency_id)) && f.playing.includes(p)) {
-        if (to === "leader" && f.leaders.length === 0) { forbid = null; tag = "Q1"; } else forbid = false;
+        // v0.41: musicians propose leader swaps; only planners and the Admin Lead change leaders.
+        if (!isAL(p, f.residency_id)) forbid = true;
+        else if (to === "leader" && f.leaders.length === 0) { forbid = null; tag = "Q1"; } else forbid = false;
       } else if (f.st === "published" && isAL(p, f.residency_id)) forbid = false; // v0.37 (answers Q4)
       return { label: `${to === "leader" ? "promote" : "demote"} ${NAMES[t.person_id] ?? "someone"} (${f.st})`, sql: `update public.session_assignment set role='${to}' where id='${t.id}'`, kind: "upd", forbid, tag, res: f.residency_id, session: s, roleChange: true };
     }],

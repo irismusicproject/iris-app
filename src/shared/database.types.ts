@@ -97,6 +97,44 @@ isOneToOne: true
       referencedColumns: ["id"]
     }
                   ]
+                },"change_request": {
+                  Row: {
+                    "created_at": string,"decided_at": string | null,"decided_by": string | null,"decision_note": string | null,"id": string,"kind": string,"note": string | null,"proposed_person_id": string | null,"requested_by": string,"session_id": string,"status": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"decided_at"?: string | null,"decided_by"?: string | null,"decision_note"?: string | null,"id"?: string,"kind": string,"note"?: string | null,"proposed_person_id"?: string | null,"requested_by": string,"session_id": string,"status"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"decided_at"?: string | null,"decided_by"?: string | null,"decision_note"?: string | null,"id"?: string,"kind"?: string,"note"?: string | null,"proposed_person_id"?: string | null,"requested_by"?: string,"session_id"?: string,"status"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "change_request_decided_by_fkey"
+      columns: ["decided_by"]
+isOneToOne: false
+      referencedRelation: "person"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "change_request_proposed_person_id_fkey"
+      columns: ["proposed_person_id"]
+isOneToOne: false
+      referencedRelation: "person"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "change_request_requested_by_fkey"
+      columns: ["requested_by"]
+isOneToOne: false
+      referencedRelation: "person"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "change_request_session_id_fkey"
+      columns: ["session_id"]
+isOneToOne: false
+      referencedRelation: "session"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"contract": {
                   Row: {
                     "estimated_weekly_hours": number | null,"hourly_rate": number,"id": string,"person_id": string,"season_id": string,"updated_at": string
@@ -1072,8 +1110,14 @@ isOneToOne: false
 "can_view_site":
 { Args: { "p_site": string }; Returns: boolean
                            },
+"cancel_day_of":
+{ Args: { "p_reason": Database["public"]['Enums']["cancellation_reason"],"p_session": string }; Returns: undefined
+                           },
 "confirm_schedule_month":
 { Args: { "p_month": string,"p_residency": string,"p_site": string }; Returns: undefined
+                           },
+"decide_change_request":
+{ Args: { "p_approve": boolean,"p_note"?: string,"p_request": string }; Returns: undefined
                            },
 "delete_one_time_session":
 { Args: { "p_session": string }; Returns: undefined
@@ -1158,6 +1202,9 @@ isOneToOne: false
 "mark_month_reviewed":
 { Args: { "p_month": string,"p_residency": string,"p_site": string }; Returns: string
                            },
+"mark_not_there":
+{ Args: { "p_not_there": boolean,"p_session": string }; Returns: undefined
+                           },
 "mark_schedule_checked":
 { Args: { "p_month": string,"p_residency": string,"p_site": string }; Returns: boolean
                            },
@@ -1188,6 +1235,28 @@ isOneToOne: false
               "amount": number,"description": string,"quantity": number,"residency_name": string,"sort": number,"unit": string,"unit_amount": number
             }[]
                            },
+"my_assignment":
+{ Args: { "p_session": string }; Returns: {
+              "created_at": string,
+"id": string,
+"person_id": string,
+"role": Database["public"]['Enums']["assignment_role"],
+"session_id": string,
+"status": Database["public"]['Enums']["assignment_status"],
+"substitute_for_id": string | null,
+"updated_at": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "session_assignment"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"my_tasks":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "detail": string,"due_on": string,"kind": string,"month": string,"request_id": string,"residency_id": string,"session_id": string,"site_id": string,"title": string
+            }[]
+                           },
 "new_calendar_version":
 { Args: { "p_month": string,"p_partner_feedback"?: string,"p_residency": string,"p_site": string }; Returns: string
                            },
@@ -1213,11 +1282,20 @@ isOneToOne: false
 "queue_deadline_reminders":
 { Args: { "p_now"?: string }; Returns: number
                            },
+"queue_month_reminders":
+{ Args: { "p_now"?: string }; Returns: number
+                           },
 "refresh_week_hours":
 { Args: { "p_person": string,"p_residency": string,"p_state": Database["public"]['Enums']["time_state"],"p_week": string }; Returns: undefined
                            },
 "remove_session":
 { Args: { "p_session": string }; Returns: undefined
+                           },
+"request_change":
+{ Args: { "p_kind": string,"p_note"?: string,"p_person"?: string,"p_session": string }; Returns: string
+                           },
+"request_leader_swap":
+{ Args: { "p_note"?: string,"p_person": string,"p_session": string }; Returns: string
                            },
 "require_schedule_month":
 { Args: { "p_month": string,"p_residency": string,"p_site": string }; Returns: {
@@ -1278,6 +1356,9 @@ isOneToOne: false
 "session_is_kept":
 { Args: { "p_session": string }; Returns: boolean
                            },
+"session_label":
+{ Args: { "p_session": string }; Returns: string
+                           },
 "session_local_date":
 { Args: { "p_session": string }; Returns: string
                            },
@@ -1312,6 +1393,9 @@ isOneToOne: false
 "set_series_leader":
 { Args: { "p_person": string,"p_series": string }; Returns: number
                            },
+"set_unavailable":
+{ Args: { "p_session": string,"p_unavailable": boolean }; Returns: number
+                           },
 "site_has_detailed_notes":
 { Args: { "p_site": string }; Returns: boolean
                            },
@@ -1322,6 +1406,9 @@ isOneToOne: false
                            },
 "submit_week":
 { Args: { "p_residency": string,"p_week": string }; Returns: undefined
+                           },
+"take_lead_to_document":
+{ Args: { "p_session": string }; Returns: undefined
                            },
 "tidy_series_dates":
 { Args: { "p_series": string }; Returns: Json
@@ -1347,6 +1434,9 @@ isOneToOne: false
                            },
 "week_of_month":
 { Args: { "p_day": string }; Returns: number
+                           },
+"withdraw_change_request":
+{ Args: { "p_request": string }; Returns: undefined
                            }
           }
           Enums: {
