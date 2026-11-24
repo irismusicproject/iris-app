@@ -3,7 +3,7 @@
 #   - a quick double tap on "I can't play" marks the date once, not on and
 #     off again;
 #   - the season count goes up with each date he marks;
-#   - he proposes himself as leader on a third date, with a double tap too
+#   - he proposes himself as leader on the second date, with a double tap too
 #     (prepare-gus.mjs --cleanup checks it made one request, not two);
 #   - he undoes both marks. The cleanup also withdraws his proposal (no app
 #     has a Withdraw button yet) and repairs anything left behind.
@@ -59,20 +59,8 @@ tags:
       - takeScreenshot: gus-0-double-tap-marked-once
       - back
 
-      # Date 2: the count goes up.
-      - scrollUntilVisible:
-          element: "${MAESTRO_GUS_DAY2}.*"
-      - tapOn: "${MAESTRO_GUS_DAY2}.*"
-      - scrollUntilVisible:
-          element: "I can't play this date"
-      - tapOn: "I can't play this date"
-      - extendedWaitUntil:
-          visible: "${MAESTRO_GUS_MARKED2}"
-          timeout: 15000
-      - takeScreenshot: gus-1-second-date-count
-      - back
-
-      # Date 3: he proposes himself as leader, tapping Send twice.
+      # Date 2, first: he proposes himself as leader, tapping Send twice
+      # (made while he still plays it; marking "can't play" hides the Leader card).
       - scrollUntilVisible:
           element: "${MAESTRO_GUS_DAY3}.*"
       - tapOn: "${MAESTRO_GUS_DAY3}.*"
@@ -89,6 +77,19 @@ tags:
       - scrollUntilVisible:
           element: "You've proposed a leader swap for this date\\..*"
       - takeScreenshot: gus-2-swap-proposed
+      - back
+
+      # Date 2, then: he marks it too, and the count goes up.
+      - scrollUntilVisible:
+          element: "${MAESTRO_GUS_DAY2}.*"
+      - tapOn: "${MAESTRO_GUS_DAY2}.*"
+      - scrollUntilVisible:
+          element: "I can't play this date"
+      - tapOn: "I can't play this date"
+      - extendedWaitUntil:
+          visible: "${MAESTRO_GUS_MARKED2}"
+          timeout: 15000
+      - takeScreenshot: gus-1-second-date-count
       - back
 
       # Undo both marks.

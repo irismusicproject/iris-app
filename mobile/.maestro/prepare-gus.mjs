@@ -4,7 +4,7 @@
 //   node prepare-gus.mjs            prints KEY=value lines for gus-edges.yaml
 //   node prepare-gus.mjs --cleanup  afterwards: checks and repairs staging
 //
-// Prepare: finds three draft dates Gus plays (not leads) in one month at
+// Prepare: finds two draft dates Gus plays (not leads) in one month at
 // Mather, next month or the one after, opens that month for the team if it
 // isn't open (the point person's click), and works out the exact "Marked. N
 // dates you can't play this season." lines the phone should show.
@@ -53,6 +53,7 @@ if (process.argv.includes("--cleanup")) {
 }
 
 const admin = await client("persona+admin@example.com");
+const gusClient = await client(email);
 const { data: gusRow } = await admin.from("person").select("id").eq("email", email).single();
 const firstOfMonth = (ahead) => { const d = new Date(); d.setUTCDate(1); d.setUTCMonth(d.getUTCMonth() + ahead); return d.toISOString().slice(0, 10); };
 
@@ -60,22 +61,36 @@ for (const ahead of [1, 2]) {
   const from = firstOfMonth(ahead), to = firstOfMonth(ahead + 1);
   const { data, error } = await admin
     .from("session")
-    .select("id, title, starts_at, residency_id, location(site_id, site(timezone)), session_assignment!inner(person_id, role, status)")
+    .select("id, title, starts_at, has_set_time, residency_id, location(site_id, site(timezone)), session_assignment!inner(person_id, role, status)")
     .eq("schedule_state", "draft").eq("kind", "group_session")
     .eq("session_assignment.person_id", gusRow.id).eq("session_assignment.role", "participant").eq("session_assignment.status", "assigned")
     .gte("starts_at", from).lt("starts_at", to).order("starts_at");
   if (error) throw new Error(`reading Gus's dates: ${error.message}`);
+  // His own calendar lists everyone's dates at his buildings (row-level
+  // security decides, as in the app): only use days with no other date, so
+  // the journey's taps open HIS date.
+  const { data: visible } = await gusClient.from("session").select("starts_at, has_set_time, location(site(timezone))").eq("kind", "group_session").gte("starts_at", from).lt("starts_at", to).limit(1000);
+  // As the calendar row starts: "Wednesday, December 2 · 6:00" (the AM/PM
+  // after it is left to ".*": some Intl versions put a special space there).
+  const fmt = (iso, tz, timed = true) => {
+    const day = new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "long", month: "long", day: "numeric" }).format(new Date(iso));
+    const hm = new Intl.DateTimeFormat("en-US", { timeZone: tz, hour: "numeric", minute: "2-digit" }).format(new Date(iso)).match(/^\d{1,2}:\d{2}/)?.[0];
+    return timed && hm ? `${day} · ${hm}` : day;
+  };
+  const dayCount = new Map();
+  for (const v of visible ?? []) { const k = fmt(v.starts_at, v.location?.site?.timezone ?? "America/New_York", v.has_set_time); dayCount.set(k, (dayCount.get(k) ?? 0) + 1); }
   // Three dates on different days at one building.
   const bySite = new Map();
   for (const s of data ?? []) {
     const k = `${s.residency_id}|${s.location.site_id}`;
     if (!bySite.has(k)) bySite.set(k, []);
     const tz = s.location.site?.timezone ?? "America/New_York";
-    const day = new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "long", month: "long", day: "numeric" }).format(new Date(s.starts_at));
-    if (!bySite.get(k).some((x) => x.day === day)) bySite.get(k).push({ ...s, day });
+    const day = fmt(s.starts_at, tz, s.has_set_time);
+    const dayOnly = day.split(" · ")[0];
+    if (dayCount.get(day) === 1 && !bySite.get(k).some((x) => x.day.startsWith(dayOnly))) bySite.get(k).push({ ...s, day });
   }
   for (const [k, dates] of bySite) {
-    if (dates.length < 3) continue;
+    if (dates.length < 2) continue;
     const [res, site] = k.split("|");
     const { data: sm } = await admin.from("schedule_month").select("stage").eq("residency_id", res).eq("site_id", site).eq("month", from).maybeSingle();
     if (sm && sm.stage !== "team_editing") continue;
@@ -89,7 +104,10 @@ for (const ahead of [1, 2]) {
       .eq("person_id", gusRow.id).eq("status", "absent").eq("session.residency_id", res)
       .gte("session.starts_at", season.starts_on).lte("session.starts_at", `${season.ends_on}T23:59:59Z`);
     const line = (n) => `Marked. ${n} date${n === 1 ? "" : "s"} you can't play this season.`;
-    const [a, b, c] = dates;
+    // Two dates: the second also takes the leader-swap proposal (made first,
+    // while he still plays it), so DAY3 is the same date as DAY2.
+    const [a, b] = dates;
+    const c = b;
     console.log(`MAESTRO_GUS_EMAIL=${email}`);
     console.log(`MAESTRO_GUS_MONTHS_AHEAD=${ahead}`);
     console.log(`MAESTRO_GUS_DAY1=${a.day}`);
@@ -97,9 +115,9 @@ for (const ahead of [1, 2]) {
     console.log(`MAESTRO_GUS_DAY3=${c.day}`);
     console.log(`MAESTRO_GUS_MARKED1=${line((count ?? 0) + 1)}`);
     console.log(`MAESTRO_GUS_MARKED2=${line((count ?? 0) + 2)}`);
-    console.log(`MAESTRO_GUS_DATES=${[a.id, b.id, c.id].join(",")}`);
+    console.log(`MAESTRO_GUS_DATES=${[a.id, b.id].join(",")}`);
     process.exit(0);
   }
 }
 console.log("MAESTRO_GUS_DAY1=");
-console.error("note: no month with three draft dates Gus plays at one building; his journey is skipped this run");
+console.error("note: no month with two draft dates Gus plays at one building that are his alone on his calendar; his journey is skipped this run");

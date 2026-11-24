@@ -17,6 +17,7 @@ import { createClient } from "@supabase/supabase-js";
 
 const url = process.env.EXPO_PUBLIC_SUPABASE_URL ?? "";
 const key = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? "";
+const key_ = key;
 const password = process.env.STAGING_TEST_PASSWORD ?? "";
 if (!url.includes("njdxogunlmhllzqhswkv")) throw new Error("prepare-staging only runs against the staging project");
 if (!key || !password) throw new Error("missing EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY or STAGING_TEST_PASSWORD");
@@ -25,13 +26,29 @@ const admin = createClient(url, key, { auth: { persistSession: false, autoRefres
 const { error: signInError } = await admin.auth.signInWithPassword({ email: "persona+admin@example.com", password });
 if (signInError) throw new Error(`sign-in as the fake admin: ${signInError.message}`);
 
+const dayLabel = (iso, tz) => new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "long", month: "long", day: "numeric" }).format(new Date(iso));
+// What a musician's own calendar lists that month (row-level security decides,
+// as in the app), so a journey can tap a day that's theirs alone.
+const seen = new Map();
+async function daysTheySee(email, from, to) {
+  const key = `${email}|${from}`;
+  if (seen.has(key)) return seen.get(key);
+  const c = createClient(url, key_, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { error } = await c.auth.signInWithPassword({ email, password });
+  if (error) throw new Error(`sign-in as ${email}: ${error.message}`);
+  const { data } = await c.from("session").select("starts_at, location(site(timezone))").eq("kind", "group_session").gte("starts_at", from).lt("starts_at", to).limit(1000);
+  const days = (data ?? []).map((x) => dayLabel(x.starts_at, x.location?.site?.timezone ?? "America/New_York"));
+  seen.set(key, days);
+  return days;
+}
+
 const firstOfMonth = (ahead) => { const d = new Date(); d.setUTCDate(1); d.setUTCMonth(d.getUTCMonth() + ahead); return d.toISOString().slice(0, 10); };
 
 for (const ahead of [1, 2]) {
   const from = firstOfMonth(ahead), to = firstOfMonth(ahead + 1);
   const { data: dates, error } = await admin
     .from("session")
-    .select("id, title, residency_id, location(site_id), session_assignment(status, role, person!session_assignment_person_id_fkey(email, active))")
+    .select("id, title, starts_at, residency_id, location(site_id, site(timezone)), session_assignment(status, role, person!session_assignment_person_id_fkey(email, active))")
     .eq("schedule_state", "draft").eq("kind", "group_session")
     .gte("starts_at", from).lt("starts_at", to).order("starts_at").limit(200);
   if (error) throw new Error(`reading next month's dates: ${error.message}`);
@@ -41,6 +58,9 @@ for (const ahead of [1, 2]) {
     const a = d.session_assignment.find((x) => x.status === "assigned" && x.role === "participant"
       && x.person?.active && /@example\.com$/.test(x.person.email) && !x.person.email.startsWith("persona+"));
     if (!a || !d.title?.trim()) continue;
+    const tz = d.location.site?.timezone ?? "America/New_York";
+    const day = dayLabel(d.starts_at, tz);
+    if ((await daysTheySee(a.person.email, from, to)).filter((x) => x === day).length !== 1) continue; // another date that day
     const { data: sm } = await admin.from("schedule_month").select("stage")
       .eq("residency_id", d.residency_id).eq("site_id", d.location.site_id).eq("month", from).maybeSingle();
     if (sm && sm.stage !== "team_editing") continue; // past team editing: "I can't play" isn't offered there
@@ -50,6 +70,10 @@ for (const ahead of [1, 2]) {
     }
     console.log(`MAESTRO_EMAIL=${a.person.email}`);
     console.log(`MAESTRO_DATE_TITLE=${d.title.trim()}`);
+    // The day as the phone shows it, and the only date that day on their
+    // calendar, so journeys tap THIS date (the calendar also lists other
+    // musicians' dates, often with the same title).
+    console.log(`MAESTRO_DATE_DAY=${day}`);
     console.log(`MAESTRO_MONTHS_AHEAD=${ahead}`);
     // For the tour (musician-tour.yaml, ACCEPTANCE D1): this musician's next
     // published date in the coming two weeks, where "Canceling today? Call

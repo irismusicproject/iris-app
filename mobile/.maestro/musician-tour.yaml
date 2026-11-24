@@ -75,8 +75,8 @@ tags:
 
 # P4: a date's details show who's playing, with the leader marked.
 - scrollUntilVisible:
-    element: ".*${MAESTRO_DATE_TITLE}.*"
-- tapOn: ".*${MAESTRO_DATE_TITLE}.*"
+    element: "${MAESTRO_DATE_DAY}.*"
+- tapOn: "${MAESTRO_DATE_DAY}.*"
 - assertVisible: "Who's playing"
 - scrollUntilVisible:
     element: ".*· leading.*"

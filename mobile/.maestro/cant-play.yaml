@@ -32,8 +32,8 @@ tags:
     commands:
       - tapOn: "Next →"
 - scrollUntilVisible:
-    element: ".*${MAESTRO_DATE_TITLE}.*"
-- tapOn: ".*${MAESTRO_DATE_TITLE}.*"
+    element: "${MAESTRO_DATE_DAY}.*"
+- tapOn: "${MAESTRO_DATE_DAY}.*"
 # Below the fold on a small phone: scroll to it first.
 - scrollUntilVisible:
     element: "I can't play this date"
@@ -44,7 +44,7 @@ tags:
 - takeScreenshot: cant-play-2-calendar-shows-it
 - assertVisible: ".*Orange: you can.t play.*"
 # Undo, so staging is left as it was.
-- tapOn: ".*${MAESTRO_DATE_TITLE}.*"
+- tapOn: "${MAESTRO_DATE_DAY}.*"
 - scrollUntilVisible:
     element: "Marked: I can't play \\(tap to undo\\)"
 - tapOn: "Marked: I can't play \\(tap to undo\\)"
