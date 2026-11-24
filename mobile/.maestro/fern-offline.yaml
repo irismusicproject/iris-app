@@ -8,7 +8,7 @@
 # its time zone should be the building's (Splendido: America/Phoenix), since
 # "Today" comes from the phone's clock.
 appId: org.irismusicproject.iris
-name: "Fern, offline: saved on the phone, sent once when signal returns"
+name: "Fern, offline - saved on the phone, sent once when signal returns"
 tags:
   - offline
 ---
@@ -40,10 +40,18 @@ tags:
     element: "Log an activity"
 - tapOn: "Log an activity"
 - tapOn: ".*Splendido.*"
+- scrollUntilVisible:
+    element: "30 min"
 - tapOn: "30 min"
+- scrollUntilVisible:
+    element:
+      id: "log-new-residents"
 - tapOn:
     id: "log-new-residents"
 - inputText: "Phone Test T."
+- scrollUntilVisible:
+    element:
+      id: "log-note"
 - tapOn:
     id: "log-note"
 - inputText: "[phone test ${MAESTRO_RUN}] offline"

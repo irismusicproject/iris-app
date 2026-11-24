@@ -7,7 +7,7 @@
 # written into the note so the check finds this run's records only).
 # The emulator must have NO screen lock when this runs.
 appId: org.irismusicproject.iris
-name: "Fern, no screen lock: nothing is kept on the phone"
+name: "Fern, no screen lock - nothing is kept on the phone"
 tags:
   - offline
 ---
@@ -40,10 +40,18 @@ tags:
     element: "Log an activity"
 - tapOn: "Log an activity"
 - tapOn: ".*Splendido.*"
+- scrollUntilVisible:
+    element: "30 min"
 - tapOn: "30 min"
+- scrollUntilVisible:
+    element:
+      id: "log-new-residents"
 - tapOn:
     id: "log-new-residents"
 - inputText: "Phone Test T."
+- scrollUntilVisible:
+    element:
+      id: "log-note"
 - tapOn:
     id: "log-note"
 - inputText: "[phone test ${MAESTRO_RUN}] no lock"

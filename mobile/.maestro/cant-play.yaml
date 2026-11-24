@@ -8,7 +8,7 @@
 # Screenshots (cant-play-*.png) let a person check the colors: Maestro
 # can't read colors, and the orange is exactly what this journey is about.
 appId: org.irismusicproject.iris
-name: "I can't play: mark, see it on the calendar, undo"
+name: "I can't play - mark, see it on the calendar, undo"
 tags:
   - month-cycle
 ---
@@ -34,6 +34,9 @@ tags:
 - scrollUntilVisible:
     element: ".*${MAESTRO_DATE_TITLE}.*"
 - tapOn: ".*${MAESTRO_DATE_TITLE}.*"
+# Below the fold on a small phone: scroll to it first.
+- scrollUntilVisible:
+    element: "I can't play this date"
 - tapOn: "I can't play this date"
 - assertVisible: "Marked\\..*can't play this season\\."
 - takeScreenshot: cant-play-1-date-marked
@@ -42,6 +45,8 @@ tags:
 - assertVisible: ".*Orange: you can.t play.*"
 # Undo, so staging is left as it was.
 - tapOn: ".*${MAESTRO_DATE_TITLE}.*"
+- scrollUntilVisible:
+    element: "Marked: I can't play \\(tap to undo\\)"
 - tapOn: "Marked: I can't play \\(tap to undo\\)"
 - assertVisible: "Undone: you're playing it again."
 - takeScreenshot: cant-play-3-undone

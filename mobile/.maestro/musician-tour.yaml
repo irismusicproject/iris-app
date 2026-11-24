@@ -9,7 +9,7 @@
 #   MAESTRO_SOON_TITLE                        their next published date (may be empty)
 # All from prepare-staging.mjs.
 appId: org.irismusicproject.iris
-name: "Musician's tour: tabs, My week, Account, dates, month stage, log out"
+name: "Musician's tour - tabs, My week, Account, dates, month stage, log out"
 tags:
   - tour
 ---
@@ -35,6 +35,8 @@ tags:
 
 # P1: My week is one tap from Today.
 - tapOn: "My week →"
+- scrollUntilVisible:
+    element: "Hours and submit"
 - assertVisible: "Hours and submit"
 - takeScreenshot: tour-1-my-week
 - back
@@ -75,13 +77,19 @@ tags:
     element: ".*${MAESTRO_DATE_TITLE}.*"
 - tapOn: ".*${MAESTRO_DATE_TITLE}.*"
 - assertVisible: "Who's playing"
+- scrollUntilVisible:
+    element: ".*· leading.*"
 - assertVisible: ".*· leading.*"
+- scrollUntilVisible:
+    element: "You"
 - assertVisible: "You"
 - takeScreenshot: tour-4-date-details
 - back
 
 # Logging out returns to the sign-in screen (nothing unsent on this phone).
 - tapOn: "Account"
+- scrollUntilVisible:
+    element: "Log out"
 - tapOn: "Log out"
 - extendedWaitUntil:
     visible: "Log in"
