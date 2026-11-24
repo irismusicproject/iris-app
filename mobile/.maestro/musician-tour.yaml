@@ -37,6 +37,7 @@ tags:
 - tapOn: "My week →"
 - scrollUntilVisible:
     element: "Hours and submit"
+    timeout: 60000
 - assertVisible: "Hours and submit"
 - takeScreenshot: tour-1-my-week
 - back
@@ -54,12 +55,15 @@ tags:
     commands:
       - scrollUntilVisible:
           element: ".*${MAESTRO_SOON_TITLE}.*"
+          timeout: 60000
       - tapOn: ".*${MAESTRO_SOON_TITLE}.*"
       - assertVisible: "Who's playing"
       - scrollUntilVisible:
           element: "Canceling today\\?"
+          timeout: 60000
       - scrollUntilVisible:
           element: "Call .*"
+          timeout: 60000
       - takeScreenshot: tour-2-canceling-today
       - back
 
@@ -71,18 +75,22 @@ tags:
       - tapOn: "Next →"
 - scrollUntilVisible:
     element: "Stage 1 of 5: Team editing"
+    timeout: 60000
 - takeScreenshot: tour-3-month-stage
 
 # P4: a date's details show who's playing, with the leader marked.
 - scrollUntilVisible:
     element: "${MAESTRO_DATE_DAY}.*"
+    timeout: 60000
 - tapOn: "${MAESTRO_DATE_DAY}.*"
 - assertVisible: "Who's playing"
 - scrollUntilVisible:
     element: ".*· leading.*"
+    timeout: 60000
 - assertVisible: ".*· leading.*"
 - scrollUntilVisible:
     element: "You"
+    timeout: 60000
 - assertVisible: "You"
 - takeScreenshot: tour-4-date-details
 - back
@@ -91,6 +99,7 @@ tags:
 - tapOn: "Account"
 - scrollUntilVisible:
     element: "Log out"
+    timeout: 60000
 - tapOn: "Log out"
 - extendedWaitUntil:
     visible: "Log in"

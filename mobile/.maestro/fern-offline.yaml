@@ -72,6 +72,7 @@ tags:
 - back
 - scrollUntilVisible:
     element: "Not sent yet"
+    direction: UP
 - assertVisible: "Saved on this phone"
 - takeScreenshot: fern-offline-1-not-sent-yet
 

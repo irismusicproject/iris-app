@@ -144,9 +144,11 @@ jobs:
             maestro test .maestro/cant-play.yaml --format junit --output maestro-cant-play.xml --test-output-dir maestro-output || echo "I can't play" >> failed-journeys.txt
             # Fern: no screen lock first (nothing kept), then a PIN and the basement with no signal.
             maestro test .maestro/fern-no-lock.yaml --format junit --output maestro-fern-no-lock.xml --test-output-dir maestro-output || echo "Fern, no screen lock" >> failed-journeys.txt
+            adb shell cmd connectivity airplane-mode disable || true
             adb shell locksettings set-pin 1111
             adb shell svc power stayon true
             maestro test .maestro/fern-offline.yaml --format junit --output maestro-fern-offline.xml --test-output-dir maestro-output || echo "Fern, offline" >> failed-journeys.txt
+            adb shell cmd connectivity airplane-mode disable || true
             node .maestro/check-offline-sent.mjs || echo "Fern, what reached staging" >> failed-journeys.txt
             # Dex, phone half; the website half is the next step.
             maestro test .maestro/dex-phone.yaml --format junit --output maestro-dex-phone.xml --test-output-dir maestro-output && touch dex-phone-done || echo "Dex, phone" >> failed-journeys.txt
@@ -159,6 +161,7 @@ jobs:
             adb shell date "$(TZ=America/Phoenix date +%m%d%H%M%Y.%S)"
             adb shell settings put global auto_time 1
             maestro test .maestro/violet-away-3.yaml --format junit --output maestro-violet-3.xml --test-output-dir maestro-output || echo "Violet, part 3" >> failed-journeys.txt
+            adb shell cmd connectivity airplane-mode disable || true
             node .maestro/check-offline-sent.mjs --email "$MAESTRO_VIOLET_EMAIL" --expect away=1 || echo "Violet, what reached staging" >> failed-journeys.txt
             # Gus: double taps, the season count, a leader swap. The cleanup always runs.
             maestro test .maestro/gus-edges.yaml --format junit --output maestro-gus.xml --test-output-dir maestro-output || echo "Gus" >> failed-journeys.txt

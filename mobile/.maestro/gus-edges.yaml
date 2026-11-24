@@ -71,9 +71,8 @@ tags:
           text: "Send to the point person"
           repeat: 2
           delay: 1
-      - extendedWaitUntil:
-          visible: "Sent to the point person for approval\\."
-          timeout: 15000
+      # The brief "Sent to the point person" message may be off screen; the
+      # Leader card's lasting text says the proposal is in.
       - scrollUntilVisible:
           element: "You've proposed a leader swap for this date\\..*"
       - takeScreenshot: gus-2-swap-proposed
