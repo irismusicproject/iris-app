@@ -25,8 +25,9 @@ tags:
     visible: "My week →"
     timeout: 30000
 - tapOn: "My week →"
+# My week is loaded when its "Due ..." label shows (the Log button is further down).
 - extendedWaitUntil:
-    visible: "Log an activity"
+    visible: "Due .*"
     timeout: 30000
 
 # The basement: no signal.
