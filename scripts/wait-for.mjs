@@ -14,6 +14,7 @@
 // Usage:
 //   node scripts/wait-for.mjs vercel <commit-sha> [minutes]   # Vercel build of that commit
 //   node scripts/wait-for.mjs run <run-id> [minutes]          # a GitHub Actions run
+//   node scripts/wait-for.mjs eas <build-id> [minutes]        # an Expo (EAS) build of the phone app
 // Exit code: 0 = finished successfully, 1 = failed, 2 = timed out or couldn't check.
 
 import { execFileSync } from "node:child_process";
@@ -22,20 +23,21 @@ const REPO = "irismusicproject/iris-app";
 const [kind, target, minutesArg] = process.argv.slice(2);
 const limitMs = Number(minutesArg ?? 15) * 60_000;
 
-if (!["vercel", "run"].includes(kind) || !target) {
-  console.error("usage: node scripts/wait-for.mjs vercel <commit-sha> [minutes] | run <run-id> [minutes]");
+if (!["vercel", "run", "eas"].includes(kind) || !target) {
+  console.error("usage: node scripts/wait-for.mjs vercel <commit-sha> [minutes] | run <run-id> [minutes] | eas <build-id> [minutes]");
   process.exit(2);
 }
 
-function gh(args) {
+function exec(cmd, args, cwd) {
   try {
-    return execFileSync("gh", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+    return execFileSync(cmd, args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
   } catch (e) {
     const why = (e.stderr?.toString() || e.message).trim().split("\n")[0];
-    console.error(`x couldn't check: gh ${args.join(" ")}\n  Why: ${why}`);
+    console.error(`x couldn't check: ${cmd} ${args.join(" ")}\n  Why: ${why}`);
     process.exit(2); // rule 2: never loop on an error
   }
 }
+const gh = (args) => exec("gh", args);
 
 // One check: returns "pending", "success" or "failure" (plus a detail line).
 function check() {
@@ -48,6 +50,13 @@ function check() {
     if (/ignored|skipped|canceled/i.test(v.description ?? "")) return ["success", `skipped: ${v.description}`];
     if (v.state === "failure" || v.state === "error") return ["failure", `${v.description ?? ""} ${v.target_url}`];
     return ["pending", v.description ?? "building"];
+  }
+  if (kind === "eas") {
+    const b = JSON.parse(exec("npx", ["eas-cli@latest", "build:view", target, "--json"], new URL("../mobile/", import.meta.url).pathname));
+    const page = `https://expo.dev/accounts/iris-music-project/projects/iris-app/builds/${target}`;
+    if (b.status === "FINISHED") return ["success", b.artifacts?.buildUrl ?? page];
+    if (["ERRORED", "CANCELED"].includes(b.status)) return ["failure", `${b.status.toLowerCase()} ${page}`];
+    return ["pending", `${b.status.toLowerCase()} ${page}`];
   }
   const run = JSON.parse(gh(["run", "view", target, "--repo", REPO, "--json", "status,conclusion,url"]));
   if (run.status !== "completed") return ["pending", `${run.status} ${run.url}`];

@@ -271,8 +271,9 @@ with **[Lauren's side]** or **[Ryan's side]**.
 - Before every commit, check `git status` and `git diff --staged` for
   anything private.
 - **Waiting for a build or workflow:** use `node scripts/wait-for.mjs vercel
-  <commit-sha> [minutes]` or `node scripts/wait-for.mjs run <run-id>
-  [minutes]`. Don't hand-write wait loops. The script asks the source of
+  <commit-sha> [minutes]`, `node scripts/wait-for.mjs run <run-id>
+  [minutes]` or, for a phone build on Expo, `node scripts/wait-for.mjs eas
+  <build-id> [minutes]`. Don't hand-write wait loops. The script asks the source of
   truth (Vercel's status on the commit, or the run itself), stops on the
   first error, gives up after a time limit (15 minutes by default) and prints
   progress every minute.
