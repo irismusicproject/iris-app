@@ -33,8 +33,20 @@ export function canSendEmail(): boolean {
   return Boolean(process.env.RESEND_API_KEY) || isLocal();
 }
 
+export type Attachment = { filename: string; content: Uint8Array };
+
 /** Sends one plain-text email now. Throws if no email service is configured or the send fails. */
-export async function sendEmail(m: { to: string; subject: string; text: string; idempotencyKey?: string }): Promise<void> {
+export async function sendEmail(m: {
+  to: string | string[];
+  cc?: string[];
+  subject: string;
+  text: string;
+  attachments?: Attachment[];
+  idempotencyKey?: string;
+}): Promise<void> {
+  const to = Array.isArray(m.to) ? m.to : [m.to];
+  const cc = (m.cc ?? []).filter((e) => !to.includes(e));
+  const files = (m.attachments ?? []).map((a) => ({ filename: a.filename, content: Buffer.from(a.content).toString("base64") }));
   const resendKey = process.env.RESEND_API_KEY;
   if (resendKey) {
     const res = await fetch("https://api.resend.com/emails", {
@@ -44,7 +56,14 @@ export async function sendEmail(m: { to: string; subject: string; text: string; 
         "Content-Type": "application/json",
         ...(m.idempotencyKey ? { "Idempotency-Key": m.idempotencyKey } : {}),
       },
-      body: JSON.stringify({ from: fromAddress(), to: [m.to], subject: m.subject, text: m.text }),
+      body: JSON.stringify({
+        from: fromAddress(),
+        to,
+        ...(cc.length ? { cc } : {}),
+        subject: m.subject,
+        text: m.text,
+        ...(files.length ? { attachments: files } : {}),
+      }),
     });
     if (!res.ok) throw new Error(`Resend ${res.status}`);
     return;
@@ -54,7 +73,14 @@ export async function sendEmail(m: { to: string; subject: string; text: string; 
     const res = await fetch("http://127.0.0.1:54324/api/v1/send", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ From: { Email: from[2], Name: from[1] }, To: [{ Email: m.to }], Subject: m.subject, Text: m.text }),
+      body: JSON.stringify({
+        From: { Email: from[2], Name: from[1] },
+        To: to.map((Email) => ({ Email })),
+        Cc: cc.map((Email) => ({ Email })),
+        Subject: m.subject,
+        Text: m.text,
+        Attachments: files.map((f) => ({ Filename: f.filename, Content: f.content, ContentType: "application/pdf" })),
+      }),
     });
     if (!res.ok) throw new Error(`local mail viewer ${res.status}`);
     return;
@@ -64,7 +90,7 @@ export async function sendEmail(m: { to: string; subject: string; text: string; 
 
 type Pending = { id: string; email: string; subject: string; body: string; attempts: number };
 
-function notificationsOn(): boolean {
+export function notificationsOn(): boolean {
   return process.env.NOTIFICATIONS_ENABLED === "true" || isLocal();
 }
 
@@ -101,8 +127,11 @@ export async function runScheduledNotifications(): Promise<{ queued: number; sen
   const db = createAdminClient();
   const { data, error } = await db.rpc("queue_deadline_reminders");
   if (error) throw new Error(`queue_deadline_reminders: ${error.message}`);
+  // Reminders that pair with To do tasks (DOMAIN-MODEL ScheduleMonth, v0.43).
+  const { data: monthly, error: monthError } = await db.rpc("queue_month_reminders");
+  if (monthError) throw new Error(`queue_month_reminders: ${monthError.message}`);
   const delivered = await deliverPending(200);
-  return { queued: Number(data ?? 0), ...delivered };
+  return { queued: Number(data ?? 0) + Number(monthly ?? 0), ...delivered };
 }
 
 /** Best effort right after an action that queues a message (e.g. "No Program"). Never fails the action. */

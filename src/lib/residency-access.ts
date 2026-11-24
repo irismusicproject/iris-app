@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 
@@ -38,8 +39,8 @@ export async function getResidencyAccess(residencyId: string, isAdmin: boolean):
  * Non-admins can't read other people's records, so pages use this instead
  * of joining the person table.
  */
-export async function getResidencyNames(residencyId: string): Promise<Map<string, string>> {
-  const supabase = await createClient();
+export async function getResidencyNames(residencyId: string, client?: SupabaseClient): Promise<Map<string, string>> {
+  const supabase = client ?? (await createClient());
   const { data } = await supabase.rpc("residency_people", { p_residency: residencyId });
   return new Map(((data ?? []) as { id: string; name: string }[]).map((p) => [p.id, p.name]));
 }
