@@ -18,7 +18,7 @@ they test permissions, these test journeys._
 
 ## 2. The variables
 
-Each variable pushes on particular rules. The last column is how a test
+Each variable pushes on particular rules (V13 was added after Fern's journey turned it up). The last column is how a test
 imitates it.
 
 | # | Variable | Values | What it stresses | How a test imitates it |
@@ -35,6 +35,7 @@ imitates it.
 | V10 | **Roles held** | plays · leads · substitute · Admin Lead · several buildings | Permissions that differ by building in the same month | One person, different roles at two buildings |
 | V11 | **Tenure** | new this season · veteran used to the workbook | First sign-in from an invite; workbook habits (expecting to type hours, which are now calculated, D3) | Fresh account; look for words a workbook user expects |
 | V12 | **How they communicate** | reads every email · skims · calls instead | The notification layer; whether the app works for someone who never reads email | Check what reached the outbox; finish a journey with no email read |
+| V13 | **Phone's time zone** | the building's · another (traveling, or living across a time-zone line) | "Today" on the log form comes from the phone's clock; late in the evening it can be a day the building hasn't reached | Set the emulator's time zone ahead of the building's |
 
 ## 3. The personas
 
@@ -86,7 +87,7 @@ purpose.
 | Persona journey | How | Status |
 |---|---|---|
 | Vera, largest text | Musician's tour on Android with text at 200% (`phone-journeys.yml`); iOS by hand | Found on iOS Nov 24: calendar day numbers overlap, header titles clip, month name splits; fixed, waiting for a build to confirm |
-| Fern, offline documenting | Maestro with airplane mode on, then off | to build |
+| Fern, offline documenting | `fern-no-lock.yaml` (no screen lock: nothing kept, O3), then a PIN and `fern-offline.yaml` (airplane mode on, log, off: sent by itself, O1, O4); `check-offline-sent.mjs` asks staging that it arrived exactly once (O2) and deletes the run's test logs | written Nov 24; first run pending |
 | Dex, phone then web | Maestro documents; Playwright checks the website sees it | to build |
 | Hollis, web at 200% zoom, the deadline | Playwright with zoom, a code sign-in, and the clock at 4:59 and 5:01 pm Tuesday | to build |
 | Clara, two hats | Database permission test (one person, two rosters) | to build |

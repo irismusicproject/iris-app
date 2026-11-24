@@ -1,0 +1,60 @@
+# Fern (docs/PERSONAS.md), part 1: no screen lock, no signal
+# (docs/ACCEPTANCE.md O3). Without a PIN, pattern or fingerprint the app
+# keeps nothing on the phone: logging with no signal is refused with a plain
+# reason, and nothing reaches staging afterwards (check-offline-sent.mjs).
+#
+# Needs: MAESTRO_FERN_EMAIL, MAESTRO_PASSWORD, MAESTRO_RUN (a unique run id,
+# written into the note so the check finds this run's records only).
+# The emulator must have NO screen lock when this runs.
+appId: org.irismusicproject.iris
+name: "Fern, no screen lock: nothing is kept on the phone"
+tags:
+  - offline
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    id: "sign-in-email"
+- inputText: ${MAESTRO_FERN_EMAIL}
+- tapOn:
+    id: "sign-in-password"
+- inputText: ${MAESTRO_PASSWORD}
+- hideKeyboard
+- tapOn: "Log in"
+- extendedWaitUntil:
+    visible: "My week →"
+    timeout: 30000
+- tapOn: "My week →"
+- extendedWaitUntil:
+    visible: "Log an activity"
+    timeout: 30000
+
+# The basement: no signal.
+- setAirplaneMode: enabled
+- extendedWaitUntil:
+    visible: "You're offline\\. To save work offline, turn on a screen lock.*"
+    timeout: 20000
+- takeScreenshot: fern-no-lock-0-offline
+
+- scrollUntilVisible:
+    element: "Log an activity"
+- tapOn: "Log an activity"
+- tapOn: ".*Splendido.*"
+- tapOn: "30 min"
+- tapOn:
+    id: "log-new-residents"
+- inputText: "Phone Test T."
+- tapOn:
+    id: "log-note"
+- inputText: "[phone test ${MAESTRO_RUN}] no lock"
+- hideKeyboard
+- scrollUntilVisible:
+    element: "Log activity"
+- tapOn: "Log activity"
+- extendedWaitUntil:
+    visible: "No connection\\. Turn on a screen lock.*"
+    timeout: 20000
+- takeScreenshot: fern-no-lock-1-refused
+
+# Signal back: there is nothing on the phone to send.
+- setAirplaneMode: disabled

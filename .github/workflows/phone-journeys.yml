@@ -39,6 +39,9 @@ jobs:
       EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.STAGING_SUPABASE_PUBLISHABLE_KEY }}
       EXPO_PUBLIC_IRIS_ENVIRONMENT: staging
       STAGING_TEST_PASSWORD: ${{ secrets.STAGING_TEST_PASSWORD }}
+      # Fern (docs/PERSONAS.md): her journeys write this run's id into their notes.
+      MAESTRO_FERN_EMAIL: fern.flute@example.com
+      MAESTRO_RUN: ${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -84,10 +87,18 @@ jobs:
           arch: x86_64
           target: google_apis
           working-directory: mobile
+          # Arizona time, like Fern's building (Splendido): "Today" on the phone comes from its clock.
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -timezone America/Phoenix
           script: |
             adb install -r android/app/build/outputs/apk/release/app-release.apk
             maestro test .maestro/musician-tour.yaml --format junit --output maestro-tour.xml --test-output-dir maestro-output
             maestro test .maestro/cant-play.yaml --format junit --output maestro-cant-play.xml --test-output-dir maestro-output
+            # Fern (docs/PERSONAS.md): no screen lock first (nothing kept), then a PIN and the basement with no signal.
+            maestro test .maestro/fern-no-lock.yaml --format junit --output maestro-fern-no-lock.xml --test-output-dir maestro-output
+            adb shell locksettings set-pin 1111
+            adb shell svc power stayon true
+            maestro test .maestro/fern-offline.yaml --format junit --output maestro-fern-offline.xml --test-output-dir maestro-output
+            node .maestro/check-offline-sent.mjs
             mkdir -p shots/normal-text && mv *.png shots/normal-text/
             # Vera (docs/PERSONAS.md): the same tour with the phone's text at its largest.
             adb shell settings put system font_scale 2.0
