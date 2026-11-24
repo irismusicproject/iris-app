@@ -1,25 +1,34 @@
-import { Redirect } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import { Tabs } from "expo-router/js-tabs";
-import { Text, View, type ColorValue } from "react-native";
+import { Pressable, Text, View, type ColorValue } from "react-native";
 import { Button, Loading, styles } from "@/components/ui";
-import { useOutbox } from "@/lib/offline/outbox";
 import { useSession } from "@/lib/session";
 import { supabase } from "@/lib/supabase";
 import { colors } from "@/lib/theme";
 import { useWeek } from "@/lib/week-context";
 
-// The three tabs a musician sees once signed in. Admin work stays on the website.
+// The three tabs (DOMAIN-MODEL v0.41): To do, Today, Calendar. My week and
+// the account live one tap away. Building the schedule stays on the website.
+
+export const unstable_settings = { initialRouteName: "todo" };
 
 const icon = (glyph: string) =>
   function TabIcon({ color }: { color: ColorValue }) {
     return <Text style={{ color, fontSize: 18 }}>{glyph}</Text>;
   };
 
+function AccountButton() {
+  const router = useRouter();
+  return (
+    <Pressable onPress={() => router.push("/more")} accessibilityRole="button" accessibilityLabel="Account and settings" hitSlop={12} style={{ paddingHorizontal: 16 }}>
+      <Text style={{ color: colors.iris, fontSize: 15, fontWeight: "600" }}>Account</Text>
+    </Pressable>
+  );
+}
+
 export default function TabsLayout() {
   const { session, loading } = useSession();
-  const { noAccess, week } = useWeek();
-  const outbox = useOutbox();
-  const toDocument = week ? week.ledPast.filter((s) => !s.session_report && !outbox.items.some((i) => i.kind === "report" && i.payload.session_id === s.id)).length : 0;
+  const { noAccess } = useWeek();
   if (loading) return <Loading />;
   if (!session) return <Redirect href="/sign-in" />;
   if (noAccess)
@@ -44,9 +53,9 @@ export default function TabsLayout() {
         sceneStyle: { backgroundColor: colors.page },
       }}
     >
-      <Tabs.Screen name="index" options={{ title: "Upcoming", tabBarIcon: icon("♪") }} />
-      <Tabs.Screen name="week" options={{ title: "My week", tabBarIcon: icon("✎"), tabBarBadge: toDocument || undefined, tabBarBadgeStyle: { backgroundColor: colors.orange } }} />
-      <Tabs.Screen name="more" options={{ title: "More", tabBarIcon: icon("☰") }} />
+      <Tabs.Screen name="todo" options={{ title: "To do", tabBarIcon: icon("✓"), headerRight: () => <AccountButton /> }} />
+      <Tabs.Screen name="index" options={{ title: "Today", tabBarIcon: icon("♪"), headerRight: () => <AccountButton /> }} />
+      <Tabs.Screen name="calendar" options={{ title: "Calendar", tabBarIcon: icon("▦"), headerRight: () => <AccountButton /> }} />
     </Tabs>
   );
 }

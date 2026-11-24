@@ -1,10 +1,11 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { Pressable, Text, View } from "react-native";
-import { addDays } from "@shared/domain/documentation";
+import { Alert, Pressable, Text, View } from "react-native";
+import { addDays, weekStart } from "@shared/domain/documentation";
 import { formatDay, formatTime, localDateTime } from "@shared/domain/time";
 import { lastUpdated } from "@/components/offline";
-import { Card, Loading, Muted, Problem, Screen, Tag, styles } from "@/components/ui";
+import { Card, LinkButton, Loading, Muted, Notice, Problem, Screen, Tag, styles } from "@/components/ui";
+import { notifySoon, plain } from "@/lib/month";
 import { isNetworkError, useOutbox } from "@/lib/offline/outbox";
 import { cacheGet, cacheSet } from "@/lib/offline/store";
 import { supabase } from "@/lib/supabase";
@@ -12,9 +13,11 @@ import { colors } from "@/lib/theme";
 import { todayIso } from "@/lib/week";
 import { friendly, useWeek } from "@/lib/week-context";
 
-// Upcoming: the dates I play in the next four weeks, in each building's own
-// time zone, with who's leading and who else is playing. Canceled dates show
-// as "No Program", the same words as the calendars.
+// Today (DOMAIN-MODEL v0.41): the dates I play, today first, then the next
+// four weeks, in each building's own time zone. Today's dates carry their
+// actions: Document (the leader), Log relationship building, and "I wasn't
+// there" for a musician who missed a program that went on. Canceled dates
+// show as "No Program", the same words as the calendars.
 
 type Row = {
   id: string;
@@ -26,7 +29,7 @@ type Row = {
   schedule_state: "draft" | "published" | "canceled";
   is_special_event: boolean;
   residency: { name: string } | null;
-  location: { display_name: string; site: { display_name: string; timezone: string } | null } | null;
+  location: { site_id: string; display_name: string; site: { display_name: string; timezone: string } | null } | null;
   mine: { role: "leader" | "participant"; status: string }[];
   everyone: { person_id: string; role: "leader" | "participant"; status: string }[];
 };
@@ -35,7 +38,8 @@ const DAYS_AHEAD = 28;
 
 export default function Upcoming() {
   const router = useRouter();
-  const { me, week } = useWeek();
+  const { me, week, setMonday } = useWeek();
+  const [message, setMessage] = useState<string | null>(null);
   const outbox = useOutbox();
   const [rows, setRows] = useState<Row[] | null>(null);
   const [names, setNames] = useState<Map<string, string>>(new Map());
@@ -50,7 +54,7 @@ export default function Upcoming() {
     const { data, error } = await supabase
       .from("session")
       .select(
-        "id, residency_id, title, starts_at, has_set_time, scheduled_minutes, schedule_state, is_special_event, residency(name), location(display_name, site(display_name, timezone)), mine:session_assignment!inner(role, status), everyone:session_assignment(person_id, role, status)",
+        "id, residency_id, title, starts_at, has_set_time, scheduled_minutes, schedule_state, is_special_event, residency(name), location(site_id, display_name, site(display_name, timezone)), mine:session_assignment!inner(role, status), everyone:session_assignment(person_id, role, status)",
       )
       .eq("mine.person_id", me.id)
       .neq("mine.status", "absent")
@@ -92,7 +96,6 @@ export default function Upcoming() {
   if (!me || (!rows && !problem)) return <Loading />;
 
   const toDocument = week ? week.ledPast.filter((s) => !s.session_report && !outbox.items.some((i) => i.kind === "report" && i.payload.session_id === s.id)).length : 0;
-  const first = me.name.trim().split(/\s+/)[0];
 
   // Group by the building's local date.
   const groups = new Map<string, Row[]>();
@@ -111,21 +114,22 @@ export default function Upcoming() {
         setRefreshing(false);
       }}
     >
-      <Text style={{ fontSize: 26, fontWeight: "700", color: colors.iris }}>Hi, {first}</Text>
+      <Text style={{ fontSize: 26, fontWeight: "700", color: colors.iris }}>Today</Text>
+      {message && <Notice>{message}</Notice>}
       {toDocument > 0 && (
-        <Pressable onPress={() => router.navigate("/week")} accessibilityRole="button">
+        <Pressable onPress={() => router.navigate("/todo")} accessibilityRole="button">
           <Card>
             <Text style={{ color: colors.orange, fontSize: 16, fontWeight: "700" }}>
               {toDocument} program{toDocument === 1 ? "" : "s"} to document →
             </Text>
-            <Muted>You led {toDocument === 1 ? "it" : "them"} this week. Tap to document.</Muted>
+            <Muted>You led {toDocument === 1 ? "it" : "them"} this week. It&apos;s in To do.</Muted>
           </Card>
         </Pressable>
       )}
-      <Pressable onPress={() => router.push("/review")} accessibilityRole="button" style={({ pressed }) => pressed && styles.pressed}>
+      <Pressable onPress={() => router.push("/week")} accessibilityRole="button" style={({ pressed }) => pressed && styles.pressed}>
         <Card>
-          <Text style={{ color: colors.iris, fontSize: 16, fontWeight: "700" }}>Review next month&apos;s dates →</Text>
-          <Muted>Check your draft dates at each building, then tap Done reviewing.</Muted>
+          <Text style={{ color: colors.iris, fontSize: 16, fontWeight: "700" }}>My week →</Text>
+          <Muted>Hours and Submit my week, relationship building, the monthly reflection.</Muted>
         </Card>
       </Pressable>
       {cachedAt && <Muted>{lastUpdated(cachedAt)}</Muted>}
@@ -165,6 +169,46 @@ export default function Upcoming() {
                     {iLead ? "You're leading" : leader ? `Led by ${(names.get(leader.person_id) ?? "").split(" ")[0] || "a colleague"}` : "No leader yet"}
                     {others.length ? ` · with ${others.join(", ")}` : ""}
                   </Muted>
+                )}
+                {!canceled && date === todayIso() && (
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", columnGap: 18 }}>
+                    {iLead && r.starts_at <= new Date().toISOString() && (
+                      <LinkButton
+                        label="Document"
+                        onPress={() => {
+                          setMonday(weekStart(todayIso()));
+                          router.push({ pathname: "/document/[id]", params: { id: r.id } });
+                        }}
+                      />
+                    )}
+                    <LinkButton
+                      label="Log relationship building"
+                      onPress={() => {
+                        setMonday(weekStart(todayIso()));
+                        router.push({ pathname: "/log", params: { residencyId: r.residency_id, siteId: r.location?.site_id ?? "" } });
+                      }}
+                    />
+                    {!iLead && r.starts_at <= new Date().toISOString() && (
+                      <LinkButton
+                        label="I wasn't there"
+                        onPress={() =>
+                          Alert.alert("I wasn't there", `The program went on without you? You won't be paid for it, and the point person is told.`, [
+                            { text: "Cancel", style: "cancel" },
+                            {
+                              text: "Yes, I wasn't there",
+                              onPress: async () => {
+                                const { error } = await supabase.rpc("mark_not_there", { p_session: r.id, p_not_there: true });
+                                if (error) return setMessage(plain(error));
+                                setMessage(`Marked: you weren't at ${r.title}. The point person has been told.`);
+                                notifySoon();
+                                load();
+                              },
+                            },
+                          ])
+                        }
+                      />
+                    )}
+                  </View>
                 )}
               </Card>
               </Pressable>

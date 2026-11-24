@@ -5,15 +5,16 @@ iPad from the same code. It talks to Supabase directly, through the same rules
 as the website, and imports `../src/shared` as `@shared/...` (see `CLAUDE.md`,
 "Platform strategy").
 
-## What's in it (DOMAIN-MODEL v0.40)
+## What's in it (DOMAIN-MODEL v0.45)
 
-| Tab / screen | Same as on the website |
+| Tab / screen | What it does |
 |---|---|
-| **Sign in**: email and password, or "Email me a code instead" | `/login`, `/login/code` |
-| **Upcoming**: the dates I play in the next four weeks; "N programs to document". Tap a date for who's playing (call or text them) and directions | calendar feed / program month view |
-| **Review my dates** (from Upcoming): a draft month building by building, "Done reviewing", and "No Program" on a draft date I play | month view |
-| **My week**: programs I led (document each), relationship building (log, delete, "Not me"), hours and **Submit my week**, the month's reflection | `/documentation` |
-| **More**: who's signed in, log out, My profile (phone, instruments), set my password, my private calendar link (create and share), Iris staff directory, link to My invoices | Home, `/account/*` |
+| **Sign in** | Email and password, or "Email me a code instead" (`/login`, `/login/code`) |
+| **To do** | Every task with its deadline and when its email reminder goes out, worked out by the database (`my_tasks`). Leaders: titles. Point people: open the month, review and confirm it, approve leader swaps and subs (one tap), find cover. Admin leads: send the calendar to the partner, enter partner changes, mark final. Everyone: document, submit the week |
+| **Today** | The dates I play, today first. Today's dates: Document (leader), Log relationship building, "I wasn't there" |
+| **Calendar** | A month at a glance with each building's stage (1 of 5). Tap a date: its leader edits the title while the team edits; "I can't play"; propose a leader swap; after final, ask for a sub; "Canceling today? Call [point person]"; admin leads enter partner changes (title, time, room) |
+| **Review the month** / **Calendar to partner** | The point person's month list with flags and Confirm; the admin lead's one button that makes the PDF and emails it (through the website) |
+| **My week**, **Account** | Hours and Submit my week, relationship building, reflection; profile, password, calendar link, staff directory, log out |
 
 Invoices (linked) and everything admin stay on the website.
 
