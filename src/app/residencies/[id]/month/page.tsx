@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
+import { todayIn } from "@/shared/domain/time";
 
-/** /residencies/[id]/month → this month's schedule. */
+/** /residencies/[id]/month → this month's schedule (Eastern time, not the server's UTC clock). */
 export default async function CurrentMonth({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const now = new Date();
-  redirect(`/residencies/${id}/month/${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`);
+  redirect(`/residencies/${id}/month/${todayIn().slice(0, 7)}`);
 }
