@@ -3,16 +3,18 @@ import { useState } from "react";
 import { Text, View } from "react-native";
 import { ACTIVITY_KIND_LABELS, ACTIVITY_KINDS, addDays, residentsRequired, type ActivityKind } from "@shared/domain/documentation";
 import { Button, Card, Choices, Field, Input, Loading, Muted, Notice, Problem, Screen, Stepper, TimeField } from "@/components/ui";
-import { supabase } from "@/lib/supabase";
+import { useOutbox } from "@/lib/offline/outbox";
+import { newId } from "@/lib/offline/store";
 import { colors } from "@/lib/theme";
-import { friendly, useWeek } from "@/lib/week-context";
+import { useWeek } from "@/lib/week-context";
 
 // Log a relationship-building activity. Same fields and rules as the
 // website's ActivityForm and logActivity (src/app/documentation): usual
 // lengths per type (v0.21), "Same as last time", shared logs (v0.24), and at
 // detailed-notes buildings a note, start and end time and each resident's
 // room (v0.36). Program, site, type and date stay after each log so several
-// one-to-ones in a row are quick. Needs a connection (no offline yet).
+// one-to-ones in a row are quick. Works offline: each log goes into the
+// outbox and is sent with one call that's safe to repeat (OFFLINE-SPEC).
 
 const short = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString("en-US", { timeZone: "UTC", weekday: "short", month: "short", day: "numeric" });
 
@@ -22,7 +24,8 @@ export default function LogActivity() {
   const router = useRouter();
   // Opened from a date ("Log relationship building here"): start at that program and building.
   const from = useLocalSearchParams<{ residencyId?: string; siteId?: string }>();
-  const { me, week, reload } = useWeek();
+  const { me, week } = useWeek();
+  const outbox = useOutbox();
   const programs = week?.programs ?? [];
   const lengths = week?.lengths ?? {};
   const usual = (rid: string, k: ActivityKind) => (lengths[rid]?.[k] ? String(lengths[rid]![k]) : "");
@@ -47,7 +50,7 @@ export default function LogActivity() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
-  const [logged, setLogged] = useState<string[]>([]);
+  const [logged, setLogged] = useState<{ text: string; state: "sent" | "saved" | "needs_attention" }[]>([]);
   const [search, setSearch] = useState("");
 
   if (!week || !me) return <Loading />;
@@ -90,81 +93,53 @@ export default function LogActivity() {
 
     setBusy(true);
     setProblem(null);
-    try {
-      const residentIds = [...picked];
-      const linkRooms = new Map<string, string | null>();
-      if (detailed)
-        for (const r of pickedRooms) {
-          const { error } = await supabase.rpc("set_resident_room", { p_resident: r.id, p_room: r.room });
-          if (error) throw error;
-          linkRooms.set(r.id, r.room);
-        }
-      // New residents (first name + last initial, D14). Reuse one that already exists.
-      for (const [i, name] of newList.entries()) {
-        const room = detailed ? addedRooms[i] : null;
-        const { data: found } = await supabase.from("resident").select("id").eq("site_id", siteId).ilike("display_name", name).eq("disambiguator", "").maybeSingle();
-        if (found) {
-          if (room) {
-            const { error } = await supabase.rpc("set_resident_room", { p_resident: found.id, p_room: room });
-            if (error) throw error;
-          }
-          residentIds.push(found.id);
-          linkRooms.set(found.id, room);
-          continue;
-        }
-        const { data, error } = await supabase.from("resident").insert({ site_id: siteId, display_name: name, created_by: me!.id, room }).select("id").single();
-        if (error) throw error;
-        residentIds.push(data.id);
-        linkRooms.set(data.id, room);
-      }
-      const { data: activity, error } = await supabase
-        .from("relationship_activity")
-        .insert({
-          person_id: me!.id,
-          residency_id: residencyId,
-          site_id: siteId,
-          occurred_on: date,
-          kind,
-          minutes: mins,
-          collaborative: collab === "yes",
-          note: note.trim() || null,
-          ...(detailed ? { start_time: start!, end_time: end! } : {}),
-        })
-        .select("id")
-        .single();
-      if (error) throw error;
-      // Other musicians who shared it (v0.24): each is credited the minutes.
-      const others = withIds.filter((id) => id !== me!.id);
-      if (others.length) {
-        const { error: shareError } = await supabase.from("relationship_activity_musician").insert(others.map((person_id) => ({ activity_id: activity.id, person_id })));
-        if (shareError) throw shareError;
-      }
-      if (residentIds.length) {
-        const { error: linkError } = await supabase
-          .from("relationship_activity_resident")
-          .insert([...new Set(residentIds)].map((resident_id) => ({ activity_id: activity.id, resident_id, room: linkRooms.get(resident_id) ?? null })));
-        if (linkError) throw linkError;
-      }
-      // Logged: clear who and how long; keep program, site, type and date.
-      const who = [...picked.map((id) => siteResidents.find((r) => r.id === id)?.name ?? ""), ...newList].filter(Boolean);
-      setLogged((cur) => [...cur, `${ACTIVITY_KIND_LABELS[kind].replace(/ \(.*\)$/, "")}${who.length ? ` with ${who.join(", ")}` : ""}, ${mins} min`]);
-      setSearch("");
-      setPicked([]);
-      setRooms({});
-      setNewNames("");
-      setNewRooms([]);
-      setWithIds([]);
-      setCollab("no");
-      setMinutes(usual(residencyId, kind));
-      setStartTime("");
-      setEndTime("");
-      setNote("");
-      reload();
-    } catch (err) {
-      setProblem(friendly(err as { code?: string; message?: string }));
-    } finally {
-      setBusy(false);
+    // New residents (first name + last initial, D14). Reuse one already on the list.
+    const existing = [...pickedRooms.map((r) => ({ id: r.id, room: detailed ? r.room : null }))];
+    const added: { id: string; name: string; disambiguator: string; room: string | null }[] = [];
+    for (const [i, name] of newList.entries()) {
+      const room = detailed ? addedRooms[i] : null;
+      const found = siteResidents.find((r) => r.name.toLowerCase() === name.toLowerCase());
+      if (found) {
+        if (!existing.some((r) => r.id === found.id)) existing.push({ id: found.id, room });
+      } else added.push({ id: newId(), name, disambiguator: "", room });
     }
+    const payload = {
+      p_id: newId(),
+      p_residency: residencyId,
+      p_site: siteId,
+      p_occurred_on: date,
+      p_kind: kind,
+      p_minutes: mins,
+      p_collaborative: collab === "yes",
+      p_note: note.trim() || null,
+      p_start_time: detailed ? start : null,
+      p_end_time: detailed ? end : null,
+      p_residents: existing,
+      p_new_residents: added,
+      // Other musicians who shared it (v0.24): each is credited the minutes.
+      p_shared_with: withIds.filter((id) => id !== me!.id),
+    };
+    const who = [...picked.map((id) => siteResidents.find((r) => r.id === id)?.name ?? ""), ...newList].filter(Boolean);
+    const summary = `${ACTIVITY_KIND_LABELS[kind].replace(/ \(.*\)$/, "")}${who.length ? ` with ${who.join(", ")}` : ""}, ${mins} min, ${short(date)}`;
+    const { result, problem: why } = await outbox.add("activity", payload, summary);
+    setBusy(false);
+    if (result === "no_storage" || result === "needs_attention") {
+      if (result === "needs_attention") setLogged((cur) => [...cur, { text: summary, state: "needs_attention" }]);
+      return setProblem(why ?? "We couldn't do that. Please try again.");
+    }
+    // Logged (or saved on the phone): clear who and how long; keep program, site, type and date.
+    setLogged((cur) => [...cur, { text: summary, state: result }]);
+    setSearch("");
+    setPicked([]);
+    setRooms({});
+    setNewNames("");
+    setNewRooms([]);
+    setWithIds([]);
+    setCollab("no");
+    setMinutes(usual(residencyId, kind));
+    setStartTime("");
+    setEndTime("");
+    setNote("");
   }
 
   return (
@@ -325,9 +300,16 @@ export default function LogActivity() {
       {problem && <Problem>{problem}</Problem>}
       {logged.length > 0 && !busy && (
         <Card>
-          <Notice>✓ Logged{logged.length === 1 ? "" : ` ${logged.length} activities`}</Notice>
+          <Notice>
+            {logged.every((l) => l.state === "sent")
+              ? `✓ Logged${logged.length === 1 ? "" : ` ${logged.length} activities`}`
+              : "Saved on this phone. It sends by itself when you're back online."}
+          </Notice>
           {logged.map((l, i) => (
-            <Muted key={i}>{l}</Muted>
+            <Muted key={i}>
+              {l.state === "sent" ? "✓ " : l.state === "saved" ? "Saved on this phone: " : "Needs attention: "}
+              {l.text}
+            </Muted>
           ))}
           <Muted>Date and site are kept for the next one.</Muted>
         </Card>

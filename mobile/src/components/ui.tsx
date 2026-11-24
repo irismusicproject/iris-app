@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { OfflineBanner } from "./offline";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import {
   ActivityIndicator,
@@ -80,6 +81,7 @@ export function Screen({
         refreshControl={onRefresh ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={colors.iris} colors={[colors.iris]} /> : undefined}
       >
         <View ref={content} style={{ gap: 14 }} collapsable={false}>
+          <OfflineBanner />
           {children}
         </View>
       </ScrollView>

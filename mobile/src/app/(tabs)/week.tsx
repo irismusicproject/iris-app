@@ -3,7 +3,9 @@ import { useCallback, useState } from "react";
 import { Alert, Pressable, Text, View } from "react-native";
 import { ACTIVITY_KIND_LABELS, addDays, dueLabel, formatWeek, weekStart } from "@shared/domain/documentation";
 import { formatDay, formatMonth, formatTime, formatTimeRange } from "@shared/domain/time";
+import { OutboxList, lastUpdated } from "@/components/offline";
 import { Button, Card, LinkButton, Loading, Muted, Notice, Problem, Screen, Tag, styles } from "@/components/ui";
+import { useOutbox } from "@/lib/offline/outbox";
 import { supabase } from "@/lib/supabase";
 import { colors } from "@/lib/theme";
 import { siteTimezone, todayIso } from "@/lib/week";
@@ -18,7 +20,9 @@ const shortDate = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString("
 
 export default function MyWeek() {
   const router = useRouter();
-  const { me, monday, setMonday, week, loading, problem, reload } = useWeek();
+  const { me, monday, setMonday, week, cachedAt, loading, problem, reload } = useWeek();
+  const outbox = useOutbox();
+  const queuedReport = (id: string) => outbox.items.find((i) => i.kind === "report" && i.payload.session_id === id);
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -99,8 +103,10 @@ export default function MyWeek() {
           {week.activities.length} relationship-building activit{week.activities.length === 1 ? "y" : "ies"}, {activityMinutes} min
         </Muted>
       </View>
+      {cachedAt && <Muted>{lastUpdated(cachedAt)}</Muted>}
       {problem && <Problem>{problem}</Problem>}
       {message && <Notice>{message}</Notice>}
+      <OutboxList />
 
       {week.programs.length === 0 && <Muted>You&apos;re not on a program&apos;s roster for this week.</Muted>}
 
@@ -123,7 +129,10 @@ export default function MyWeek() {
                 >
                   <View style={styles.row}>
                     <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text, flex: 1 }}>{s.title}</Text>
-                    <Tag label={s.session_report ? "Documented" : "To document"} tone={s.session_report ? "soft" : "todo"} />
+                    <Tag
+                      label={s.session_report ? "Documented" : queuedReport(s.id) ? "Saved on this phone" : "To document"}
+                      tone={s.session_report || queuedReport(s.id) ? "soft" : "todo"}
+                    />
                   </View>
                   <Muted>
                     {formatDay(s.starts_at, tz)}

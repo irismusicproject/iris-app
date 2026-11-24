@@ -1,4 +1,5 @@
 import { Redirect } from "expo-router";
+import { wipe } from "@/lib/offline/store";
 import { useState } from "react";
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { Input, Screen } from "@/components/ui";
@@ -34,7 +35,7 @@ export default function SignIn() {
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
     setBusy(false);
     if (!error) return; // the session change takes the person to Upcoming
-    if (error.code === "user_banned") setMessage(DEACTIVATED);
+    if (error.code === "user_banned") (wipe(), setMessage(DEACTIVATED));
     else if (error.code === "over_request_rate_limit") setMessage("Too many attempts. Wait a few minutes and try again.");
     else if (offline(error.message)) setMessage("No connection. Check your signal and try again.");
     else setMessage("That email and password don't match. Try again, or use “Email me a code instead”.");
@@ -48,7 +49,7 @@ export default function SignIn() {
     const { error } = await supabase.auth.signInWithOtp({ email: email.trim(), options: { shouldCreateUser: false } });
     setBusy(false);
     // Unknown emails get the same reply, so the form doesn't reveal who has an account.
-    if (error?.code === "user_banned") return setMessage(DEACTIVATED);
+    if (error?.code === "user_banned") return (wipe(), setMessage(DEACTIVATED));
     if (error && error.code !== "otp_disabled" && error.code !== "user_not_found") {
       if (error.code === "over_email_send_rate_limit" || error.status === 429) return setMessage("A code was sent recently. Wait a minute before asking for another.");
       if (offline(error.message)) return setMessage("No connection. Check your signal and try again.");
@@ -65,7 +66,7 @@ export default function SignIn() {
     const { error } = await supabase.auth.verifyOtp({ email: email.trim(), token, type: "email" });
     setBusy(false);
     if (!error) return;
-    if (error.code === "user_banned") setMessage(DEACTIVATED);
+    if (error.code === "user_banned") (wipe(), setMessage(DEACTIVATED));
     else if (offline(error.message)) setMessage("No connection. Check your signal and try again.");
     else setMessage("That code is wrong or has expired. Check the latest email, or ask for a new code.");
   }

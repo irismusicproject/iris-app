@@ -4,6 +4,8 @@ import { Text } from "react-native";
 import type { ResidentInvolvement } from "@shared/domain/documentation";
 import { formatDay, formatTime } from "@shared/domain/time";
 import { Button, Card, Choices, Field, Input, LinkButton, Loading, Muted, Notice, Problem, Screen, Stepper } from "@/components/ui";
+import { isNetworkError, useOutbox } from "@/lib/offline/outbox";
+import { newId } from "@/lib/offline/store";
 import { supabase } from "@/lib/supabase";
 import { colors } from "@/lib/theme";
 import { siteTimezone } from "@/lib/week";
@@ -19,6 +21,8 @@ export default function DocumentSession() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { me, week, reload } = useWeek();
+  const outbox = useOutbox();
+  const queued = outbox.items.find((i) => i.kind === "report" && i.payload.session_id === id);
   const s = week?.ledPast.find((x) => x.id === id);
   const program = week?.programs.find((p) => p.id === s?.residency_id);
   const r = s?.session_report ?? null;
@@ -51,22 +55,31 @@ export default function DocumentSession() {
     if (Object.keys(e).length) return;
     setBusy(true);
     setProblem(null);
-    const { error } = await supabase.from("session_report").upsert(
-      {
-        session_id: s!.id,
-        author_id: me!.id,
-        attendance: att,
-        interaction_type_id: typeId,
-        resident_involvement: involvement,
-        actual_minutes: mins,
-        notes: notes.trim() || null,
-        // The building it happened in (v0.24); the database checks it's one of the program's.
-        site_id: siteId || null,
-      },
-      { onConflict: "session_id" },
-    );
+    const report = {
+      session_id: s!.id,
+      author_id: me!.id,
+      attendance: att,
+      interaction_type_id: typeId,
+      resident_involvement: involvement,
+      actual_minutes: mins,
+      notes: notes.trim() || null,
+      // The building it happened in (v0.24); the database checks it's one of the program's.
+      site_id: siteId || null,
+    };
+    if (!r) {
+      // A new report works offline: saved on the phone, sent when there's signal.
+      const { result, problem: why } = await outbox.add("report", { id: newId(), ...report }, `${s!.title}, ${formatDay(s!.starts_at, tz)}: ${att} attended`);
+      setBusy(false);
+      if (result === "no_storage" || result === "needs_attention") return setProblem(why ?? "We couldn't do that. Please try again.");
+      setSaved(true);
+      if (result === "saved") return; // stays on screen with "Saved on this phone"
+      router.back();
+      return;
+    }
+    // Changing a report already sent needs a connection (OFFLINE-SPEC O11).
+    const { error } = await supabase.from("session_report").upsert(report, { onConflict: "session_id" });
     setBusy(false);
-    if (error) return setProblem(friendly(error));
+    if (error) return setProblem(isNetworkError(error) ? "No connection. Changing a report that's already sent needs signal; try again when you're back online." : friendly(error));
     setSaved(true);
     await reload();
     router.back();
@@ -123,8 +136,14 @@ export default function DocumentSession() {
         <Input value={notes} onChangeText={setNotes} multiline maxLength={2000} />
       </Field>
       {problem && <Problem>{problem}</Problem>}
-      {saved && <Notice>Saved.</Notice>}
-      <Button label={r ? "Update" : "Save"} onPress={save} busy={busy} />
+      {queued ? (
+        <Notice>{queued.state === "saved" ? "Saved on this phone. It sends by itself when you're back online." : `Needs attention: ${queued.problem ?? ""} See My week.`}</Notice>
+      ) : (
+        <>
+          {saved && <Notice>Saved.</Notice>}
+          <Button label={r ? "Update" : "Save"} onPress={save} busy={busy} />
+        </>
+      )}
     </Screen>
   );
 }
