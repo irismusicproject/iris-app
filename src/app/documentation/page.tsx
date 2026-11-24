@@ -4,7 +4,7 @@ import { AppShell } from "@/components/app-shell";
 import { requirePerson } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { ACTIVITY_KIND_LABELS, addDays, dueLabel, formatWeek, weekStart, type ActivityKind, type ResidentInvolvement } from "@/shared/domain/documentation";
-import { formatDay, formatMonth, formatTime, formatTimeRange, localDateTime } from "@/shared/domain/time";
+import { formatDay, formatMonth, formatTime, formatTimeRange, localDateTime, todayIn } from "@/shared/domain/time";
 import { ActivityForm, CalendarLinkCard, DeleteActivityButton, LeaveSharedButton, PlayedRow, ReflectionForm, ReportRow, WeekHours, type LastActivity } from "./forms";
 import { getResidencyNames } from "@/lib/residency-access";
 
@@ -45,13 +45,15 @@ type ActivityRow = {
   relationship_activity_resident: { room: string | null; resident: { display_name: string } | null }[];
 };
 
-const todayIso = () => new Date().toISOString().slice(0, 10);
+// "Today" where the programs are, not on the server's clock (UTC): after
+// about 7 pm Eastern, UTC is already tomorrow (same bug class as #67).
+// (todayIn: src/shared/domain/time.ts)
 
 export default async function MyWeek({ searchParams }: { searchParams: Promise<{ week?: string }> }) {
   const { person, isAdmin } = await requirePerson();
   const { week: weekParam } = await searchParams;
   // Default: on Monday or Tuesday, last week (it's due Tuesday); otherwise this week.
-  const today = todayIso();
+  const today = todayIn("America/New_York");
   const dow = new Date(`${today}T12:00:00Z`).getUTCDay();
   const monday = weekStart(weekParam && /^\d{4}-\d{2}-\d{2}$/.test(weekParam) ? weekParam : dow === 1 || dow === 2 ? addDays(today, -7) : today);
   const sunday = addDays(monday, 6);
@@ -73,6 +75,10 @@ export default async function MyWeek({ searchParams }: { searchParams: Promise<{
   const residencies = [...residencyMap.values()].sort((a, b) => a.name.localeCompare(b.name));
   const ids = residencies.map((p) => p.id);
   const siteById = new Map(residencies.flatMap((p) => p.sites).map((s) => [s.id, s]));
+  // The log form's latest date: the earliest "today" across her buildings, so
+  // it's never a day one of them hasn't reached (the database checks each
+  // building's own date and would refuse it).
+  const logToday = [...siteById.values()].map((s) => todayIn(s.timezone)).sort()[0] ?? today;
 
   // Relationship building shared with me by another musician (v0.24).
   const { data: sharedRows } = await supabase.from("relationship_activity_musician").select("activity_id").eq("person_id", person.id);
@@ -374,9 +380,9 @@ export default async function MyWeek({ searchParams }: { searchParams: Promise<{
                   lengths={lengths}
                   last={last}
                   colleagues={colleagues}
-                  defaultDate={today < monday ? monday : today > sunday ? sunday : today}
+                  defaultDate={logToday < monday ? monday : logToday > sunday ? sunday : logToday}
                   minDate={monday}
-                  maxDate={sunday < today ? sunday : today}
+                  maxDate={sunday < logToday ? sunday : logToday}
                 />
               </div>
             </div>

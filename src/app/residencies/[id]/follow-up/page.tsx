@@ -6,7 +6,7 @@ import { getResidencyAccess, getResidencyNames } from "@/lib/residency-access";
 import { createClient } from "@/lib/supabase/server";
 import { addDays, formatWeek, weekStart } from "@/shared/domain/documentation";
 import { buildingMetrics, musicianMetrics, type MetricActivity, type MetricEntry, type MetricSession } from "@/shared/domain/metrics";
-import { localDateTime } from "@/shared/domain/time";
+import { localDateTime, todayIn } from "@/shared/domain/time";
 
 // Follow-up (point person and admins, v0.24): who still owes documentation
 // or hours, and how each musician and building is doing this season.
@@ -36,7 +36,7 @@ export default async function FollowUpPage({ params, searchParams }: { params: P
   if (!(isAdmin || access.isPointPerson)) redirect(`/residencies/${id}`);
 
   const supabase = await createClient();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayIn();
   const now = new Date().toISOString();
   const week = weekStart(weekParam && /^\d{4}-\d{2}-\d{2}$/.test(weekParam) ? weekParam : addDays(today, -7));
   const [{ data: residency }, { data: siteRows }, { data: seasons }, names] = await Promise.all([

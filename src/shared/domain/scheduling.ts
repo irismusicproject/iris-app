@@ -6,6 +6,7 @@
 // Display words follow docs/GLOSSARY.md: a Residency is shown as "Program",
 // a Series as a "Weekly program", a Session as a dated program.
 
+import { todayIn } from "./time";
 export const RESIDENCY_STATUSES = ["planned", "active", "paused", "ended"] as const;
 export type ResidencyStatus = (typeof RESIDENCY_STATUSES)[number];
 
@@ -300,7 +301,7 @@ export type RosterMemberInput = { person_id: string; is_core: boolean; is_admin_
 export function validateRosterMember(f: FormData): Result<RosterMemberInput> {
   const e: Errors = {};
   const person_id = requiredId(f, "person_id", "a musician", e);
-  const joined_on = text(f, "joined_on") || new Date().toISOString().slice(0, 10);
+  const joined_on = text(f, "joined_on") || todayIn();
   if (!isDate(joined_on)) e.joined_on = "Enter a valid date.";
   if (Object.keys(e).length) return { ok: false, errors: e };
   return {
@@ -316,7 +317,7 @@ export function validateStaffAssignment(f: FormData): Result<StaffAssignmentInpu
   const person_id = requiredId(f, "person_id", "a staff member", e);
   const role = (text(f, "role") || "point_person") as StaffRole;
   if (!STAFF_ROLES.includes(role)) e.role = "Pick a role.";
-  const starts_on = text(f, "starts_on") || new Date().toISOString().slice(0, 10);
+  const starts_on = text(f, "starts_on") || todayIn();
   if (!isDate(starts_on)) e.starts_on = "Enter a valid date.";
   if (Object.keys(e).length) return { ok: false, errors: e };
   return { ok: true, value: { person_id, role, starts_on } };

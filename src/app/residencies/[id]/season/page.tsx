@@ -5,7 +5,7 @@ import { requirePerson } from "@/lib/auth";
 import { getResidencyAccess, getResidencyNames } from "@/lib/residency-access";
 import { createClient } from "@/lib/supabase/server";
 import { recurrenceLabel, SESSION_KIND_LABELS, type Series, type SessionKind } from "@/shared/domain/scheduling";
-import { formatDay, formatMonth, formatTime, localDateTime } from "@/shared/domain/time";
+import { formatDay, formatMonth, formatTime, localDateTime, todayIn } from "@/shared/domain/time";
 import { AddOneTimeForm } from "../month/month-controls";
 import { ActivityLengthsForm, CollaborationTargetForm, FillSeasonButton, SeasonLeaderSelect } from "./season-controls";
 
@@ -49,7 +49,7 @@ export default async function SeasonPage({ params, searchParams }: { params: Pro
   const [access, names] = await Promise.all([getResidencyAccess(id, isAdmin), getResidencyNames(id)]);
   const nameOf = (pid: string) => names.get(pid) ?? "Someone";
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayIn();
   const { data: seasonRows } = await supabase
     .from("season")
     .select("id, name, starts_on, ends_on, roster_member(person_id, left_on)")

@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Linking, Text, View } from "react-native";
 import { CANCELLATION_REASON_LABELS, CANCELLATION_REASONS, type CancellationReason } from "@shared/domain/scheduling";
 import { weekStart } from "@shared/domain/documentation";
@@ -50,6 +50,10 @@ export default function DateDetail() {
   const [pick, setPick] = useState<string>("");
   const [subPick, setSubPick] = useState<string>("");
   const [openSwap, setOpenSwap] = useState(false);
+  const [reviewed, setReviewed] = useState(false);
+  // A quick double tap must send once (Gus, docs/PERSONAS.md): the second tap
+  // arrives before the screen redraws with the button busy.
+  const inFlight = useRef(false);
 
   const load = useCallback(() => {
     (async () => {
@@ -80,17 +84,20 @@ export default function DateDetail() {
       setTime(r.has_set_time ? localDateTime(r.starts_at, tz).time.slice(0, 5) : "");
       // The month's stage, my role, the point person's phone, the building's rooms.
       const monthStart = `${localDateTime(r.starts_at, tz).date.slice(0, 7)}-01`;
-      const [{ data: sm }, { data: lead }, { data: staff }, { data: dir }, { data: locs }, { data: swaps }] = await Promise.all([
+      const [{ data: sm }, { data: lead }, { data: staff }, { data: dir }, { data: locs }, { data: swaps }, { data: exp }] = await Promise.all([
         supabase.from("schedule_month").select("stage").eq("residency_id", r.residency_id).eq("site_id", r.location?.site_id ?? "").eq("month", monthStart).maybeSingle(),
         supabase.rpc("is_current_admin_lead", { p_residency: r.residency_id }),
         supabase.from("staff_assignment").select("person_id, starts_on, ends_on").eq("residency_id", r.residency_id).eq("role", "point_person"),
         supabase.rpc("staff_directory"),
         supabase.from("location").select("id, display_name").eq("site_id", r.location?.site_id ?? "").order("display_name"),
         supabase.from("change_request").select("id").eq("session_id", r.id).eq("status", "open").eq("requested_by", me?.id ?? ""),
+        // Reviewed (or confirmed): a calendar version exists, as the website checks (v0.35, v0.46).
+        supabase.from("calendar_export").select("id").eq("residency_id", r.residency_id).eq("site_id", r.location?.site_id ?? "").eq("month", monthStart).limit(1),
       ]);
       setStage((sm?.stage as Stage | undefined) ?? null);
+      setReviewed(((exp ?? []) as unknown[]).length > 0);
       setIsLead(!!lead);
-      const today = new Date().toISOString().slice(0, 10);
+      const today = todayIso(); // the phone's own date, not UTC
       const pp = ((staff ?? []) as { person_id: string; starts_on: string; ends_on: string | null }[]).filter((x) => x.starts_on <= today && (!x.ends_on || x.ends_on >= today));
       const d = (dir ?? []) as { person_id: string; name: string; phone: string | null }[];
       setPoints(pp.map((x) => d.find((y) => y.person_id === x.person_id) ?? { name: map.get(x.person_id)?.name ?? "the point person", phone: null }));
@@ -115,8 +122,11 @@ export default function DateDetail() {
   const mine = row.session_assignment.find((a) => a.person_id === me.id);
   const iPlay = !!mine && mine.status !== "absent";
   const teamEditing = stage === "team_editing";
+  // Same as the website (session-card.tsx): a month not opened through the
+  // cycle and not yet reviewed still lets the date's leader set its title.
+  const titleWindow = teamEditing || (!stage && !reviewed);
   const isToday = localDateTime(row.starts_at, tz).date === todayIso();
-  const canEditTitle = !canceled && ((teamEditing && iLead && row.schedule_state === "draft") || (isLead && (stage === "sent_to_partner" || stage === "partner_changes")));
+  const canEditTitle = !canceled && ((titleWindow && iLead && row.schedule_state === "draft") || (isLead && (stage === "sent_to_partner" || stage === "partner_changes")));
   const partnerChange = !canceled && isLead && (stage === "sent_to_partner" || stage === "partner_changes");
   const canMarkOff = !canceled && teamEditing && row.schedule_state === "draft" && !!mine && mine.status !== "substitute";
   const swapOptions = playing.filter((a) => a.role !== "leader");
@@ -126,9 +136,16 @@ export default function DateDetail() {
   const leaderAbsent = !canceled && past && iPlay && !row.session_report && !playing.some((a) => a.role === "leader");
 
   async function act(fn: () => Promise<{ error: { code?: string; message?: string } | null }>, done: string) {
+    if (inFlight.current) return;
+    inFlight.current = true;
     setBusy(true);
     setMessage(null);
-    const { error } = await fn();
+    let error;
+    try {
+      ({ error } = await fn());
+    } finally {
+      inFlight.current = false;
+    }
     setBusy(false);
     if (error) return setMessage(plain(error));
     setMessage(done);
@@ -235,8 +252,16 @@ export default function DateDetail() {
             kind={mine?.status === "absent" ? "primary" : "secondary"}
             busy={busy}
             onPress={async () => {
+              if (inFlight.current) return;
+              inFlight.current = true;
               setBusy(true);
-              const { data, error } = await supabase.rpc("set_unavailable", { p_session: row.id, p_unavailable: mine?.status !== "absent" });
+              let res;
+              try {
+                res = await supabase.rpc("set_unavailable", { p_session: row.id, p_unavailable: mine?.status !== "absent" });
+              } finally {
+                inFlight.current = false;
+              }
+              const { data, error } = res;
               setBusy(false);
               if (error) return setMessage(plain(error));
               setMessage(mine?.status === "absent" ? "Undone: you're playing it again." : `Marked. ${data} date${data === 1 ? "" : "s"} you can't play this season.`);
@@ -267,7 +292,12 @@ export default function DateDetail() {
         </Card>
       )}
 
-      {afterFinal && (
+      {afterFinal && openSwap && (
+        <Card title="Need a sub?">
+          <Muted>You&apos;ve asked the point person about this date. They approve or decline it.</Muted>
+        </Card>
+      )}
+      {afterFinal && !openSwap && (
         <Card title="Need a sub?">
           <Muted>This month is final, so the point person approves every change. Pick who&apos;ll play for you.</Muted>
           <Choices options={roster.map((p) => ({ value: p.id, label: p.name }))} selected={subPick} onToggle={setSubPick} />
@@ -306,7 +336,8 @@ export default function DateDetail() {
         />
       )}
 
-      {row.schedule_state === "draft" && !past && playing.some((a) => a.person_id === me.id) && (
+      {/* Hidden once the month is reviewed, as on the website: the database refuses it then. */}
+      {row.schedule_state === "draft" && !past && !reviewed && playing.some((a) => a.person_id === me.id) && (
         <Card title="Can't happen?">
           <Muted>Any musician playing a draft date can make it &ldquo;No Program&rdquo; until the month is reviewed. The point person gets an email. This can&apos;t be undone here.</Muted>
           <Field label="Reason">

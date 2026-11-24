@@ -28,6 +28,7 @@ import {
   SiteDetailedNotesToggle,
   type SiteContact,
 } from "../forms";
+import { todayIn } from "@/shared/domain/time";
 
 export const metadata = { title: "Program · Iris Music Project" };
 
@@ -50,7 +51,7 @@ export default async function ResidencyPage({ params }: { params: Promise<{ id: 
     .maybeSingle<Residency & { partner: { display_name: string } | null }>();
   if (!residency) notFound();
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayIn();
   const [names, access] = await Promise.all([getResidencyNames(id), getResidencyAccess(id, isAdmin)]);
   const nameOf = (pid: string) => names.get(pid) ?? "Someone";
   const [{ data: siteRows }, { data: seasonRows }, { data: staffRows }] = await Promise.all([

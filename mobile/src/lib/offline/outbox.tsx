@@ -126,31 +126,49 @@ export function OutboxProvider({ children }: { children: ReactNode }) {
     await refresh();
   }, [personId, refresh, reload]);
 
-  // When signed in: what's waiting, the sign-in limit (O8), screen lock (O12).
-  useEffect(() => {
+  // Reaching Iris with an accepted sign-in restarts the 14 days (O8): any
+  // signed-in read that succeeds counts, not only sending something. Without
+  // this, a phone just signed in (or one that only reads for two weeks) was
+  // told offline that it hadn't reached Iris in more than 14 days.
+  const checkIn = useCallback(() => {
     if (!personId) return;
-    hasScreenLock().then(setCanStore);
-    refresh().then(flush);
     supabase
       .from("setting")
       .select("value")
       .eq("key", "offline_signin_max_days")
       .maybeSingle()
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        // Offline, refused, or no row back (a deactivated person reads no
+        // settings): nothing to record. The row exists for anyone active.
+        if (error || !data) return;
+        const now = new Date().toISOString();
+        markConfirmed();
+        setConfirmedAt(now);
         const n = Number(data?.value);
         if (Number.isInteger(n) && n > 0) {
           setMaxDays(n);
           cacheSet("max_days", n);
         }
       });
-  }, [personId, refresh, flush]);
+  }, [personId]);
+
+  // When signed in: what's waiting, the sign-in limit (O8), screen lock (O12).
+  useEffect(() => {
+    if (!personId) return;
+    hasScreenLock().then(setCanStore);
+    refresh().then(flush);
+    checkIn();
+  }, [personId, refresh, flush, checkIn]);
 
   // Send when the connection comes back, and when the app is opened again.
   useEffect(() => {
     const unsubNet = NetInfo.addEventListener((s) => {
       const up = Boolean(s.isConnected) && s.isInternetReachable !== false;
       setOnline((was) => {
-        if (up && !was) flush();
+        if (up && !was) {
+          flush();
+          checkIn();
+        }
         return up;
       });
     });
@@ -158,13 +176,14 @@ export function OutboxProvider({ children }: { children: ReactNode }) {
       if (s === "active") {
         hasScreenLock().then(setCanStore);
         flush();
+        checkIn();
       }
     });
     return () => {
       unsubNet();
       sub.remove();
     };
-  }, [flush]);
+  }, [flush, checkIn]);
 
   const signInNeeded = !online && (!confirmedAt || Date.now() - new Date(confirmedAt).getTime() > maxDays * 86_400_000);
 
