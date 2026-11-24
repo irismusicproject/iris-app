@@ -2,8 +2,10 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { Text } from "react-native";
 import type { ResidentInvolvement } from "@shared/domain/documentation";
+import { CANCELLATION_REASON_LABELS, CANCELLATION_REASONS, type CancellationReason } from "@shared/domain/scheduling";
 import { formatDay, formatTime } from "@shared/domain/time";
 import { Button, Card, Choices, Field, Input, LinkButton, Loading, Muted, Notice, Problem, Screen, Stepper } from "@/components/ui";
+import { notifySoon, plain } from "@/lib/month";
 import { isNetworkError, useOutbox } from "@/lib/offline/outbox";
 import { newId } from "@/lib/offline/store";
 import { supabase } from "@/lib/supabase";
@@ -19,6 +21,15 @@ import { friendly, useWeek } from "@/lib/week-context";
 
 export default function DocumentSession() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { me, week, loading } = useWeek();
+  const s = week?.ledPast.find((x) => x.id === id);
+  // Opened from To do or a date: the week may still be loading.
+  if (!week || !me || (!s && loading)) return <Loading />;
+  if (!s) return <Screen><Muted>This program isn&apos;t in the week you&apos;re looking at. Go back to My week.</Muted></Screen>;
+  return <DocumentForm key={s.id} id={id} />;
+}
+
+function DocumentForm({ id }: { id: string }) {
   const router = useRouter();
   const { me, week, reload } = useWeek();
   const outbox = useOutbox();
@@ -39,6 +50,9 @@ export default function DocumentSession() {
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  // "Canceled day-of" (v0.41): after calling the point person, the leader records it here instead.
+  const [happened, setHappened] = useState<"yes" | "no">("yes");
+  const [reason, setReason] = useState<CancellationReason | "">("");
 
   if (!week || !me) return <Loading />;
   if (!s || !residency) return <Screen><Muted>This program isn&apos;t in the week you&apos;re looking at. Go back to My week.</Muted></Screen>;
@@ -95,6 +109,42 @@ export default function DocumentSession() {
         </Muted>
       </Card>
 
+      {!r && !queued && (
+        <Field label="Did it happen?">
+          <Choices
+            options={[
+              { value: "yes", label: "It happened" },
+              { value: "no", label: "Canceled day-of" },
+            ]}
+            selected={happened}
+            onToggle={(v) => setHappened(v as "yes" | "no")}
+          />
+        </Field>
+      )}
+      {happened === "no" ? (
+        <>
+          <Field label="Why was it canceled?" hint="You should already have called the point person. This makes it “No Program”; nobody is paid for it, and a partner cancellation after 9 am can be billed.">
+            <Choices options={CANCELLATION_REASONS.map((x) => ({ value: x, label: CANCELLATION_REASON_LABELS[x] }))} selected={reason} onToggle={(v) => setReason(v as CancellationReason)} />
+          </Field>
+          {problem && <Problem>{problem}</Problem>}
+          <Button
+            label="Record the day-of cancellation"
+            kind="danger"
+            busy={busy}
+            disabled={!reason}
+            onPress={async () => {
+              setBusy(true);
+              const { error } = await supabase.rpc("cancel_day_of", { p_session: s!.id, p_reason: reason as CancellationReason });
+              setBusy(false);
+              if (error) return setProblem(plain(error));
+              notifySoon();
+              await reload();
+              router.back();
+            }}
+          />
+        </>
+      ) : (
+      <>
       {residency.sites.length > 1 && (
         <Field label="Building" hint="Where the program happened. Attendance and billing count it here.">
           <Choices options={residency.sites.map((x) => ({ value: x.id, label: x.display_name }))} selected={siteId} onToggle={setSiteId} />
@@ -143,6 +193,8 @@ export default function DocumentSession() {
           {saved && <Notice>Saved.</Notice>}
           <Button label={r ? "Update" : "Save"} onPress={save} busy={busy} />
         </>
+      )}
+      </>
       )}
     </Screen>
   );

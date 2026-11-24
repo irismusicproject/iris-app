@@ -28,6 +28,10 @@ export default function RootLayout() {
           <Stack.Screen name="review" options={{ title: "Review my dates" }} />
           <Stack.Screen name="profile" options={{ title: "My profile" }} />
           <Stack.Screen name="password" options={{ title: "Password" }} />
+          <Stack.Screen name="week" options={{ title: "My week" }} />
+          <Stack.Screen name="more" options={{ title: "Account" }} />
+          <Stack.Screen name="month-review" options={{ title: "Review the month" }} />
+          <Stack.Screen name="month-send" options={{ title: "Calendar to partner" }} />
         </Stack>
       </OutboxProvider>
       </WeekProvider>
