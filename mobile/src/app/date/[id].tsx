@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Linking, Text, View } from "react-native";
 import { CANCELLATION_REASON_LABELS, CANCELLATION_REASONS, type CancellationReason } from "@shared/domain/scheduling";
 import { weekStart } from "@shared/domain/documentation";
@@ -51,6 +51,9 @@ export default function DateDetail() {
   const [subPick, setSubPick] = useState<string>("");
   const [openSwap, setOpenSwap] = useState(false);
   const [reviewed, setReviewed] = useState(false);
+  // A quick double tap must send once (Gus, docs/PERSONAS.md): the second tap
+  // arrives before the screen redraws with the button busy.
+  const inFlight = useRef(false);
 
   const load = useCallback(() => {
     (async () => {
@@ -133,9 +136,16 @@ export default function DateDetail() {
   const leaderAbsent = !canceled && past && iPlay && !row.session_report && !playing.some((a) => a.role === "leader");
 
   async function act(fn: () => Promise<{ error: { code?: string; message?: string } | null }>, done: string) {
+    if (inFlight.current) return;
+    inFlight.current = true;
     setBusy(true);
     setMessage(null);
-    const { error } = await fn();
+    let error;
+    try {
+      ({ error } = await fn());
+    } finally {
+      inFlight.current = false;
+    }
     setBusy(false);
     if (error) return setMessage(plain(error));
     setMessage(done);
@@ -242,8 +252,16 @@ export default function DateDetail() {
             kind={mine?.status === "absent" ? "primary" : "secondary"}
             busy={busy}
             onPress={async () => {
+              if (inFlight.current) return;
+              inFlight.current = true;
               setBusy(true);
-              const { data, error } = await supabase.rpc("set_unavailable", { p_session: row.id, p_unavailable: mine?.status !== "absent" });
+              let res;
+              try {
+                res = await supabase.rpc("set_unavailable", { p_session: row.id, p_unavailable: mine?.status !== "absent" });
+              } finally {
+                inFlight.current = false;
+              }
+              const { data, error } = res;
               setBusy(false);
               if (error) return setMessage(plain(error));
               setMessage(mine?.status === "absent" ? "Undone: you're playing it again." : `Marked. ${data} date${data === 1 ? "" : "s"} you can't play this season.`);
@@ -274,7 +292,12 @@ export default function DateDetail() {
         </Card>
       )}
 
-      {afterFinal && (
+      {afterFinal && openSwap && (
+        <Card title="Need a sub?">
+          <Muted>You&apos;ve asked the point person about this date. They approve or decline it.</Muted>
+        </Card>
+      )}
+      {afterFinal && !openSwap && (
         <Card title="Need a sub?">
           <Muted>This month is final, so the point person approves every change. Pick who&apos;ll play for you.</Muted>
           <Choices options={roster.map((p) => ({ value: p.id, label: p.name }))} selected={subPick} onToggle={setSubPick} />
