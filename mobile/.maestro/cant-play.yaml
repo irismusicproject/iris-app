@@ -31,6 +31,10 @@ tags:
     times: ${MAESTRO_MONTHS_AHEAD}
     commands:
       - tapOn: "Next →"
+# The calendar shows one day at a time; list the whole month to find the date.
+- tapOn:
+    text: "Show all of .*"
+    optional: true
 - scrollUntilVisible:
     element: ".*${MAESTRO_DATE_TITLE}.*"
 - tapOn: ".*${MAESTRO_DATE_TITLE}.*"
@@ -42,7 +46,7 @@ tags:
 - takeScreenshot: cant-play-1-date-marked
 - back
 - takeScreenshot: cant-play-2-calendar-shows-it
-- assertVisible: ".*Orange: you can.t play.*"
+- assertVisible: ".*✕ you can.t play.*"
 # Undo, so staging is left as it was.
 - tapOn: ".*${MAESTRO_DATE_TITLE}.*"
 - scrollUntilVisible:

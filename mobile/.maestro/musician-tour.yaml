@@ -68,6 +68,10 @@ tags:
     times: ${MAESTRO_MONTHS_AHEAD}
     commands:
       - tapOn: "Next →"
+# The calendar shows one day at a time; list the whole month to find the date.
+- tapOn:
+    text: "Show all of .*"
+    optional: true
 - scrollUntilVisible:
     element: "Stage 1 of 5: Team editing"
 - takeScreenshot: tour-3-month-stage
