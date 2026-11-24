@@ -16,10 +16,13 @@ const nextConfig: NextConfig = {
   // .../pdfkit/js/standard-fonts/Helvetica.cjs", and the crash could take
   // other requests on the same instance with it. Our font and logo are read
   // by path, which the tracer can't see either. "/**" covers every route,
-  // including PDFs added later; it adds about 200 KB per function.
+  // including PDFs added later; it adds about 1 MB per function.
   outputFileTracingIncludes: {
     "/**": [
-      "./node_modules/pdfkit/js/standard-fonts/*.cjs",
+      // Recursive: Helvetica.cjs loads ./chunks/standardGlyphNames-*.cjs, and
+      // pdfkit reads data/ by path too (about 0.8 MB together).
+      "./node_modules/pdfkit/js/standard-fonts/**",
+      "./node_modules/pdfkit/js/data/**",
       "./node_modules/@fontsource/montserrat/files/montserrat-latin-*-normal.woff",
       "./public/brand/logo-horizontal-purple.png",
     ],
