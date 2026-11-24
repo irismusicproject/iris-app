@@ -13,7 +13,7 @@ export default async function CustomInvoicePage({ params }: { params: Promise<{ 
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const supabase = await createClient();
-  const [{ data: inv }, { data: programs }] = await Promise.all([
+  const [{ data: inv }, { data: residencies }] = await Promise.all([
     supabase.from("custom_invoice").select("*").eq("id", id).maybeSingle(),
     supabase.from("residency").select("id, name").order("name"),
   ]);
@@ -38,7 +38,7 @@ export default async function CustomInvoicePage({ params }: { params: Promise<{ 
           residencyId={inv.residency_id}
           billTo={inv.bill_to}
           lines={inv.lines as CustomLine[]}
-          programs={(programs ?? []).map((p) => ({ id: p.id, name: p.name }))}
+          residencies={(residencies ?? []).map((p) => ({ id: p.id, name: p.name }))}
           state={state}
         />
       </div>

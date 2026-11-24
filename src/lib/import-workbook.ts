@@ -17,7 +17,7 @@ function cellText(v: unknown): string {
 
 export async function readImportFile(buffer: Buffer): Promise<{ raw: RawImport; missingTabs: string[] }> {
   const sheets = await readXlsxFile(buffer);
-  const raw = { people: [], sites: [], programs: [], roster: [], weekly: [] } as RawImport;
+  const raw = { people: [], sites: [], residencies: [], roster: [], weekly: [] } as RawImport;
   const missingTabs: string[] = [];
   for (const k of Object.keys(IMPORT_TABS) as TabKey[]) {
     const tab = IMPORT_TABS[k];
@@ -44,7 +44,7 @@ export async function importTemplate(): Promise<Buffer> {
       ["Paz Point", "paz@example.com", "555-0102", "", "Employee", "Program Manager", "Yes"],
     ],
     sites: [["Example Senior Living", "Maple House", "Testville", "MD", "America/New_York", "Auditorium, Chapel"]],
-    programs: [["Maple House", "Example Senior Living", "Maple House", "Spring 2027", "2027-01-04", "2027-05-31", "Paz Point"]],
+    residencies: [["Maple House", "Example Senior Living", "Maple House", "Spring 2027", "2027-01-04", "2027-05-31", "Paz Point"]],
     roster: [["Maple House", "Ana Rivera", "Yes", "Yes"]],
     weekly: [["Maple House", "Orchestra", "Maple House", "Auditorium", "Weekly", "Tuesday", "", "4:00 pm", "60", "Ana Rivera", ""]],
   };

@@ -149,13 +149,13 @@ export function ReportRow({
 // quick; "Same as last time" copies the last activity. Sites with detailed
 // notes get a paragraph note for the partner's daily document.
 
-type Program = { id: string; name: string; sites: (Option & { detailedNotes?: boolean })[] };
+type ResidencyOption = { id: string; name: string; sites: (Option & { detailedNotes?: boolean })[] };
 export type LastActivity = { residencyId: string; siteId: string; kind: ActivityKind; minutes: number; collaborative: boolean; residentIds: string[] };
 
 const initial: DocResult = { status: "idle" };
 
 export function ActivityForm({
-  programs,
+  residencies: residencies,
   residents,
   defaultDate,
   minDate,
@@ -164,7 +164,7 @@ export function ActivityForm({
   last = null,
   colleagues = {},
 }: {
-  programs: Program[];
+  residencies: ResidencyOption[];
   residents: { id: string; siteId: string; name: string; room?: string | null }[];
   defaultDate: string;
   minDate: string;
@@ -176,9 +176,9 @@ export function ActivityForm({
   colleagues?: Record<string, Option[]>;
 }) {
   const [state, action, pending] = useActionState(logActivity, initial);
-  const [residencyId, setResidencyId] = useState(programs[0]?.id ?? "");
-  const program = programs.find((p) => p.id === residencyId);
-  const [siteId, setSiteId] = useState(program?.sites[0]?.id ?? "");
+  const [residencyId, setResidencyId] = useState(residencies[0]?.id ?? "");
+  const residency = residencies.find((p) => p.id === residencyId);
+  const [siteId, setSiteId] = useState(residency?.sites[0]?.id ?? "");
   const [kind, setKind] = useState<ActivityKind>("one_to_one");
   const usual = (rid: string, k: ActivityKind) => (lengths[rid]?.[k] ? String(lengths[rid]![k]) : "");
   const [minutes, setMinutes] = useState(usual(residencyId, "one_to_one"));
@@ -203,11 +203,11 @@ export function ActivityForm({
     setNewNames("");
   }
   const siteResidents = useMemo(() => residents.filter((r) => r.siteId === siteId), [residents, siteId]);
-  const detailed = !!program?.sites.find((x) => x.id === siteId)?.detailedNotes;
+  const detailed = !!residency?.sites.find((x) => x.id === siteId)?.detailedNotes;
   const newList = newNames.split(",").map((n) => n.trim().replace(/\s+/g, " ")).filter(Boolean);
   const toMin = (t: string) => (/^\d{2}:\d{2}$/.test(t) ? Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5)) : null);
   const span = toMin(startTime) != null && toMin(endTime) != null ? toMin(endTime)! - toMin(startTime)! : null;
-  const lastUsable = last && programs.some((p) => p.id === last.residencyId && p.sites.some((x) => x.id === last.siteId));
+  const lastUsable = last && residencies.some((p) => p.id === last.residencyId && p.sites.some((x) => x.id === last.siteId));
   const e = state.errors;
   return (
     <form action={action} key={state.savedAt ?? 0} className="flex flex-col gap-4">
@@ -228,27 +228,27 @@ export function ActivityForm({
         </button>
       )}
       <div className="grid gap-4 sm:grid-cols-2">
-        {programs.length > 1 && (
+        {residencies.length > 1 && (
           <Field label="Program">
             <select
               name="residency_id"
               value={residencyId}
               onChange={(ev) => {
                 setResidencyId(ev.target.value);
-                setSiteId(programs.find((p) => p.id === ev.target.value)?.sites[0]?.id ?? "");
+                setSiteId(residencies.find((p) => p.id === ev.target.value)?.sites[0]?.id ?? "");
                 setMinutes(usual(ev.target.value, kind));
                 setPicked([]);
               }}
               className={inputClass}
             >
-              {programs.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              {residencies.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </Field>
         )}
-        {programs.length === 1 && <input type="hidden" name="residency_id" value={residencyId} />}
+        {residencies.length === 1 && <input type="hidden" name="residency_id" value={residencyId} />}
         <Field label="Site" error={e?.site_id}>
           <select name="site_id" value={siteId} onChange={(ev) => { setSiteId(ev.target.value); setPicked([]); }} className={inputClass}>
-            {program?.sites.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
+            {residency?.sites.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
           </select>
         </Field>
         <Field label="Date" error={e?.occurred_on}>
@@ -509,25 +509,25 @@ export function CalendarLinkCard({ feedUrl }: { feedUrl: string | null }) {
 
 // ---- The week's hours (v0.24): calculated from documentation, one submit ----
 
-export type WeekHoursProgram = {
+export type WeekHoursResidency = {
   residencyId: string;
-  programName: string;
+  residencyName: string;
   hours: { name: string; hours: number }[];
   state: "draft" | "submitted" | "approved" | null;
   returnedNote: string | null;
 };
 
-export function WeekHours({ week, programs, toDocument }: { week: string; programs: WeekHoursProgram[]; toDocument: string[] }) {
+export function WeekHours({ week, residencies: residencies, toDocument }: { week: string; residencies: WeekHoursResidency[]; toDocument: string[] }) {
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
-  const open = programs.filter((p) => p.state !== "submitted" && p.state !== "approved");
-  const sum = (p: WeekHoursProgram) => p.hours.reduce((n, h) => n + h.hours, 0);
+  const open = residencies.filter((p) => p.state !== "submitted" && p.state !== "approved");
+  const sum = (p: WeekHoursResidency) => p.hours.reduce((n, h) => n + h.hours, 0);
   const total = open.reduce((n, p) => n + sum(p), 0);
   return (
     <div className="flex flex-col gap-6">
-      {programs.map((p) => (
+      {residencies.map((p) => (
         <div key={p.residencyId} className="flex flex-col gap-2">
-          {programs.length > 1 && <h3 className="font-medium">{p.programName}</h3>}
+          {residencies.length > 1 && <h3 className="font-medium">{p.residencyName}</h3>}
           {p.returnedNote && p.state === "draft" && (
             <p className="rounded-lg border border-brand-orange/60 p-2 text-sm"><strong>Sent back by the point person:</strong> {p.returnedNote}</p>
           )}

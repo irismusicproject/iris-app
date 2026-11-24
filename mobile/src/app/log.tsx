@@ -26,15 +26,15 @@ export default function LogActivity() {
   const from = useLocalSearchParams<{ residencyId?: string; siteId?: string }>();
   const { me, week } = useWeek();
   const outbox = useOutbox();
-  const programs = week?.programs ?? [];
+  const residencies = week?.residencies ?? [];
   const lengths = week?.lengths ?? {};
   const usual = (rid: string, k: ActivityKind) => (lengths[rid]?.[k] ? String(lengths[rid]![k]) : "");
   const days = week ? Array.from({ length: 7 }, (_, i) => addDays(week.monday, i)).filter((d) => d <= week.today) : [];
 
-  const startProgram = programs.find((p) => p.id === from.residencyId) ?? programs[0];
-  const [residencyId, setResidencyId] = useState(startProgram?.id ?? "");
-  const program = programs.find((p) => p.id === residencyId);
-  const [siteId, setSiteId] = useState(program?.sites.find((x) => x.id === from.siteId)?.id ?? program?.sites[0]?.id ?? "");
+  const startResidency = residencies.find((p) => p.id === from.residencyId) ?? residencies[0];
+  const [residencyId, setResidencyId] = useState(startResidency?.id ?? "");
+  const residency = residencies.find((p) => p.id === residencyId);
+  const [siteId, setSiteId] = useState(residency?.sites.find((x) => x.id === from.siteId)?.id ?? residency?.sites[0]?.id ?? "");
   const [kind, setKind] = useState<ActivityKind>("one_to_one");
   const [minutes, setMinutes] = useState(usual(residencyId, "one_to_one"));
   const [date, setDate] = useState(days[days.length - 1] ?? "");
@@ -54,10 +54,10 @@ export default function LogActivity() {
   const [search, setSearch] = useState("");
 
   if (!week || !me) return <Loading />;
-  if (!programs.length) return <Screen><Muted>You&apos;re not on a program&apos;s roster for this week.</Muted></Screen>;
+  if (!residencies.length) return <Screen><Muted>You&apos;re not on a program&apos;s roster for this week.</Muted></Screen>;
   if (!days.length) return <Screen><Muted>Activities are logged after they happen. Pick this week or an earlier one.</Muted></Screen>;
 
-  const site = program?.sites.find((x) => x.id === siteId);
+  const site = residency?.sites.find((x) => x.id === siteId);
   const detailed = !!site?.detailed_relationship_notes;
   const siteResidents = week.residents.filter((r) => r.siteId === siteId);
   const newList = newNames.split(",").map((n) => n.trim().replace(/\s+/g, " ")).filter(Boolean);
@@ -66,7 +66,7 @@ export default function LogActivity() {
   const span = start && end ? toMin(end)! - toMin(start)! : null;
   const colleagues = week.colleagues[residencyId] ?? [];
   const last = week.last;
-  const lastUsable = last && programs.some((p) => p.id === last.residencyId && p.sites.some((x) => x.id === last.siteId));
+  const lastUsable = last && residencies.some((p) => p.id === last.residencyId && p.sites.some((x) => x.id === last.siteId));
 
   const toggle = (list: string[], v: string) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
 
@@ -158,14 +158,14 @@ export default function LogActivity() {
           }}
         />
       )}
-      {programs.length > 1 && (
+      {residencies.length > 1 && (
         <Field label="Program">
           <Choices
-            options={programs.map((p) => ({ value: p.id, label: p.name }))}
+            options={residencies.map((p) => ({ value: p.id, label: p.name }))}
             selected={residencyId}
             onToggle={(v) => {
               setResidencyId(v);
-              setSiteId(programs.find((p) => p.id === v)?.sites[0]?.id ?? "");
+              setSiteId(residencies.find((p) => p.id === v)?.sites[0]?.id ?? "");
               setMinutes(usual(v, kind));
               setPicked([]);
               setWithIds([]);
@@ -175,7 +175,7 @@ export default function LogActivity() {
       )}
       <Field label="Site" error={errors.site}>
         <Choices
-          options={(program?.sites ?? []).map((x) => ({ value: x.id, label: x.display_name }))}
+          options={(residency?.sites ?? []).map((x) => ({ value: x.id, label: x.display_name }))}
           selected={siteId}
           onToggle={(v) => {
             setSiteId(v);

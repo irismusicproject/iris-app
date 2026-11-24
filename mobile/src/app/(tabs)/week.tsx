@@ -39,7 +39,7 @@ export default function MyWeek() {
   const today = todayIso();
   const toDo = week.ledPast.filter((s) => !s.session_report);
   const activityMinutes = week.activities.reduce((n, a) => n + a.minutes, 0);
-  const programName = (id: string) => week.programs.find((p) => p.id === id)?.name ?? "";
+  const residencyName = (id: string) => week.residencies.find((p) => p.id === id)?.name ?? "";
   const nameOf = (rid: string, pid: string) => week.names.get(rid)?.get(pid) ?? "a colleague";
   const open = week.hours.filter((h) => h.state !== "submitted" && h.state !== "approved");
   const sum = (h: { hours: { hours: number }[] }) => h.hours.reduce((n, x) => n + x.hours, 0);
@@ -108,13 +108,13 @@ export default function MyWeek() {
       {message && <Notice>{message}</Notice>}
       <OutboxList />
 
-      {week.programs.length === 0 && <Muted>You&apos;re not on a program&apos;s roster for this week.</Muted>}
+      {week.residencies.length === 0 && <Muted>You&apos;re not on a program&apos;s roster for this week.</Muted>}
 
-      {week.programs.length > 0 && (
+      {week.residencies.length > 0 && (
         <>
           <Card title="Programs you led">
             {week.progress.map((p) => (
-              <Tag key={p.id} label={`Collaborative programs this season${week.programs.length > 1 ? ` (${p.name})` : ""}: ${p.done} of ${p.target}`} />
+              <Tag key={p.id} label={`Collaborative programs this season${week.residencies.length > 1 ? ` (${p.name})` : ""}: ${p.done} of ${p.target}`} />
             ))}
             <Muted>As leader, you document each one: attendance (everyone present), type and collaboration.</Muted>
             {week.ledPast.length === 0 && <Muted>None this week{week.ledFuture.length ? " yet" : ""}.</Muted>}
@@ -179,7 +179,7 @@ export default function MyWeek() {
                     {others.length ? ` · with ${others.map((id) => nameOf(a.residency_id, id).split(" ")[0]).join(", ")}` : ""}
                   </Muted>
                   <Muted>
-                    {programName(a.residency_id)} · {week.siteById.get(a.site_id)?.display_name}
+                    {residencyName(a.residency_id)} · {week.siteById.get(a.site_id)?.display_name}
                     {a.note ? ` · ${a.note}` : ""}
                   </Muted>
                   <View style={{ alignSelf: "flex-start" }}>
@@ -198,7 +198,7 @@ export default function MyWeek() {
             </Muted>
             {week.hours.map((h) => (
               <View key={h.residencyId} style={{ gap: 8 }}>
-                {week.hours.length > 1 && <Text style={{ fontWeight: "700", color: colors.text }}>{h.programName}</Text>}
+                {week.hours.length > 1 && <Text style={{ fontWeight: "700", color: colors.text }}>{h.residencyName}</Text>}
                 {h.returnedNote && h.state === "draft" && (
                   <Text style={{ color: colors.text, borderWidth: 1, borderColor: colors.orange, borderRadius: 10, padding: 10 }}>
                     <Text style={{ fontWeight: "700" }}>Sent back by the point person: </Text>
@@ -233,11 +233,11 @@ export default function MyWeek() {
             )}
           </Card>
 
-          {week.programs.map((p) => {
+          {week.residencies.map((p) => {
             const r = week.reflections.get(p.id);
             const started = !!(r?.highlights || r?.challenges);
             return (
-              <Card key={p.id} title={`${formatMonth(week.month)} reflection${week.programs.length > 1 ? `: ${p.name}` : ""}`}>
+              <Card key={p.id} title={`${formatMonth(week.month)} reflection${week.residencies.length > 1 ? `: ${p.name}` : ""}`}>
                 <Muted>Fill in any time this month; it&apos;s due with the last week&apos;s documentation.</Muted>
                 {started && <Muted numberOfLines={2}>{r!.highlights || r!.challenges}</Muted>}
                 <Button

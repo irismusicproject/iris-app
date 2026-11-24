@@ -19,7 +19,7 @@ export default function Reflection() {
   const [problem, setProblem] = useState<string | null>(null);
 
   if (!week || !me) return <Loading />;
-  const program = week.programs.find((p) => p.id === residencyId);
+  const residency = week.residencies.find((p) => p.id === residencyId);
 
   async function save() {
     setBusy(true);
@@ -38,7 +38,7 @@ export default function Reflection() {
     <Screen>
       <Muted>
         {formatMonth(week.month)}
-        {program ? ` · ${program.name}` : ""}. Fill in any time this month; it&apos;s due with the last week&apos;s documentation.
+        {residency ? ` · ${residency.name}` : ""}. Fill in any time this month; it&apos;s due with the last week&apos;s documentation.
       </Muted>
       <Field label="Highlights and successes" hint="What am I most proud of this month?">
         <Input value={highlights} onChangeText={setHighlights} multiline maxLength={4000} />

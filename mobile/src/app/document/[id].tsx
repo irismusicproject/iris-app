@@ -24,7 +24,7 @@ export default function DocumentSession() {
   const outbox = useOutbox();
   const queued = outbox.items.find((i) => i.kind === "report" && i.payload.session_id === id);
   const s = week?.ledPast.find((x) => x.id === id);
-  const program = week?.programs.find((p) => p.id === s?.residency_id);
+  const residency = week?.residencies.find((p) => p.id === s?.residency_id);
   const r = s?.session_report ?? null;
   const scheduled = s?.scheduled_minutes ?? 45;
 
@@ -41,7 +41,7 @@ export default function DocumentSession() {
   const [saved, setSaved] = useState(false);
 
   if (!week || !me) return <Loading />;
-  if (!s || !program) return <Screen><Muted>This program isn&apos;t in the week you&apos;re looking at. Go back to My week.</Muted></Screen>;
+  if (!s || !residency) return <Screen><Muted>This program isn&apos;t in the week you&apos;re looking at. Go back to My week.</Muted></Screen>;
   const tz = siteTimezone(week, s);
 
   async function save() {
@@ -91,13 +91,13 @@ export default function DocumentSession() {
         <Text style={{ fontSize: 20, fontWeight: "700", color: colors.text }}>{s.title}</Text>
         <Muted>
           {formatDay(s.starts_at, tz)}
-          {s.has_set_time ? ` · ${formatTime(s.starts_at, tz)}` : ""} · {program.name} · {s.location?.display_name}
+          {s.has_set_time ? ` · ${formatTime(s.starts_at, tz)}` : ""} · {residency.name} · {s.location?.display_name}
         </Muted>
       </Card>
 
-      {program.sites.length > 1 && (
+      {residency.sites.length > 1 && (
         <Field label="Building" hint="Where the program happened. Attendance and billing count it here.">
-          <Choices options={program.sites.map((x) => ({ value: x.id, label: x.display_name }))} selected={siteId} onToggle={setSiteId} />
+          <Choices options={residency.sites.map((x) => ({ value: x.id, label: x.display_name }))} selected={siteId} onToggle={setSiteId} />
         </Field>
       )}
       <Field label="Attendance" hint="Everyone present." error={errors.attendance}>

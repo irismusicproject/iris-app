@@ -46,7 +46,7 @@ const s = StyleSheet.create({
   footer: { position: "absolute", bottom: 28, left: 48, right: 48, fontSize: 8, color: "#65566F", textAlign: "center" },
 });
 
-function PartnerInvoicePdf({ inv, month, programName }: { inv: ShownInvoice; month: string; programName: string }) {
+function PartnerInvoicePdf({ inv, month, residencyName: residencyName }: { inv: ShownInvoice; month: string; residencyName: string }) {
   const sum = inv.summary;
   return (
     <Document title={`Invoice ${inv.number}`} author="Iris Music Project">
@@ -73,7 +73,7 @@ function PartnerInvoicePdf({ inv, month, programName }: { inv: ShownInvoice; mon
           <View>
             <Text style={s.label}>Period</Text>
             <Text>{formatInvoiceMonth(month)}</Text>
-            <Text>{programName}</Text>
+            <Text>{residencyName}</Text>
           </View>
         </View>
         <View style={s.table}>
@@ -134,7 +134,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const inv = invoices.find((i) => i.kind === kind && i.siteId === (siteId || null));
   if (!inv) return new Response("Not found", { status: 404 });
 
-  const pdf = await renderToBuffer(<PartnerInvoicePdf inv={inv} month={month} programName={residency.name} />);
+  const pdf = await renderToBuffer(<PartnerInvoicePdf inv={inv} month={month} residencyName={residency.name} />);
   return new Response(new Uint8Array(pdf), {
     headers: {
       "Content-Type": "application/pdf",

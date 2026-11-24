@@ -45,7 +45,7 @@ async function load(form: FormData) {
 const countsOf = (plan: ImportPlan) => ({
   People: plan.people.length,
   Buildings: plan.sites.length,
-  Programs: plan.programs.length,
+  Programs: plan.residencies.length,
   "Roster entries": plan.roster.length,
   "Weekly programs": plan.weekly.length,
 });
@@ -154,16 +154,16 @@ export async function applyImportFile(_prev: ImportCheck | null, form: FormData)
 
     // 3. Programs, seasons, point people, rosters.
     const seasonOf = new Map<string, { residencyId: string; seasonId: string; startsOn: string; endsOn: string; partner: string }>();
-    for (const p of plan.programs) {
+    for (const p of plan.residencies) {
       const partnerId = partners.get(k(p.partner));
-      if (!partnerId) fail(`Program ${p.program}`, { message: `partner ${p.partner} isn't on the Buildings tab` });
-      const { data: resRow } = await supabase.from("residency").select("id").eq("partner_id", partnerId!).ilike("name", p.program).maybeSingle();
+      if (!partnerId) fail(`Program ${p.residency}`, { message: `partner ${p.partner} isn't on the Buildings tab` });
+      const { data: resRow } = await supabase.from("residency").select("id").eq("partner_id", partnerId!).ilike("name", p.residency).maybeSingle();
       let residencyId = resRow?.id as string | undefined;
       if (!residencyId) {
-        const { data, error } = await supabase.from("residency").insert({ partner_id: partnerId, name: p.program, display_name: p.program, status: "active" }).select("id").single();
-        if (error) fail(`Program ${p.program}`, error);
+        const { data, error } = await supabase.from("residency").insert({ partner_id: partnerId, name: p.residency, display_name: p.residency, status: "active" }).select("id").single();
+        if (error) fail(`Program ${p.residency}`, error);
         residencyId = data!.id as string;
-        log.push(`Added program ${p.program}`);
+        log.push(`Added program ${p.residency}`);
       }
       for (const b of p.buildings) {
         const siteId = siteIds.get(`${k(p.partner)}|${k(b)}`)!;
@@ -177,28 +177,28 @@ export async function applyImportFile(_prev: ImportCheck | null, form: FormData)
           .insert({ residency_id: residencyId, name: p.season, kind: "semester", starts_on: p.startsOn, ends_on: p.endsOn })
           .select("id")
           .single();
-        if (error) fail(`Season ${p.season} for ${p.program}`, error);
+        if (error) fail(`Season ${p.season} for ${p.residency}`, error);
         seasonId = data!.id as string;
-        log.push(`Added season ${p.season} for ${p.program}`);
+        log.push(`Added season ${p.season} for ${p.residency}`);
       }
-      seasonOf.set(k(p.program), { residencyId: residencyId!, seasonId: seasonId!, startsOn: p.startsOn, endsOn: p.endsOn, partner: p.partner });
+      seasonOf.set(k(p.residency), { residencyId: residencyId!, seasonId: seasonId!, startsOn: p.startsOn, endsOn: p.endsOn, partner: p.partner });
       if (p.pointPerson) {
         const pid = personId(p.pointPerson);
         const { data: current } = await supabase.from("staff_assignment").select("id, person_id").eq("residency_id", residencyId).eq("role", "point_person").is("ends_on", null);
         if (!(current ?? []).some((c) => c.person_id === pid)) {
           const { error } = await supabase.from("staff_assignment").insert({ residency_id: residencyId, person_id: pid, role: "point_person", starts_on: p.startsOn });
-          if (error) fail(`Point person for ${p.program}`, error);
-          log.push(`${p.pointPerson} is point person for ${p.program}`);
+          if (error) fail(`Point person for ${p.residency}`, error);
+          log.push(`${p.pointPerson} is point person for ${p.residency}`);
         }
       }
     }
     for (const r of plan.roster) {
-      const s = seasonOf.get(k(r.program))!;
+      const s = seasonOf.get(k(r.residency))!;
       const pid = personId(r.musician);
       const { data: m } = await supabase.from("roster_member").select("id").eq("season_id", s.seasonId).eq("person_id", pid).maybeSingle();
       if (!m) {
         const { error } = await supabase.from("roster_member").insert({ season_id: s.seasonId, person_id: pid, is_core: r.core, is_admin_lead: r.adminLead, joined_on: s.startsOn });
-        if (error) fail(`${r.musician} on ${r.program}'s roster`, error);
+        if (error) fail(`${r.musician} on ${r.residency}'s roster`, error);
       }
     }
 
@@ -207,7 +207,7 @@ export async function applyImportFile(_prev: ImportCheck | null, form: FormData)
     // the file (e.g. two musicians at once) are matched one for one.
     const seen = new Map<string, number>();
     for (const w of plan.weekly) {
-      const s = seasonOf.get(k(w.program))!;
+      const s = seasonOf.get(k(w.residency))!;
       const siteId = siteIds.get(`${k(s.partner)}|${k(w.building)}`)!;
       const locationId = roomIds.get(`${siteId}|${k(w.room)}`)!;
       const { data: same } = await supabase
@@ -245,12 +245,12 @@ export async function applyImportFile(_prev: ImportCheck | null, form: FormData)
         })
         .select("id")
         .single();
-      if (error) fail(`Weekly program ${w.title} (${w.program})`, error);
+      if (error) fail(`Weekly program ${w.title} (${w.residency})`, error);
       if (w.musicians.length) {
         const { error: e2 } = await supabase.from("series_default_person").insert(w.musicians.map((n) => ({ series_id: data!.id, person_id: personId(n) })));
         if (e2) fail(`Usual musicians for ${w.title}`, e2);
       }
-      log.push(`Added ${w.title} (${w.program})`);
+      log.push(`Added ${w.title} (${w.residency})`);
     }
   } catch (e) {
     revalidatePath("/admin/people");
