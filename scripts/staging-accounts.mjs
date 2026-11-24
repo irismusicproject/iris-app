@@ -20,6 +20,9 @@
 //   4. every fake person from supabase/seed.sql (an @example.com address and
 //      a name ending "(fake)") gets the same password, so people can explore
 //      staging as any musician or staff member (Lauren, Nov 22, 2026).
+//   5. the site_url setting points at the staging site, so links in emails
+//      the database writes (deadline and month reminders) open staging, not
+//      the live site (which is the fallback when the setting is missing).
 // It changes nothing else, except one case: if the season's Admin Lead is a
 // fake seed person (an @example.com address), the Admin Lead persona takes
 // over that role, because a season has at most one Admin Lead.
@@ -192,6 +195,14 @@ async function ensureRoster(seasonId, personId, roster) {
 // --- Main --------------------------------------------------------------------
 if (!(await looksLikeStaging())) {
   fail("This database has no fake (example.com / example.org) data, so it may not be staging. Stopping.");
+}
+
+// Links in database-written emails (queue_deadline_reminders and friends).
+const STAGING_SITE = (process.env.STAGING_SITE_URL || "https://staging.irismusicproject.org").replace(/\/+$/, "");
+{
+  const { error } = await db.from("setting").upsert({ key: "site_url", value: STAGING_SITE }, { onConflict: "key" });
+  if (error) fail(`set site_url: ${error.message}`);
+  console.log(`✓ site_url = ${STAGING_SITE} (email links open staging)`);
 }
 
 const users = await allAuthUsers();
