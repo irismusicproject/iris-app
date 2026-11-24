@@ -173,8 +173,11 @@ export default function SignIn() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.irisSoft },
-  scroll: { flexGrow: 1, justifyContent: "center", padding: 24 },
-  card: { backgroundColor: colors.white, borderRadius: 16, padding: 24, gap: 8, borderWidth: 1, borderColor: colors.border },
+  // Anchored to the top, not centered: a centered card jumps when the keyboard
+  // opens or closes, and a tap meant for "Log in" lands on a link. Capped
+  // width so the form doesn't stretch across an iPad.
+  scroll: { flexGrow: 1, justifyContent: "flex-start", padding: 24, paddingTop: 48 },
+  card: { width: "100%", maxWidth: 520, alignSelf: "center", backgroundColor: colors.white, borderRadius: 16, padding: 24, gap: 8, borderWidth: 1, borderColor: colors.border },
   logo: { width: 140, height: 122, alignSelf: "center", marginBottom: 8 },
   title: { fontSize: 22, fontWeight: "700", color: colors.iris, marginBottom: 8 },
   label: { fontSize: 14, fontWeight: "600", color: colors.text, marginTop: 8 },
