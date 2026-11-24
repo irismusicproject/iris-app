@@ -88,8 +88,8 @@ purpose.
 |---|---|---|
 | Vera, largest text | Musician's tour on Android with text at 200% (`phone-journeys.yml`); iOS by hand | Found on iOS Nov 24: calendar day numbers overlap, header titles clip, month name splits; fixed, waiting for a build to confirm |
 | Fern, offline documenting | `fern-no-lock.yaml` (no screen lock: nothing kept, O3), then a PIN and `fern-offline.yaml` (airplane mode on, log, off: sent by itself, O1, O4); `check-offline-sent.mjs` asks staging that it arrived exactly once (O2) and deletes the run's test logs | written Nov 24; first run pending |
-| Dex, phone then web | Maestro documents; Playwright checks the website sees it | to build |
-| Hollis, web at 200% zoom, the deadline | `e2e/hollis-deadline.spec.ts`: emailed-code sign-in at 200% zoom (nothing scrolls sideways); week A submitted at 4:59 pm, week B at 5:01 pm; the database's reminders run at Monday 12:30, Tuesday 4:59, 5:01 and 5:06 pm, and Thursday 8:30 am; the point person's Follow-up shows 1 on time, 1 late | written Nov 24; first run pending |
+| Dex, phone then web | `prepare-dex.mjs` picks a date he led and documented in an unapproved week; `dex-phone.yaml` changes its attendance on the phone to a number unique to the run; `e2e/staging-journeys/dex-web.spec.ts` finds that number on the staging website, then sets the original back with the website's form and checks the database (so it can repeat; nobody can delete a report) | written Nov 24; website half dry-run against staging; first full run pending |
+| Hollis, web at 200% zoom, the deadline | `e2e/hollis-deadline.spec.ts`: emailed-code sign-in at 200% zoom (nothing scrolls sideways); week A submitted at 4:59 pm, week B at 5:01 pm; the database's reminders run at Monday 12:30, Tuesday 4:59, 5:01 and 5:06 pm, and Thursday 8:30 am; the point person's Follow-up shows 1 on time, 1 late | ✅ passed its first run, Nov 24 |
 | Clara, two hats | Database permission test (one person, two rosters) | to build |
 | Violet, 14 days away | Phone test with the clock moved forward | to build |
 | Gus, edges | Maestro: several "I can't play", swap proposals, an approved week | to build |

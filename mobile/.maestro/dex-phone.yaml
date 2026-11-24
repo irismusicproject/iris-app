@@ -1,0 +1,50 @@
+# Dex (docs/PERSONAS.md), part 1 of 2: on the phone, right after playing,
+# he updates a program he led. Part 2 (e2e/staging-journeys/dex-web.spec.ts)
+# checks the website shows the same number, then puts the original back.
+#
+# Needs (prepare-dex.mjs): MAESTRO_DEX_EMAIL, MAESTRO_DEX_DAY, MAESTRO_DEX_ATTENDANCE;
+# and MAESTRO_PASSWORD. Skipped when MAESTRO_DEX_DAY is empty.
+appId: org.irismusicproject.iris
+name: "Dex, phone - updates a program he led"
+tags:
+  - two-devices
+---
+- runFlow:
+    when:
+      true: ${MAESTRO_DEX_DAY != ''}
+    commands:
+      - launchApp:
+          clearState: true
+      - tapOn:
+          id: "sign-in-email"
+      - inputText: ${MAESTRO_DEX_EMAIL}
+      - tapOn:
+          id: "sign-in-password"
+      - inputText: ${MAESTRO_PASSWORD}
+      - hideKeyboard
+      - tapOn: "Log in"
+      - extendedWaitUntil:
+          visible: "My week →"
+          timeout: 30000
+      - tapOn: "My week →"
+      # The date he led, by its day ("Wednesday, November 18 · ...").
+      - scrollUntilVisible:
+          element: "${MAESTRO_DEX_DAY}.*"
+      - tapOn: "${MAESTRO_DEX_DAY}.*"
+      - scrollUntilVisible:
+          element:
+            id: "doc-attendance"
+      - tapOn:
+          id: "doc-attendance"
+      - eraseText: 6
+      - inputText: ${MAESTRO_DEX_ATTENDANCE}
+      - hideKeyboard
+      - takeScreenshot: dex-0-attendance-changed
+      - scrollUntilVisible:
+          element: "Update"
+      - tapOn: "Update"
+      # Saved: back on My week, the date still says Documented.
+      - extendedWaitUntil:
+          visible: "View or update →"
+          timeout: 20000
+      - takeScreenshot: dex-1-back-on-my-week

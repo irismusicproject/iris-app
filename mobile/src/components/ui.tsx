@@ -298,7 +298,7 @@ export function TimeField({ value, onChange, placeholder }: { value: string; onC
 }
 
 /** − 12 + : a number with big buttons either side (attendance, minutes). */
-export function Stepper({ value, onChange, step = 1, min = 0 }: { value: string; onChange: (v: string) => void; step?: number; min?: number }) {
+export function Stepper({ value, onChange, step = 1, min = 0, testID }: { value: string; onChange: (v: string) => void; step?: number; min?: number; testID?: string }) {
   const n = Number(value) || 0;
   const btn = (label: string, next: number, a11y: string) => (
     <Pressable
@@ -313,7 +313,7 @@ export function Stepper({ value, onChange, step = 1, min = 0 }: { value: string;
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
       {btn("−", n - step, `${step} fewer`)}
-      <Input value={value} onChangeText={onChange} keyboardType="number-pad" inputMode="numeric" style={{ flex: 1, textAlign: "center", fontSize: 20 }} placeholder="0" />
+      <Input testID={testID} value={value} onChangeText={onChange} keyboardType="number-pad" inputMode="numeric" style={{ flex: 1, textAlign: "center", fontSize: 20 }} placeholder="0" />
       {btn("+", n + step, `${step} more`)}
     </View>
   );

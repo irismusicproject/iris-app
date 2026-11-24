@@ -18,6 +18,8 @@ on:
       - "mobile/**"
       - "src/shared/**"
       - ".github/workflows/phone-journeys.yml"
+      - "e2e/staging-journeys/**"
+      - "playwright.staging-journeys.config.ts"
   workflow_dispatch:
 
 permissions:
@@ -66,6 +68,8 @@ jobs:
       - name: Get staging ready (fake data)
         run: |
           node .maestro/prepare-staging.mjs | tee -a "$GITHUB_ENV"
+          # Dex: a documented date to change on the phone, then check on the website.
+          PHONE_TIME_ZONE=America/Phoenix node .maestro/prepare-dex.mjs | tee -a "$GITHUB_ENV"
           echo "MAESTRO_PASSWORD=$STAGING_TEST_PASSWORD" >> "$GITHUB_ENV"
 
       - name: Install Maestro
@@ -99,11 +103,27 @@ jobs:
             adb shell svc power stayon true
             maestro test .maestro/fern-offline.yaml --format junit --output maestro-fern-offline.xml --test-output-dir maestro-output
             node .maestro/check-offline-sent.mjs
+            # Dex (docs/PERSONAS.md), phone half; the website half is the next step.
+            maestro test .maestro/dex-phone.yaml --format junit --output maestro-dex-phone.xml --test-output-dir maestro-output
             mkdir -p shots/normal-text && mv *.png shots/normal-text/
             # Vera (docs/PERSONAS.md): the same tour with the phone's text at its largest.
             adb shell settings put system font_scale 2.0
             maestro test .maestro/musician-tour.yaml --format junit --output maestro-tour-large-text.xml --test-output-dir maestro-output/large-text
             mkdir -p shots/large-text && mv *.png shots/large-text/
+
+      # Dex, website half: the number from the phone shows on the staging
+      # website, which then puts the original back. Runs even if a phone
+      # journey failed, so staging is never left with the test's number.
+      - name: Dex on the website (staging)
+        if: always() && env.MAESTRO_DEX_DAY != ''
+        working-directory: .
+        env:
+          STAGING_URL: ${{ secrets.STAGING_URL }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          npx playwright test -c playwright.staging-journeys.config.ts
 
       - uses: actions/upload-artifact@v4
         if: always()
