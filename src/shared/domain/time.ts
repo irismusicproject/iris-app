@@ -42,6 +42,12 @@ export function localDateTime(iso: string, timeZone: string): { date: string; ti
 }
 
 /** "3:00 PM" */
+/** Today's date ("YYYY-MM-DD") where the programs are, never the server's UTC
+ *  clock: after about 7 pm Eastern, UTC is already tomorrow (bug class of #67). */
+export function todayIn(timeZone = "America/New_York"): string {
+  return localDateTime(new Date().toISOString(), timeZone).date;
+}
+
 export function formatTime(iso: string, timeZone: string): string {
   return new Intl.DateTimeFormat("en-US", { timeZone, hour: "numeric", minute: "2-digit" }).format(new Date(iso));
 }

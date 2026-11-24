@@ -5,7 +5,7 @@ import { requirePerson } from "@/lib/auth";
 import { getResidencyAccess, getResidencyNames } from "@/lib/residency-access";
 import { createClient } from "@/lib/supabase/server";
 import { ACTIVITY_KIND_LABELS, addDays, formatWeek, weekStart, type ActivityKind } from "@/shared/domain/documentation";
-import { localDateTime } from "@/shared/domain/time";
+import { localDateTime, todayIn } from "@/shared/domain/time";
 import { ApproveWeekButtons } from "./hours-controls";
 
 // Hours to approve (DOMAIN-MODEL section 5, v0.19): the point person (or an
@@ -50,7 +50,7 @@ export default async function HoursPage({ params, searchParams }: { params: Prom
   const supabase = await createClient();
   const { data: residency } = await supabase.from("residency").select("id, name").eq("id", id).maybeSingle();
   if (!residency) notFound();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayIn();
   const monday = weekStart(weekParam && /^\d{4}-\d{2}-\d{2}$/.test(weekParam) ? weekParam : addDays(today, -7));
   const sunday = addDays(monday, 6);
 

@@ -13,6 +13,7 @@ import {
   validateSeason,
   validateStaffAssignment,
 } from "@/shared/domain/scheduling";
+import { todayIn } from "@/shared/domain/time";
 
 export type SetupFormState = {
   status: "idle" | "saved" | "error";
@@ -31,7 +32,7 @@ function dbMessage(error: { code?: string; message: string }, what: string): str
   return "We couldn't save that. Please try again.";
 }
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => todayIn();
 const isId = (v: string) => /^[0-9a-f-]{36}$/i.test(v);
 
 export async function addResidency(_prev: SetupFormState, form: FormData): Promise<SetupFormState> {

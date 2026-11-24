@@ -3,6 +3,7 @@ import { AppShell } from "@/components/app-shell";
 import { requirePerson } from "@/lib/auth";
 import { getInvoiceLines, getPayPeriodAnchor, recentPayPeriods } from "@/lib/invoices";
 import { formatPayPeriod, money } from "@/shared/domain/documentation";
+import { todayIn } from "@/shared/domain/time";
 
 // My invoices (DOMAIN-MODEL section 5, v0.19): one invoice per two-week pay
 // period, Monday–Sunday, for contractors. W-2 staff are paid through payroll.
@@ -11,7 +12,7 @@ export const metadata = { title: "My invoices · Iris Music Project" };
 export default async function InvoicesPage() {
   const { person, isAdmin } = await requirePerson();
   const contractor = person.employment_type === "contractor_1099";
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayIn();
   const periods = contractor ? recentPayPeriods(await getPayPeriodAnchor(), today, 6) : [];
   const invoices = await Promise.all(periods.map(async (start) => ({ start, ...(await getInvoiceLines(person.id, start)) })));
 
