@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/auth";
 import { getResidencyNames } from "@/lib/residency-access";
 import { createClient } from "@/lib/supabase/server";
 import { addDays, formatWeek, weekStart } from "@/shared/domain/documentation";
+import { todayIn } from "@/shared/domain/time";
 
 // Follow-up across all programs (admins, v0.24): who still owes last week's
 // documentation or hours. Each program has its own page with metrics.
@@ -12,7 +13,7 @@ export const metadata = { title: "Follow-up · Iris Music Project" };
 export default async function AdminFollowUpPage() {
   const { isAdmin } = await requireAdmin();
   const supabase = await createClient();
-  const week = weekStart(addDays(new Date().toISOString().slice(0, 10), -7));
+  const week = weekStart(addDays(todayIn(), -7));
   const { data: residencies } = await supabase.from("residency").select("id, name").eq("status", "active").order("name");
   const rows = await Promise.all(
     (residencies ?? []).map(async (p) => {

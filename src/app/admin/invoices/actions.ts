@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { customLinesTotal, type CustomLine } from "@/shared/domain/partner-invoice";
+import { todayIn } from "@/shared/domain/time";
 
 // Custom invoices (DOMAIN-MODEL v0.23): typed by hand for work outside a
 // contract. Admins only (RLS checks too). Drafts change freely; sent ones are
@@ -25,7 +26,7 @@ const refresh = (id?: string, residencyId?: string | null) => {
 export async function createCustomInvoice(residencyId?: string): Promise<void> {
   await requireAdmin();
   const supabase = await createClient();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayIn();
   const { count } = await supabase.from("custom_invoice").select("id", { count: "exact", head: true }).gte("invoice_date", `${today.slice(0, 7)}-01`);
   const { data, error } = await supabase
     .from("custom_invoice")

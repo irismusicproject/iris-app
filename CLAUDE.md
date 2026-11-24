@@ -175,6 +175,13 @@ the same backend:
 
 ## Division of labor (Lauren, Nov 22, 2026)
 
+**A guide, not a rule (Ryan, Nov 24, 2026).** Lauren and Ryan sync
+regularly, so either side may work across the line below (a design idea on
+Ryan's side, a test or a fix on Lauren's) when that moves the work forward.
+Say what you did on issue #30 so the other side sees it. Two things stay
+firm: Lauren has the last word on how the app looks and works (a change she
+doesn't want gets reverted), and the stop-and-ask rules above still apply.
+
 Two sides, each with its own Claude Code session. Know which side you're on
 (Lauren's computer and account = Lauren's side; Ryan's = Ryan's side).
 
@@ -199,8 +206,9 @@ operationally."
   and browser tests, reviews migrations and permission rules, fixes bugs,
   handles security, sign-in and infrastructure, merges to `main`, and deploys
   database changes to production.
-- It doesn't change how a feature looks or behaves without Lauren's OK; it
-  asks on issue #30.
+- It may propose and build changes to how a feature looks or behaves, on a
+  branch Lauren can try; it posts them on issue #30, and Lauren decides
+  whether they stay.
 
 **Handoffs** go through issue #30 (`gh issue view 30 --comments`), starting
 with **[Lauren's side]** or **[Ryan's side]**.
@@ -263,8 +271,9 @@ with **[Lauren's side]** or **[Ryan's side]**.
 - Before every commit, check `git status` and `git diff --staged` for
   anything private.
 - **Waiting for a build or workflow:** use `node scripts/wait-for.mjs vercel
-  <commit-sha> [minutes]` or `node scripts/wait-for.mjs run <run-id>
-  [minutes]`. Don't hand-write wait loops. The script asks the source of
+  <commit-sha> [minutes]`, `node scripts/wait-for.mjs run <run-id>
+  [minutes]` or, for a phone build on Expo, `node scripts/wait-for.mjs eas
+  <build-id> [minutes]`. Don't hand-write wait loops. The script asks the source of
   truth (Vercel's status on the commit, or the run itself), stops on the
   first error, gives up after a time limit (15 minutes by default) and prints
   progress every minute.
