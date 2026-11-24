@@ -9,7 +9,7 @@
 export const IMPORT_TABS = {
   people: { name: "People", columns: ["Name", "Email", "Phone", "Instruments", "Employment", "Job title", "Admin"] },
   sites: { name: "Buildings", columns: ["Partner", "Building", "City", "State", "Time zone", "Rooms"] },
-  programs: { name: "Programs", columns: ["Program", "Partner", "Buildings", "Season", "Season starts", "Season ends", "Point person"] },
+  residencies: { name: "Programs", columns: ["Program", "Partner", "Buildings", "Season", "Season starts", "Season ends", "Point person"] },
   roster: { name: "Roster", columns: ["Program", "Musician", "Core", "Admin lead"] },
   weekly: {
     name: "Weekly programs",
@@ -22,10 +22,10 @@ export type RawImport = Record<TabKey, RawRow[]>;
 
 export type ImportPerson = { name: string; email: string; phone: string | null; instruments: string[]; employment: "contractor_1099" | "employee_w2" | "volunteer"; jobTitle: string | null; admin: boolean };
 export type ImportSite = { partner: string; building: string; city: string | null; state: string | null; timezone: string; rooms: string[] };
-export type ImportProgram = { program: string; partner: string; buildings: string[]; season: string; startsOn: string; endsOn: string; pointPerson: string | null };
-export type ImportRosterRow = { program: string; musician: string; core: boolean; adminLead: boolean };
+export type ImportResidency = { residency: string; partner: string; buildings: string[]; season: string; startsOn: string; endsOn: string; pointPerson: string | null };
+export type ImportRosterRow = { residency: string; musician: string; core: boolean; adminLead: boolean };
 export type ImportWeekly = {
-  program: string;
+  residency: string;
   title: string;
   building: string;
   room: string;
@@ -37,7 +37,7 @@ export type ImportWeekly = {
   leader: string | null;
   musicians: string[];
 };
-export type ImportPlan = { people: ImportPerson[]; sites: ImportSite[]; programs: ImportProgram[]; roster: ImportRosterRow[]; weekly: ImportWeekly[] };
+export type ImportPlan = { people: ImportPerson[]; sites: ImportSite[]; residencies: ImportResidency[]; roster: ImportRosterRow[]; weekly: ImportWeekly[] };
 export type ImportProblem = { tab: string; row: number; message: string };
 
 const DAYS: Record<string, number> = { mon: 1, monday: 1, tue: 2, tues: 2, tuesday: 2, wed: 3, wednesday: 3, thu: 4, thur: 4, thurs: 4, thursday: 4, fri: 5, friday: 5, sat: 6, saturday: 6, sun: 7, sunday: 7 };
@@ -74,7 +74,7 @@ export function checkImport(raw: RawImport, existingPeople: { name: string; emai
   const warnings: ImportProblem[] = [];
   const err = (tab: TabKey, row: number, message: string) => errors.push({ tab: IMPORT_TABS[tab].name, row, message });
   const warn = (tab: TabKey, row: number, message: string) => warnings.push({ tab: IMPORT_TABS[tab].name, row, message });
-  const plan: ImportPlan = { people: [], sites: [], programs: [], roster: [], weekly: [] };
+  const plan: ImportPlan = { people: [], sites: [], residencies: [], roster: [], weekly: [] };
 
   // People (row numbers are spreadsheet rows: header is row 1).
   const names = new Set(existingPeople.map((p) => key(p.name)));
@@ -124,53 +124,53 @@ export function checkImport(raw: RawImport, existingPeople: { name: string; emai
   const sites = new Map(plan.sites.map((s) => [siteKey(s.partner, s.building), s]));
 
   // Programs (one season each in this file).
-  raw.programs.forEach((r, i) => {
+  raw.residencies.forEach((r, i) => {
     const row = i + 2;
-    const program = (r["Program"] ?? "").trim();
+    const residency = (r["Program"] ?? "").trim();
     const partner = (r["Partner"] ?? "").trim();
-    if (!program || !partner) return err("programs", row, "Program and Partner are both needed.");
+    if (!residency || !partner) return err("residencies", row, "Program and Partner are both needed.");
     const buildings = list(r["Buildings"] ?? "");
-    if (!buildings.length) return err("programs", row, `${program}: list at least one building.`);
-    for (const b of buildings) if (!sites.has(siteKey(partner, b))) err("programs", row, `${program}: building "${b}" isn't on the Buildings tab for ${partner}.`);
+    if (!buildings.length) return err("residencies", row, `${residency}: list at least one building.`);
+    for (const b of buildings) if (!sites.has(siteKey(partner, b))) err("residencies", row, `${residency}: building "${b}" isn't on the Buildings tab for ${partner}.`);
     const startsOn = parseDate(r["Season starts"] ?? "");
     const endsOn = parseDate(r["Season ends"] ?? "");
-    if (!startsOn) return err("programs", row, `${program}: add the season's start date (e.g. 2027-01-04).`);
-    if (!endsOn) return err("programs", row, `${program}: add the season's end date.`);
-    if (endsOn <= startsOn) return err("programs", row, `${program}: the season ends before it starts.`);
+    if (!startsOn) return err("residencies", row, `${residency}: add the season's start date (e.g. 2027-01-04).`);
+    if (!endsOn) return err("residencies", row, `${residency}: add the season's end date.`);
+    if (endsOn <= startsOn) return err("residencies", row, `${residency}: the season ends before it starts.`);
     const pointPerson = (r["Point person"] ?? "").trim() || null;
-    if (pointPerson && !knownPerson(pointPerson)) err("programs", row, `${program}: point person "${pointPerson}" isn't on the People tab.`);
-    if (!pointPerson) warn("programs", row, `${program}: no point person yet.`);
-    if (plan.programs.some((p) => key(p.program) === key(program))) return err("programs", row, `"${program}" is listed twice.`);
-    plan.programs.push({ program, partner, buildings, season: (r["Season"] ?? "").trim() || "Spring 2027", startsOn, endsOn, pointPerson });
+    if (pointPerson && !knownPerson(pointPerson)) err("residencies", row, `${residency}: point person "${pointPerson}" isn't on the People tab.`);
+    if (!pointPerson) warn("residencies", row, `${residency}: no point person yet.`);
+    if (plan.residencies.some((p) => key(p.residency) === key(residency))) return err("residencies", row, `"${residency}" is listed twice.`);
+    plan.residencies.push({ residency: residency, partner, buildings, season: (r["Season"] ?? "").trim() || "Spring 2027", startsOn, endsOn, pointPerson });
   });
-  const programs = new Map(plan.programs.map((p) => [key(p.program), p]));
+  const residencies = new Map(plan.residencies.map((p) => [key(p.residency), p]));
 
   // Roster.
   raw.roster.forEach((r, i) => {
     const row = i + 2;
-    const program = (r["Program"] ?? "").trim();
+    const residency = (r["Program"] ?? "").trim();
     const musician = (r["Musician"] ?? "").trim();
-    if (!programs.has(key(program))) return err("roster", row, `Program "${program}" isn't on the Programs tab.`);
+    if (!residencies.has(key(residency))) return err("roster", row, `Program "${residency}" isn't on the Programs tab.`);
     if (!knownPerson(musician)) return err("roster", row, `"${musician}" isn't on the People tab.`);
-    plan.roster.push({ program, musician, core: yes(r["Core"] ?? "", true), adminLead: yes(r["Admin lead"] ?? "", false) });
+    plan.roster.push({ residency: residency, musician, core: yes(r["Core"] ?? "", true), adminLead: yes(r["Admin lead"] ?? "", false) });
   });
-  for (const p of plan.programs) {
-    const leads = plan.roster.filter((r) => key(r.program) === key(p.program) && r.adminLead);
-    if (leads.length > 1) errors.push({ tab: IMPORT_TABS.roster.name, row: 0, message: `${p.program}: only one Admin lead per season.` });
-    if (!leads.length) warnings.push({ tab: IMPORT_TABS.roster.name, row: 0, message: `${p.program}: no Admin lead yet.` });
+  for (const p of plan.residencies) {
+    const leads = plan.roster.filter((r) => key(r.residency) === key(p.residency) && r.adminLead);
+    if (leads.length > 1) errors.push({ tab: IMPORT_TABS.roster.name, row: 0, message: `${p.residency}: only one Admin lead per season.` });
+    if (!leads.length) warnings.push({ tab: IMPORT_TABS.roster.name, row: 0, message: `${p.residency}: no Admin lead yet.` });
   }
-  const onRoster = (program: string, person: string) => plan.roster.some((r) => key(r.program) === key(program) && key(r.musician) === key(person));
+  const onRoster = (residency: string, person: string) => plan.roster.some((r) => key(r.residency) === key(residency) && key(r.musician) === key(person));
 
   // Weekly and monthly programs.
   raw.weekly.forEach((r, i) => {
     const row = i + 2;
-    const program = programs.get(key(r["Program"] ?? ""));
+    const residency = residencies.get(key(r["Program"] ?? ""));
     const title = (r["Title"] ?? "").trim();
-    if (!program) return err("weekly", row, `Program "${(r["Program"] ?? "").trim()}" isn't on the Programs tab.`);
+    if (!residency) return err("weekly", row, `Program "${(r["Program"] ?? "").trim()}" isn't on the Programs tab.`);
     if (!title) return err("weekly", row, "Title is empty.");
-    const building = (r["Building"] ?? "").trim() || program.buildings[0]!;
-    const site = sites.get(siteKey(program.partner, building));
-    if (!site || !program.buildings.some((b) => key(b) === key(building))) return err("weekly", row, `${title}: building "${building}" isn't one of ${program.program}'s buildings.`);
+    const building = (r["Building"] ?? "").trim() || residency.buildings[0]!;
+    const site = sites.get(siteKey(residency.partner, building));
+    if (!site || !residency.buildings.some((b) => key(b) === key(building))) return err("weekly", row, `${title}: building "${building}" isn't one of ${residency.residency}'s buildings.`);
     const room = (r["Room"] ?? "").trim() || site.rooms[0]!;
     if (!site.rooms.some((x) => key(x) === key(room))) warn("weekly", row, `${title}: room "${room}" will be added to ${site.building}.`);
     const weekdays = list(r["Day"] ?? "").map((d) => DAYS[key(d)] ?? DAYS[key(d).slice(0, 3)]);
@@ -187,9 +187,9 @@ export function checkImport(raw: RawImport, existingPeople: { name: string; emai
     const leader = (r["Usual leader"] ?? "").trim() || null;
     const musicians = list(r["Usual musicians"] ?? "");
     for (const n of [...(leader ? [leader] : []), ...musicians])
-      if (!onRoster(program.program, n)) err("weekly", row, `${title}: "${n}" isn't on ${program.program}'s roster.`);
+      if (!onRoster(residency.residency, n)) err("weekly", row, `${title}: "${n}" isn't on ${residency.residency}'s roster.`);
     plan.weekly.push({
-      program: program.program,
+      residency: residency.residency,
       title,
       building: site.building,
       room,

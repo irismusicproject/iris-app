@@ -29,7 +29,7 @@ export function CustomInvoiceForm({
   residencyId,
   billTo,
   lines,
-  programs,
+  residencies: residencies,
   state,
 }: {
   id: string;
@@ -38,7 +38,7 @@ export function CustomInvoiceForm({
   residencyId: string | null;
   billTo: string;
   lines: CustomLine[];
-  programs: { id: string; name: string }[];
+  residencies: { id: string; name: string }[];
   state: "draft" | "sent" | "paid";
 }) {
   const [t, setT] = useState(title);
@@ -77,7 +77,7 @@ export function CustomInvoiceForm({
         <Field label="Program (optional)" hint="Shows this invoice on that program's Community invoices">
           <select value={rid} onChange={(e) => setRid(e.target.value)} disabled={locked} className={inputClass}>
             <option value="">Not linked to a program</option>
-            {programs.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            {residencies.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
         </Field>
       </div>

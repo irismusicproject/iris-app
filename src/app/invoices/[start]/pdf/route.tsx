@@ -34,7 +34,7 @@ const s = StyleSheet.create({
   table: { marginTop: 28 },
   headRow: { flexDirection: "row", backgroundColor: PURPLE, color: "#FFFFFF", fontWeight: 700 },
   row: { flexDirection: "row", borderBottomWidth: 0.5, borderBottomColor: "#D9D2DE" },
-  program: { width: "26%", padding: 5 },
+  residency: { width: "26%", padding: 5 },
   desc: { width: "34%", padding: 5 },
   qty: { width: "12%", padding: 5, textAlign: "right" },
   rate: { width: "14%", padding: 5, textAlign: "right" },
@@ -75,7 +75,7 @@ function InvoicePdf({ name, email, number, start, lines, total }: { name: string
         </View>
         <View style={s.table}>
           <View style={s.headRow}>
-            <Text style={s.program}>Program</Text>
+            <Text style={s.residency}>Program</Text>
             <Text style={s.desc}>Description</Text>
             <Text style={s.qty}>Qty</Text>
             <Text style={s.rate}>Rate</Text>
@@ -83,7 +83,7 @@ function InvoicePdf({ name, email, number, start, lines, total }: { name: string
           </View>
           {lines.map((l, i) => (
             <View key={i} style={s.row} wrap={false}>
-              <Text style={s.program}>{l.residency_name}</Text>
+              <Text style={s.residency}>{l.residency_name}</Text>
               <Text style={s.desc}>{l.description}</Text>
               <Text style={s.qty}>{l.unit === "hours" ? `${l.quantity} hrs` : String(l.quantity)}</Text>
               <Text style={s.rate}>{l.unit_amount === null ? "—" : money(l.unit_amount)}</Text>

@@ -13,9 +13,9 @@ export default async function AdminFollowUpPage() {
   const { isAdmin } = await requireAdmin();
   const supabase = await createClient();
   const week = weekStart(addDays(new Date().toISOString().slice(0, 10), -7));
-  const { data: programs } = await supabase.from("residency").select("id, name").eq("status", "active").order("name");
+  const { data: residencies } = await supabase.from("residency").select("id, name").eq("status", "active").order("name");
   const rows = await Promise.all(
-    (programs ?? []).map(async (p) => {
+    (residencies ?? []).map(async (p) => {
       const [{ data }, names] = await Promise.all([supabase.rpc("missing_work", { p_residency: p.id, p_week: week }), getResidencyNames(p.id)]);
       const missing = (data ?? []) as { person_id: string; undocumented: number; hours_state: string }[];
       return { ...p, missing: missing.map((m) => ({ name: names.get(m.person_id) ?? "Someone", undocumented: m.undocumented, notSubmitted: m.hours_state === "none" || m.hours_state === "draft" })) };

@@ -25,7 +25,7 @@ type Row = {
   location: { site_id: string; display_name: string; site: { display_name: string; timezone: string } | null } | null;
   mine: { role: "leader" | "participant"; status: string }[];
 };
-type Group = { key: string; residencyId: string; siteId: string; program: string; building: string; rows: Row[]; checked: boolean; locked: boolean };
+type Group = { key: string; residencyId: string; siteId: string; residency: string; building: string; rows: Row[]; checked: boolean; locked: boolean };
 
 export default function Review() {
   const router = useRouter();
@@ -54,7 +54,7 @@ export default function Review() {
     for (const r of rows) {
       const key = `${r.residency_id}|${r.location!.site_id}`;
       if (!byKey.has(key))
-        byKey.set(key, { key, residencyId: r.residency_id, siteId: r.location!.site_id, program: r.residency?.name ?? "", building: r.location!.site?.display_name ?? "", rows: [], checked: false, locked: false });
+        byKey.set(key, { key, residencyId: r.residency_id, siteId: r.location!.site_id, residency: r.residency?.name ?? "", building: r.location!.site?.display_name ?? "", rows: [], checked: false, locked: false });
       byKey.get(key)!.rows.push(r);
     }
     const list = [...byKey.values()];
@@ -119,7 +119,7 @@ export default function Review() {
         const drafts = g.rows.some((r) => r.schedule_state === "draft");
         return (
           <Card key={g.key} title={g.building}>
-            <Muted>{g.program}</Muted>
+            <Muted>{g.residency}</Muted>
             {g.locked ? <Tag label="Reviewed by the point person" /> : g.checked ? <Tag label="You're done reviewing" /> : drafts ? <Tag label="To review" tone="todo" /> : null}
             {g.rows.map((r) => {
               const tz = r.location?.site?.timezone ?? "America/New_York";

@@ -64,15 +64,15 @@ export default async function MyWeek({ searchParams }: { searchParams: Promise<{
     .select("season(id, residency_id, starts_on, ends_on, residency(id, name, residency_site(site(id, display_name, timezone, detailed_relationship_notes))))")
     .eq("person_id", person.id);
   type RosterRow = { season: { id: string; residency_id: string; starts_on: string; ends_on: string; residency: { id: string; name: string; residency_site: { site: SiteRef | null }[] } | null } | null };
-  const programMap = new Map<string, { id: string; name: string; sites: SiteRef[]; season: { id: string; starts_on: string; ends_on: string } }>();
+  const residencyMap = new Map<string, { id: string; name: string; sites: SiteRef[]; season: { id: string; starts_on: string; ends_on: string } }>();
   for (const r of (rosterRows ?? []) as unknown as RosterRow[]) {
     const res = r.season?.residency;
     if (!res || r.season!.ends_on < monday || r.season!.starts_on > sunday) continue;
-    programMap.set(res.id, { id: res.id, name: res.name, sites: res.residency_site.map((x) => x.site!).filter(Boolean), season: { id: r.season!.id, starts_on: r.season!.starts_on, ends_on: r.season!.ends_on } });
+    residencyMap.set(res.id, { id: res.id, name: res.name, sites: res.residency_site.map((x) => x.site!).filter(Boolean), season: { id: r.season!.id, starts_on: r.season!.starts_on, ends_on: r.season!.ends_on } });
   }
-  const programs = [...programMap.values()].sort((a, b) => a.name.localeCompare(b.name));
-  const ids = programs.map((p) => p.id);
-  const siteById = new Map(programs.flatMap((p) => p.sites).map((s) => [s.id, s]));
+  const residencies = [...residencyMap.values()].sort((a, b) => a.name.localeCompare(b.name));
+  const ids = residencies.map((p) => p.id);
+  const siteById = new Map(residencies.flatMap((p) => p.sites).map((s) => [s.id, s]));
 
   // Relationship building shared with me by another musician (v0.24).
   const { data: sharedRows } = await supabase.from("relationship_activity_musician").select("activity_id").eq("person_id", person.id);
@@ -125,13 +125,13 @@ export default async function MyWeek({ searchParams }: { searchParams: Promise<{
   const activities = (activityRows ?? []) as unknown as ActivityRow[];
 
   // Names, and roster colleagues who can share a log (v0.24).
-  const nameMaps = new Map(await Promise.all(programs.map(async (p) => [p.id, await getResidencyNames(p.id)] as const)));
+  const nameMaps = new Map(await Promise.all(residencies.map(async (p) => [p.id, await getResidencyNames(p.id)] as const)));
   const nameOf = (rid: string, pid: string) => nameMaps.get(rid)?.get(pid) ?? "a colleague";
-  const { data: rosterPeople } = programs.length
-    ? await supabase.from("roster_member").select("season_id, person_id, left_on").in("season_id", programs.map((p) => p.season.id))
+  const { data: rosterPeople } = residencies.length
+    ? await supabase.from("roster_member").select("season_id, person_id, left_on").in("season_id", residencies.map((p) => p.season.id))
     : { data: [] };
   const colleagues: Record<string, { id: string; label: string }[]> = {};
-  for (const p of programs)
+  for (const p of residencies)
     colleagues[p.id] = [...new Set(((rosterPeople ?? []) as { season_id: string; person_id: string; left_on: string | null }[])
       .filter((r) => r.season_id === p.season.id && r.person_id !== person.id && (!r.left_on || r.left_on > monday))
       .map((r) => r.person_id))]
@@ -160,7 +160,7 @@ export default async function MyWeek({ searchParams }: { searchParams: Promise<{
 
   // ---- Collaboration progress this season (v0.19)
   const progress = await Promise.all(
-    programs.map(async (p) => {
+    residencies.map(async (p) => {
       const [{ data: t }, { data: collab }] = await Promise.all([
         supabase.from("target").select("value").eq("season_id", p.season.id).eq("metric", "collaborative_programs_per_musician").maybeSingle(),
         supabase
@@ -189,7 +189,7 @@ export default async function MyWeek({ searchParams }: { searchParams: Promise<{
   // Hours are calculated from documentation (v0.24), never typed.
   const documented = new Map(
     await Promise.all(
-      programs.map(async (p) => {
+      residencies.map(async (p) => {
         const { data } = await supabase.rpc("documented_minutes", { p_person: person.id, p_residency: p.id, p_week: monday });
         return [p.id, new Map(((data ?? []) as { category: string; minutes: number }[]).map((d) => [d.category, Number(d.minutes)]))] as const;
       }),
@@ -217,7 +217,7 @@ export default async function MyWeek({ searchParams }: { searchParams: Promise<{
   const h = await headers();
   const origin = `${h.get("x-forwarded-proto") ?? "http"}://${h.get("host")}`;
   const feedUrl = feed?.token ? `${origin}/calendar-feed/${feed.token}.ics` : null;
-  const programName = (id: string) => programMap.get(id)?.name ?? "";
+  const residencyName = (id: string) => residencyMap.get(id)?.name ?? "";
 
   const card = "mt-6 rounded-xl border border-border bg-surface p-5 sm:p-6";
   const nav = "rounded-full border border-border px-3 py-1 text-sm hover:bg-iris-soft";
@@ -241,16 +241,16 @@ export default async function MyWeek({ searchParams }: { searchParams: Promise<{
         <span className="ml-2 text-muted">· {activities.length} relationship-building activit{activities.length === 1 ? "y" : "ies"}, {activityMinutes} min</span>
       </p>
 
-      {programs.length === 0 && <p className="mt-6 text-muted">You&apos;re not on a program&apos;s roster for this week.</p>}
+      {residencies.length === 0 && <p className="mt-6 text-muted">You&apos;re not on a program&apos;s roster for this week.</p>}
 
-      {programs.length > 0 && (
+      {residencies.length > 0 && (
         <>
           <section className={card}>
             <h2 className="text-lg font-semibold">Programs you led</h2>
             <p className="mt-2 flex flex-wrap gap-2 text-sm">
               {progress.map((pr) => (
                 <span key={pr.id} className={`rounded-full border px-3 py-1 ${pr.done >= pr.target ? "border-iris bg-iris-soft" : "border-border"}`}>
-                  Collaborative programs this season{programs.length > 1 ? ` (${pr.name})` : ""}: <strong>{pr.done} of {pr.target}</strong>
+                  Collaborative programs this season{residencies.length > 1 ? ` (${pr.name})` : ""}: <strong>{pr.done} of {pr.target}</strong>
                 </span>
               ))}
             </p>
@@ -268,7 +268,7 @@ export default async function MyWeek({ searchParams }: { searchParams: Promise<{
                       day: formatDay(s.starts_at, tz),
                       time: s.has_set_time ? formatTime(s.starts_at, tz) : "",
                       title: s.title,
-                      place: `${programName(s.residency_id)} · ${s.location!.display_name}`,
+                      place: `${residencyName(s.residency_id)} · ${s.location!.display_name}`,
                       scheduledMinutes: s.scheduled_minutes ?? 45,
                       usualTypeId: s.series?.default_interaction_type_id ?? "",
                       report: s.session_report
@@ -281,7 +281,7 @@ export default async function MyWeek({ searchParams }: { searchParams: Promise<{
                             siteId: s.session_report.site_id,
                           }
                         : null,
-                      sites: (programMap.get(s.residency_id)?.sites ?? []).map((x) => ({ id: x.id, label: x.display_name })),
+                      sites: (residencyMap.get(s.residency_id)?.sites ?? []).map((x) => ({ id: x.id, label: x.display_name })),
                       roomSiteId: s.location!.site_id,
                     }}
                   />
@@ -321,7 +321,7 @@ export default async function MyWeek({ searchParams }: { searchParams: Promise<{
                         const others = [a.person_id, ...a.relationship_activity_musician.map((m) => m.person_id)].filter((id) => id !== person.id);
                         return others.length ? <> · with {others.map((id) => nameOf(a.residency_id, id).split(" ")[0]).join(", ")}</> : null;
                       })()}
-                      <span className="block text-xs text-muted">{programName(a.residency_id)} · {siteById.get(a.site_id)?.display_name}{a.note ? ` · ${a.note}` : ""}</span>
+                      <span className="block text-xs text-muted">{residencyName(a.residency_id)} · {siteById.get(a.site_id)?.display_name}{a.note ? ` · ${a.note}` : ""}</span>
                     </span>
                     {a.person_id === person.id ? <DeleteActivityButton id={a.id} label={label} /> : <LeaveSharedButton id={a.id} label={label} />}
                   </li>
@@ -350,7 +350,7 @@ export default async function MyWeek({ searchParams }: { searchParams: Promise<{
               <h3 className="font-medium">Log an activity</h3>
               <div className="mt-3">
                 <ActivityForm
-                  programs={programs.map((p) => ({ id: p.id, name: p.name, sites: p.sites.map((s) => ({ id: s.id, label: s.display_name, detailedNotes: s.detailed_relationship_notes })) }))}
+                  residencies={residencies.map((p) => ({ id: p.id, name: p.name, sites: p.sites.map((s) => ({ id: s.id, label: s.display_name, detailedNotes: s.detailed_relationship_notes })) }))}
                   residents={residents}
                   lengths={lengths}
                   last={last}
@@ -371,15 +371,15 @@ export default async function MyWeek({ searchParams }: { searchParams: Promise<{
             </p>
             <div className="mt-4">
               {(() => {
-                const weekPrograms = programs.map((p) => {
+                const weekResidencies = residencies.map((p) => {
                   const h = hoursFor(p.id);
-                  return { residencyId: p.id, programName: p.name, hours: h.hours, state: h.state, returnedNote: h.returnedNote };
+                  return { residencyId: p.id, residencyName: p.name, hours: h.hours, state: h.state, returnedNote: h.returnedNote };
                 });
                 return (
                   <WeekHours
-                    key={`${monday}-${weekPrograms.map((w) => w.state).join(",")}`}
+                    key={`${monday}-${weekResidencies.map((w) => w.state).join(",")}`}
                     week={monday}
-                    programs={weekPrograms}
+                    residencies={weekResidencies}
                     toDocument={ledPast.filter((s) => !s.session_report).map((s) => `${s.title} (${formatDay(s.starts_at, siteById.get(s.location!.site_id)!.timezone)})`)}
                   />
                 );
@@ -388,11 +388,11 @@ export default async function MyWeek({ searchParams }: { searchParams: Promise<{
           </section>
 
 
-          {programs.map((p) => {
+          {residencies.map((p) => {
             const r = reflections.get(p.id);
             return (
               <section key={p.id} className={card}>
-                <h2 className="text-lg font-semibold">{formatMonth(month)} reflection{programs.length > 1 ? `: ${p.name}` : ""}</h2>
+                <h2 className="text-lg font-semibold">{formatMonth(month)} reflection{residencies.length > 1 ? `: ${p.name}` : ""}</h2>
                 <p className="mt-1 text-sm text-muted">Fill in any time this month; it&apos;s due with the last week&apos;s documentation.</p>
                 <div className="mt-4"><ReflectionForm residencyId={p.id} month={month} highlights={r?.highlights ?? ""} challenges={r?.challenges ?? ""} /></div>
               </section>

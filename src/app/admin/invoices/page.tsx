@@ -13,7 +13,7 @@ export const metadata = { title: "Invoices · Iris Music Project" };
 export default async function InvoicesAdminPage() {
   const { isAdmin } = await requireAdmin();
   const supabase = await createClient();
-  const [{ data: custom }, { data: programs }] = await Promise.all([
+  const [{ data: custom }, { data: residencies }] = await Promise.all([
     supabase.from("custom_invoice").select("id, number, title, invoice_date, total, state, residency(name)").order("invoice_date", { ascending: false }).limit(100),
     supabase.from("residency").select("id, name").order("name"),
   ]);
@@ -55,7 +55,7 @@ export default async function InvoicesAdminPage() {
       <section className={card}>
         <h2 className="text-lg font-semibold">Community invoices by program</h2>
         <ul className="mt-3 flex flex-wrap gap-2 text-sm">
-          {(programs ?? []).map((p) => (
+          {(residencies ?? []).map((p) => (
             <li key={p.id}><Link href={`/residencies/${p.id}/billing`} className="rounded-full border border-border px-3 py-1 hover:bg-iris-soft">{p.name}</Link></li>
           ))}
         </ul>

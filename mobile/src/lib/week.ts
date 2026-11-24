@@ -8,7 +8,7 @@ import { supabase } from "./supabase";
 // here is saved on the phone: it lives only while a screen is open.
 
 export type Site = { id: string; display_name: string; timezone: string; detailed_relationship_notes: boolean };
-export type WeekProgram = { id: string; name: string; sites: Site[]; season: { id: string; starts_on: string; ends_on: string } };
+export type WeekResidency = { id: string; name: string; sites: Site[]; season: { id: string; starts_on: string; ends_on: string } };
 export type WeekSession = {
   id: string;
   residency_id: string;
@@ -43,7 +43,7 @@ export type Resident = { id: string; siteId: string; name: string; room: string 
 export type LastActivity = { residencyId: string; siteId: string; kind: ActivityKind; minutes: number; collaborative: boolean; residentIds: string[] };
 export type WeekHours = {
   residencyId: string;
-  programName: string;
+  residencyName: string;
   hours: { name: string; hours: number }[];
   state: "draft" | "submitted" | "approved" | null;
   returnedNote: string | null;
@@ -54,7 +54,7 @@ export type Week = {
   sunday: string;
   month: string;
   today: string;
-  programs: WeekProgram[];
+  residencies: WeekResidency[];
   siteById: Map<string, Site>;
   led: WeekSession[];
   ledPast: WeekSession[];
@@ -102,20 +102,20 @@ export async function loadWeek(personId: string, anyDay: string): Promise<Week> 
     .eq("person_id", personId);
   if (rosterError) throw rosterError;
   type RosterRow = { season: { id: string; residency_id: string; starts_on: string; ends_on: string; residency: { id: string; name: string; residency_site: { site: Site | null }[] } | null } | null };
-  const programMap = new Map<string, WeekProgram>();
+  const residencyMap = new Map<string, WeekResidency>();
   for (const r of (rosterRows ?? []) as unknown as RosterRow[]) {
     const res = r.season?.residency;
     if (!res || r.season!.ends_on < monday || r.season!.starts_on > sunday) continue;
-    programMap.set(res.id, {
+    residencyMap.set(res.id, {
       id: res.id,
       name: res.name,
       sites: res.residency_site.map((x) => x.site!).filter(Boolean),
       season: { id: r.season!.id, starts_on: r.season!.starts_on, ends_on: r.season!.ends_on },
     });
   }
-  const programs = [...programMap.values()].sort((a, b) => a.name.localeCompare(b.name));
-  const ids = programs.map((p) => p.id);
-  const siteById = new Map(programs.flatMap((p) => p.sites).map((s) => [s.id, s]));
+  const residencies = [...residencyMap.values()].sort((a, b) => a.name.localeCompare(b.name));
+  const ids = residencies.map((p) => p.id);
+  const siteById = new Map(residencies.flatMap((p) => p.sites).map((s) => [s.id, s]));
 
   // Relationship building shared with me by another musician (v0.24).
   const { data: sharedRows } = await supabase.from("relationship_activity_musician").select("activity_id").eq("person_id", personId);
@@ -174,17 +174,17 @@ export async function loadWeek(personId: string, anyDay: string): Promise<Week> 
   // Names of each program's people (names only, DOMAIN-MODEL v0.13), and roster colleagues who can share a log (v0.24).
   const names = new Map(
     await Promise.all(
-      programs.map(async (p) => {
+      residencies.map(async (p) => {
         const { data } = await supabase.rpc("residency_people", { p_residency: p.id });
         return [p.id, new Map(((data ?? []) as { id: string; name: string }[]).map((x) => [x.id, x.name]))] as const;
       }),
     ),
   );
-  const { data: rosterPeople } = programs.length
-    ? await supabase.from("roster_member").select("season_id, person_id, left_on").in("season_id", programs.map((p) => p.season.id))
+  const { data: rosterPeople } = residencies.length
+    ? await supabase.from("roster_member").select("season_id, person_id, left_on").in("season_id", residencies.map((p) => p.season.id))
     : { data: [] };
   const colleagues: Record<string, { id: string; label: string }[]> = {};
-  for (const p of programs)
+  for (const p of residencies)
     colleagues[p.id] = [
       ...new Set(
         ((rosterPeople ?? []) as { season_id: string; person_id: string; left_on: string | null }[])
@@ -217,7 +217,7 @@ export async function loadWeek(personId: string, anyDay: string): Promise<Week> 
 
   // Collaboration progress this season (v0.19).
   const progress = await Promise.all(
-    programs.map(async (p) => {
+    residencies.map(async (p) => {
       const [{ data: t }, { data: collab }] = await Promise.all([
         supabase.from("target").select("value").eq("season_id", p.season.id).eq("metric", "collaborative_programs_per_musician").maybeSingle(),
         supabase
@@ -245,20 +245,20 @@ export async function loadWeek(personId: string, anyDay: string): Promise<Week> 
   const entries = (entryRows ?? []) as EntryRow[];
   const documented = new Map(
     await Promise.all(
-      programs.map(async (p) => {
+      residencies.map(async (p) => {
         const { data } = await supabase.rpc("documented_minutes", { p_person: personId, p_residency: p.id, p_week: monday });
         return [p.id, new Map(((data ?? []) as { category: string; minutes: number }[]).map((d) => [d.category, Number(d.minutes)]))] as const;
       }),
     ),
   );
-  const hours: WeekHours[] = programs.map((p) => {
+  const hours: WeekHours[] = residencies.map((p) => {
     const saved = entries.filter((e) => e.residency_id === p.id);
     const states = saved.map((e) => e.state);
     const state = states.includes("approved") ? "approved" : states.includes("submitted") ? "submitted" : saved.length ? "draft" : null;
     const savedHours = (id: string) => Number(saved.find((e) => e.time_category_id === id)?.hours ?? 0);
     return {
       residencyId: p.id,
-      programName: p.name,
+      residencyName: p.name,
       // Approved weeks show what was approved; otherwise what's documented now.
       hours: categories.map((c) => ({
         name: c.name,
@@ -273,5 +273,5 @@ export async function loadWeek(personId: string, anyDay: string): Promise<Week> 
     ((reflectionRes.data ?? []) as { residency_id: string; highlights: string; challenges: string }[]).map((r) => [r.residency_id, { highlights: r.highlights, challenges: r.challenges }]),
   );
 
-  return { monday, sunday, month, today, programs, siteById, led, ledPast, ledFuture, playedNotLed, types, residents, activities, names, colleagues, lengths, last, progress, hours, reflections };
+  return { monday, sunday, month, today, residencies: residencies, siteById, led, ledPast, ledFuture, playedNotLed, types, residents, activities, names, colleagues, lengths, last, progress, hours, reflections };
 }
