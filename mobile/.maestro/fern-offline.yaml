@@ -64,7 +64,8 @@ tags:
 - extendedWaitUntil:
     visible: "Saved on this phone\\. It sends by itself when you're back online\\."
     timeout: 20000
-- assertVisible: "Saved on this phone: .*Phone Test T\\..*"
+- scrollUntilVisible:
+    element: "Saved on this phone: .*Phone Test T\\..*"
 - takeScreenshot: fern-offline-0-saved-on-phone
 
 # My week lists it under "Not sent yet".

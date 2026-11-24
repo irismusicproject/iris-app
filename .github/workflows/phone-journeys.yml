@@ -2,37 +2,42 @@ name: Phone journeys (Android emulator, staging)
 
 # Drives the real Android app with Maestro (mobile/.maestro/*.yaml), free on
 # GitHub's machines instead of Expo's paid cloud (Ryan, Nov 24, 2026):
-#  1. build the app from this commit, pointed at STAGING (fake data);
-#  2. get staging ready (mobile/.maestro/prepare-staging.mjs, public key only);
-#  3. start an Android emulator and run the flows; screenshots are uploaded.
-# The website side of the same promises is in e2e/ (docs/ACCEPTANCE.md).
+#  1. build the app from this commit, pointed at STAGING (fake data), or
+#     reuse the last build when the app's code hasn't changed;
+#  2. get staging ready (mobile/.maestro/prepare-*.mjs, public key only);
+#  3. start an Android emulator and run every journey; a failure doesn't
+#     stop the rest, and the summary lists every journey that failed;
+#  4. the website halves on staging (Dex, every PDF). Screenshots are uploaded.
+# The website side of the same promises is in e2e/ (docs/ACCEPTANCE.md);
+# the personas are in docs/PERSONAS.md.
 #
-# Runs on pull requests that change the phone app, and on demand.
+# WHEN IT RUNS (Ryan, Nov 24, 2026: a 35-minute run on every push was too
+# slow): every night on main, on request (Actions -> Run workflow, any
+# branch), and on a pull request when it's given the "phone-tests" label
+# (remove and add the label to run it again). Run it before every Release.
 # Needs: repository variables STAGING_SUPABASE_URL and
-# STAGING_SUPABASE_PUBLISHABLE_KEY (both public by design) and the secret
-# STAGING_TEST_PASSWORD (the fake people's shared password).
+# STAGING_SUPABASE_PUBLISHABLE_KEY (both public by design) and the secrets
+# STAGING_TEST_PASSWORD and VERCEL_AUTOMATION_BYPASS_SECRET.
 
 on:
-  pull_request:
-    paths:
-      - "mobile/**"
-      - "src/shared/**"
-      - ".github/workflows/phone-journeys.yml"
-      - "e2e/staging-journeys/**"
-      - "playwright.staging-journeys.config.ts"
+  schedule:
+    - cron: "30 8 * * *" # 3:30 am Eastern, after the overnight website tests
   workflow_dispatch:
+  pull_request:
+    types: [labeled]
 
 permissions:
   contents: read
 
 concurrency:
-  group: phone-journeys-staging # one at a time: the flows change staging's fake data
+  group: phone-journeys-staging # one at a time: the journeys change staging's fake data
   cancel-in-progress: false
 
 jobs:
   android:
+    if: github.event_name != 'pull_request' || github.event.label.name == 'phone-tests'
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 75
     defaults:
       run:
         working-directory: mobile
@@ -41,7 +46,7 @@ jobs:
       EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.STAGING_SUPABASE_PUBLISHABLE_KEY }}
       EXPO_PUBLIC_IRIS_ENVIRONMENT: staging
       STAGING_TEST_PASSWORD: ${{ secrets.STAGING_TEST_PASSWORD }}
-      # Fern (docs/PERSONAS.md): her journeys write this run's id into their notes.
+      # Fern and Violet (docs/PERSONAS.md): their journeys write this run's id into their notes.
       MAESTRO_FERN_EMAIL: fern.flute@example.com
       MAESTRO_VIOLET_EMAIL: violet.viola@example.com
       MAESTRO_RUN: ${{ github.run_id }}-${{ github.run_attempt }}
@@ -52,18 +57,38 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: mobile/package-lock.json
+      - run: npm ci
+
+      # The app build takes about 15 minutes, but most runs change only the
+      # journeys. Reuse the last build of exactly this app code (the key is
+      # a fingerprint of everything that goes into the app).
+      - name: Reuse the app build if the app hasn't changed
+        id: apk
+        uses: actions/cache@v4
+        with:
+          path: mobile/android/app/build/outputs/apk/release/app-release.apk
+          key: apk-staging-v1-${{ hashFiles('mobile/src/**', 'mobile/assets/**', 'mobile/app.json', 'mobile/eas.json', 'mobile/package-lock.json', 'mobile/metro.config.js', 'mobile/tsconfig.json', 'src/shared/**') }}
       - uses: actions/setup-java@v4
+        if: steps.apk.outputs.cache-hit != 'true'
         with:
           distribution: temurin
           java-version: 17
-      - run: npm ci
-
+      - name: Keep Gradle's downloads between runs
+        if: steps.apk.outputs.cache-hit != 'true'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('mobile/package-lock.json') }}
+          restore-keys: gradle-
       - name: Build the app (release build, this commit's code, no over-the-air updates)
+        if: steps.apk.outputs.cache-hit != 'true'
         run: |
           npx expo prebuild --platform android --no-install
           # Test this commit's code, not the latest published update.
           sed -i 's#android:name="expo.modules.updates.ENABLED" android:value="true"#android:name="expo.modules.updates.ENABLED" android:value="false"#' android/app/src/main/AndroidManifest.xml
-          cd android && ./gradlew assembleRelease --no-daemon -q
+          cd android && ./gradlew assembleRelease -q
           ls -la app/build/outputs/apk/release/
 
       - name: Get staging ready (fake data)
@@ -71,7 +96,7 @@ jobs:
           node .maestro/prepare-staging.mjs | tee -a "$GITHUB_ENV"
           # Dex: a documented date to change on the phone, then check on the website.
           PHONE_TIME_ZONE=America/Phoenix node .maestro/prepare-dex.mjs | tee -a "$GITHUB_ENV"
-          # Gus: three draft dates he plays in a month open for the team.
+          # Gus: two draft dates he plays in a month open for the team.
           node .maestro/prepare-gus.mjs | tee -a "$GITHUB_ENV"
           echo "MAESTRO_PASSWORD=$STAGING_TEST_PASSWORD" >> "$GITHUB_ENV"
 
@@ -87,6 +112,22 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
+      # Google's download of the emulator sometimes arrives broken ("Error
+      # reading Zip content", Nov 24). Install it here, retrying, so the next
+      # step finds it already in place.
+      - name: Install the Android emulator (retries a broken download)
+        working-directory: .
+        run: |
+          SDK="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          for i in 1 2 3; do
+            yes | "$SDK" --install emulator "system-images;android-34;google_apis;x86_64" > /dev/null && exit 0
+            echo "download failed (try $i of 3); retrying"; sleep 15
+          done
+          exit 1
+
+      # Every journey runs even if an earlier one fails; each failure is
+      # written to failed-journeys.txt and listed at the end. Steps that clean
+      # up staging or the phone (Gus's cleanup, Violet's clock) always run.
       - name: Run the phone journeys on an Android emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -97,35 +138,37 @@ jobs:
           # Arizona time, like Fern's building (Splendido): "Today" on the phone comes from its clock.
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -timezone America/Phoenix
           script: |
+            rm -f failed-journeys.txt
             adb install -r android/app/build/outputs/apk/release/app-release.apk
-            maestro test .maestro/musician-tour.yaml --format junit --output maestro-tour.xml --test-output-dir maestro-output
-            maestro test .maestro/cant-play.yaml --format junit --output maestro-cant-play.xml --test-output-dir maestro-output
-            # Fern (docs/PERSONAS.md): no screen lock first (nothing kept), then a PIN and the basement with no signal.
-            maestro test .maestro/fern-no-lock.yaml --format junit --output maestro-fern-no-lock.xml --test-output-dir maestro-output
+            maestro test .maestro/musician-tour.yaml --format junit --output maestro-tour.xml --test-output-dir maestro-output || echo "Musician's tour" >> failed-journeys.txt
+            maestro test .maestro/cant-play.yaml --format junit --output maestro-cant-play.xml --test-output-dir maestro-output || echo "I can't play" >> failed-journeys.txt
+            # Fern: no screen lock first (nothing kept), then a PIN and the basement with no signal.
+            maestro test .maestro/fern-no-lock.yaml --format junit --output maestro-fern-no-lock.xml --test-output-dir maestro-output || echo "Fern, no screen lock" >> failed-journeys.txt
             adb shell locksettings set-pin 1111
             adb shell svc power stayon true
-            maestro test .maestro/fern-offline.yaml --format junit --output maestro-fern-offline.xml --test-output-dir maestro-output
-            node .maestro/check-offline-sent.mjs
-            # Dex (docs/PERSONAS.md), phone half; the website half is the next step.
-            maestro test .maestro/dex-phone.yaml --format junit --output maestro-dex-phone.xml --test-output-dir maestro-output && touch dex-phone-done
-            # Violet (docs/PERSONAS.md): logs with no signal, then the phone's clock jumps 15 days (O8: 14), then back with signal.
-            maestro test .maestro/violet-away-1.yaml --format junit --output maestro-violet-1.xml --test-output-dir maestro-output
+            maestro test .maestro/fern-offline.yaml --format junit --output maestro-fern-offline.xml --test-output-dir maestro-output || echo "Fern, offline" >> failed-journeys.txt
+            node .maestro/check-offline-sent.mjs || echo "Fern, what reached staging" >> failed-journeys.txt
+            # Dex, phone half; the website half is the next step.
+            maestro test .maestro/dex-phone.yaml --format junit --output maestro-dex-phone.xml --test-output-dir maestro-output && touch dex-phone-done || echo "Dex, phone" >> failed-journeys.txt
+            # Violet: logs with no signal, then the phone's clock jumps 15 days (O8: 14), then back with signal.
+            maestro test .maestro/violet-away-1.yaml --format junit --output maestro-violet-1.xml --test-output-dir maestro-output || echo "Violet, part 1" >> failed-journeys.txt
             adb root && adb wait-for-device
             adb shell settings put global auto_time 0
-            adb shell date "$(TZ=America/Phoenix date -d '+15 days' +%m%d%H%M%Y.%S)"
-            maestro test .maestro/violet-away-2.yaml --format junit --output maestro-violet-2.xml --test-output-dir maestro-output
+            adb shell date "$(TZ=America/Phoenix date -d '+15 days' +%m%d%H%M%Y.%S)" || echo "Violet, moving the clock" >> failed-journeys.txt
+            maestro test .maestro/violet-away-2.yaml --format junit --output maestro-violet-2.xml --test-output-dir maestro-output || echo "Violet, part 2" >> failed-journeys.txt
             adb shell date "$(TZ=America/Phoenix date +%m%d%H%M%Y.%S)"
             adb shell settings put global auto_time 1
-            maestro test .maestro/violet-away-3.yaml --format junit --output maestro-violet-3.xml --test-output-dir maestro-output
-            node .maestro/check-offline-sent.mjs --email "$MAESTRO_VIOLET_EMAIL" --expect away=1
-            # Gus (docs/PERSONAS.md): double taps, the season count, a leader swap. Cleanup runs even if the journey fails.
-            maestro test .maestro/gus-edges.yaml --format junit --output maestro-gus.xml --test-output-dir maestro-output || { node .maestro/prepare-gus.mjs --cleanup; exit 1; }
-            node .maestro/prepare-gus.mjs --cleanup
-            mkdir -p shots/normal-text && mv *.png shots/normal-text/
-            # Vera (docs/PERSONAS.md): the same tour with the phone's text at its largest.
+            maestro test .maestro/violet-away-3.yaml --format junit --output maestro-violet-3.xml --test-output-dir maestro-output || echo "Violet, part 3" >> failed-journeys.txt
+            node .maestro/check-offline-sent.mjs --email "$MAESTRO_VIOLET_EMAIL" --expect away=1 || echo "Violet, what reached staging" >> failed-journeys.txt
+            # Gus: double taps, the season count, a leader swap. The cleanup always runs.
+            maestro test .maestro/gus-edges.yaml --format junit --output maestro-gus.xml --test-output-dir maestro-output || echo "Gus" >> failed-journeys.txt
+            node .maestro/prepare-gus.mjs --cleanup || echo "Gus, cleanup" >> failed-journeys.txt
+            mkdir -p shots/normal-text && (mv *.png shots/normal-text/ 2>/dev/null || true)
+            # Vera: the same tour with the phone's text at its largest.
             adb shell settings put system font_scale 2.0
-            maestro test .maestro/musician-tour.yaml --format junit --output maestro-tour-large-text.xml --test-output-dir maestro-output/large-text
-            mkdir -p shots/large-text && mv *.png shots/large-text/
+            maestro test .maestro/musician-tour.yaml --format junit --output maestro-tour-large-text.xml --test-output-dir maestro-output/large-text || echo "Vera, largest text" >> failed-journeys.txt
+            mkdir -p shots/large-text && (mv *.png shots/large-text/ 2>/dev/null || true)
+            if [ -s failed-journeys.txt ]; then echo "Failed journeys:"; cat failed-journeys.txt; exit 1; else echo "Every phone journey passed."; fi
 
       # The website halves, on the real staging deployment: Dex (the number
       # from the phone shows, then the original goes back; runs even if a
@@ -142,6 +185,22 @@ jobs:
           npx playwright install --with-deps chromium
           npx playwright test -c playwright.staging-journeys.config.ts
 
+      # One summary on the run's page: every journey and whether it passed.
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## Phone journeys"
+            if [ -s failed-journeys.txt ]; then
+              echo "**Failed:**"; sed 's/^/- /' failed-journeys.txt
+            elif [ -f maestro-tour.xml ]; then
+              echo "Every phone journey passed."
+            else
+              echo "The journeys didn't run (see the emulator step)."
+            fi
+            echo; echo "Screenshots: the phone-journeys artifact below."
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -151,4 +210,5 @@ jobs:
             mobile/maestro-output/
             mobile/shots/
             mobile/*.png
+            mobile/failed-journeys.txt
           retention-days: 14

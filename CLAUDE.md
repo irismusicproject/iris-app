@@ -242,6 +242,12 @@ with **[Lauren's side]** or **[Ryan's side]**.
 - **Tests are Ryan's side** (see Division of labor): `npm run test:db`
   (permission tests) and `npm run test:e2e` (browser tests). Ryan's side adds
   tests for new tables and screens once Lauren approves a feature.
+- **Phone journeys** (Android, against staging, about 35 minutes;
+  `.github/workflows/phone-journeys.yml`, personas in `docs/PERSONAS.md`)
+  run nightly on `main`, on request, and on a pull request given the
+  `phone-tests` label. Don't run them for every small change: develop a
+  journey against the simulator first, then confirm on GitHub. Run them
+  before every Release.
 - **Databases (Ryan owns these):** pull requests never touch a real database.
   Merging a migration to `main` updates **staging** automatically; **production**
   gets it only when Ryan runs **Release** (database first, then the live site). Never edit a migration

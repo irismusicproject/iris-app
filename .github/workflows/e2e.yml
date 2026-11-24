@@ -27,7 +27,11 @@ jobs:
         with:
           version: 2.122.1
       - name: Start local Supabase
-        run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,realtime,storage-api,postgres-meta,supavisor
+        # Retried once: a container sometimes fails to start on GitHub's
+        # machines ("failed to set up container networking", Nov 24).
+        run: |
+          EXCLUDE=studio,imgproxy,edge-runtime,logflare,vector,realtime,storage-api,postgres-meta,supavisor
+          supabase start -x "$EXCLUDE" || { echo "retrying once"; supabase stop --no-backup; supabase start -x "$EXCLUDE"; }
       - name: Pass local Supabase settings to the app and tests
         run: |
           eval "$(supabase status -o env)"
