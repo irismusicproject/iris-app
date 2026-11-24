@@ -255,7 +255,7 @@ export const styles = StyleSheet.create({
   tagTextTodo: { color: colors.orange },
   stepBtn: { width: 52, height: 52, borderRadius: 26, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.white, alignItems: "center", justifyContent: "center" },
   stepText: { fontSize: 26, color: colors.iris, fontWeight: "600" },
-  row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
+  row: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 8 },
   divider: { height: 1, backgroundColor: colors.border, marginVertical: 4 },
 });
 

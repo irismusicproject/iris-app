@@ -21,7 +21,7 @@ function AccountButton() {
   const router = useRouter();
   return (
     <Pressable onPress={() => router.push("/more")} accessibilityRole="button" accessibilityLabel="Account and settings" hitSlop={12} style={{ paddingHorizontal: 16 }}>
-      <Text style={{ color: colors.iris, fontSize: 15, fontWeight: "600" }}>Account</Text>
+      <Text maxFontSizeMultiplier={1.3} style={{ color: colors.iris, fontSize: 15, fontWeight: "600" }}>Account</Text>
     </Pressable>
   );
 }
@@ -50,6 +50,8 @@ export default function TabsLayout() {
         tabBarLabelStyle: { fontSize: 13, fontWeight: "600" },
         headerTintColor: colors.iris,
         headerTitleStyle: { fontWeight: "700" },
+        // Header titles stay one size, as in iOS's own apps; at the largest text sizes they ran into "Account".
+        headerTitleAllowFontScaling: false,
         sceneStyle: { backgroundColor: colors.page },
       }}
     >

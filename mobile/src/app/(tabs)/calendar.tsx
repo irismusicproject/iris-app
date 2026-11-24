@@ -96,7 +96,7 @@ export default function Calendar() {
         <LinkButton label="← Previous" onPress={() => setMonth(shiftMonth(month, -1))} />
         <LinkButton label="Next →" onPress={() => setMonth(shiftMonth(month, 1))} />
       </View>
-      <Text style={{ fontSize: 24, fontWeight: "700", color: colors.text }}>{formatMonth(month)}</Text>
+      <Text maxFontSizeMultiplier={1.5} style={{ fontSize: 24, fontWeight: "700", color: colors.text }}>{formatMonth(month)}</Text>
       {problem && <Problem>{problem}</Problem>}
       {!rows && !problem && <Loading />}
 
@@ -104,11 +104,12 @@ export default function Calendar() {
         <Card>
           <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
             {WEEKDAYS.map((w, i) => (
-              <Text key={`h${i}`} style={{ width: `${100 / 7}%`, textAlign: "center", fontSize: 12, fontWeight: "700", color: colors.muted, paddingVertical: 4 }}>{w}</Text>
+              <Text key={`h${i}`} maxFontSizeMultiplier={1.4} style={{ width: `${100 / 7}%`, textAlign: "center", fontSize: 12, fontWeight: "700", color: colors.muted, paddingVertical: 4 }}>{w}</Text>
             ))}
+            {/* Day numbers grow to 1.4x at most: at the largest text sizes seven to a row overlap (Vera, docs/PERSONAS.md). */}
             {cells.map((c, i) => (
-              <View key={i} style={{ width: `${100 / 7}%`, height: 42, alignItems: "center", justifyContent: "center", borderRadius: 10, backgroundColor: c?.off ? "#FDF3E7" : c?.mine ? colors.irisSoft : "transparent" }}>
-                <Text style={{ fontSize: 14, fontWeight: c?.mine || c?.off ? "700" : "400", color: c?.off ? colors.orange : c?.mine ? colors.iris : colors.text }}>{c?.day ?? ""}</Text>
+              <View key={i} style={{ width: `${100 / 7}%`, minHeight: 42, alignItems: "center", justifyContent: "center", borderRadius: 10, backgroundColor: c?.off ? "#FDF3E7" : c?.mine ? colors.irisSoft : "transparent" }}>
+                <Text maxFontSizeMultiplier={1.4} style={{ fontSize: 14, fontWeight: c?.mine || c?.off ? "700" : "400", color: c?.off ? colors.orange : c?.mine ? colors.iris : colors.text }}>{c?.day ?? ""}</Text>
               </View>
             ))}
           </View>

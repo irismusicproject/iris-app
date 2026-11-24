@@ -88,6 +88,11 @@ jobs:
             adb install -r android/app/build/outputs/apk/release/app-release.apk
             maestro test .maestro/musician-tour.yaml --format junit --output maestro-tour.xml --test-output-dir maestro-output
             maestro test .maestro/cant-play.yaml --format junit --output maestro-cant-play.xml --test-output-dir maestro-output
+            mkdir -p shots/normal-text && mv *.png shots/normal-text/
+            # Vera (docs/PERSONAS.md): the same tour with the phone's text at its largest.
+            adb shell settings put system font_scale 2.0
+            maestro test .maestro/musician-tour.yaml --format junit --output maestro-tour-large-text.xml --test-output-dir maestro-output/large-text
+            mkdir -p shots/large-text && mv *.png shots/large-text/
 
       - uses: actions/upload-artifact@v4
         if: always()
@@ -96,5 +101,6 @@ jobs:
           path: |
             mobile/maestro-*.xml
             mobile/maestro-output/
+            mobile/shots/
             mobile/*.png
           retention-days: 14
