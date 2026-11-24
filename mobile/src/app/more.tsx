@@ -60,6 +60,11 @@ export default function More() {
             const out = async () => {
               await wipe();
               await supabase.auth.signOut();
+              // Account sits on top of the tabs: without this the phone stayed
+              // on a blank Account screen after logging out (found by the
+              // phone journey test, Nov 24). Close the stack, go to sign-in.
+              if (router.canDismiss()) router.dismissAll();
+              router.replace("/sign-in");
             };
             if (!outbox.items.length) return out();
             Alert.alert(
