@@ -37,11 +37,11 @@ a fake person (`persona+musician@example.com`, `persona+point-person@…`,
 |---|---|---|---|---|---|
 | C1 | A musician marks "I can't play" on a draft date they play, while the month is open for the team; no approval; it counts at once | ✅ month-actions (refusals) | ✅ month-cycle | — | |
 | C2 | Before the month is opened, or after it's confirmed, "I can't play" isn't offered | ✅ month-actions | ✅ month-cycle | — | Finding (Nov 24): before opening, musicians see the earlier "Done reviewing" steps with no word about the cycle (v0.46 by design); asked on #30 |
-| C3 | The musician's own calendar shows the date as "can't play" (phone: orange) | — | — | — | Ryan, Nov 24: didn't turn orange (cause unknown; see #30) |
+| C3 | The musician's own calendar shows the date as "can't play" (phone: orange) | — | — | — | ✅ Claude, Nov 24 (iOS simulator, Evergreen House, Dec 1): orange tile and "You can't play" badge. Ryan's earlier miss: no month on staging had been opened for the team, so the button wasn't offered |
 | C4 | The point person sees them as not playing that date (website: struck through) and gets an email | ✅ email queued | ✅ month-cycle | — | |
 | C5 | The point person gets a task: find cover or make it "No Program" | — | — | — | |
 | C6 | The calendar shows how many dates the musician has marked this season | — | — | — | |
-| C7 | The musician can undo it while the month is still open | — | ✅ month-cycle | — | |
+| C7 | The musician can undo it while the month is still open | — | ✅ month-cycle | — | ✅ Claude, Nov 24 (iOS simulator) |
 
 ## 3. Leader swaps and change requests (v0.41, v0.43)
 
@@ -79,7 +79,7 @@ a fake person (`persona+musician@example.com`, `persona+point-person@…`,
 | # | Promise | DB | Web | Phone | Hand |
 |---|---|---|---|---|---|
 | P1 | Three tabs: To do, Today, Calendar; My week and Account one tap away | — | n/a | — | |
-| P2 | Sign in by password or emailed code; the sign-in is kept encrypted on the phone | — | ✅ auth (web) | — | Ryan, Nov 22 ✅ (password) |
+| P2 | Sign in by password or emailed code; the sign-in is kept encrypted on the phone | — | ✅ auth (web) | — | Ryan, Nov 22 ✅ (password, Android); Claude, Nov 24 ✅ (password, iPhone and iPad simulators) |
 | P3 | Today: document a program, log relationship building, "I wasn't there" | ✅ (rules) | n/a | — | |
 | P4 | Date details show who's playing with instruments and phone numbers, to the program's people only | ✅ phone-calls | — | — | |
 | P5 | My week shows the calculated hours and Submit my week, with the same rules as the website | ✅ money-scenarios | — | — | |
