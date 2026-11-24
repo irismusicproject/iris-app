@@ -48,10 +48,11 @@ test("point person opens the month; a musician marks 'I can't play'; the point p
   const path = `/residencies/${res.id}/month/${month}`;
   const cantPlay = (p: Page) => p.getByRole("button", { name: "I can't play this date" });
 
-  // C2: before the month is open, the musician isn't offered "I can't play"
-  // and the page says why (the point person opens it).
+  // C2: before the month is open, the musician isn't offered "I can't play".
+  // (v0.46: a month not opened through the cycle shows the earlier review
+  // steps instead, with no word about the cycle; a design question on #30.)
   const musPage = await as(browser, mus, path);
-  await expect(musPage.getByText(/isn't open for the team/)).toBeVisible();
+  await expect(musPage.getByRole("button", { name: "Done reviewing my dates" })).toBeVisible();
   await musPage.getByRole("button", { name: "More" }).first().click();
   await expect(cantPlay(musPage)).toHaveCount(0);
 
