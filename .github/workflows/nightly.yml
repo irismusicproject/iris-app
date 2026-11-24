@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
-      STAGING_URL: ${{ inputs.staging_url || secrets.STAGING_URL || 'https://iris-app-git-main-rhearty1-5601s-projects.vercel.app' }}
+      STAGING_URL: ${{ inputs.staging_url || secrets.STAGING_URL || 'https://staging.irismusicproject.org' }}
       STAGING_TEST_PASSWORD: ${{ secrets.STAGING_TEST_PASSWORD }}
       VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
     steps:

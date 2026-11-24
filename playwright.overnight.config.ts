@@ -9,7 +9,7 @@ import { defineConfig, devices } from "@playwright/test";
 //     npx playwright test -c playwright.overnight.config.ts
 
 const STAGING_URL = (
-  process.env.STAGING_URL || "https://iris-app-git-main-rhearty1-5601s-projects.vercel.app"
+  process.env.STAGING_URL || "https://staging.irismusicproject.org"
 ).replace(/\/+$/, "");
 
 export default defineConfig({
