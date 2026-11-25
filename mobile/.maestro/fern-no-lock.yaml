@@ -39,26 +39,36 @@ tags:
 
 - scrollUntilVisible:
     element: "Log an activity"
+    centerElement: true
+    timeout: 60000
 - tapOn: "Log an activity"
 - tapOn: ".*Splendido.*"
 - scrollUntilVisible:
     element: "30 min"
+    centerElement: true
+    timeout: 60000
 - tapOn: "30 min"
 - scrollUntilVisible:
     element:
       id: "log-new-residents"
+    centerElement: true
+    timeout: 60000
 - tapOn:
     id: "log-new-residents"
 - inputText: "Phone Test T."
 - scrollUntilVisible:
     element:
       id: "log-note"
+    centerElement: true
+    timeout: 60000
 - tapOn:
     id: "log-note"
 - inputText: "[phone test ${MAESTRO_RUN}] no lock"
 - hideKeyboard
 - scrollUntilVisible:
     element: "Log activity"
+    centerElement: true
+    timeout: 60000
 - tapOn: "Log activity"
 - extendedWaitUntil:
     visible: "No connection\\. Turn on a screen lock.*"

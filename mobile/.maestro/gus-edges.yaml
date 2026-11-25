@@ -45,9 +45,13 @@ tags:
       # Date 1: a quick double tap.
       - scrollUntilVisible:
           element: "${MAESTRO_GUS_DAY1}.*"
+          centerElement: true
+          timeout: 60000
       - tapOn: "${MAESTRO_GUS_DAY1}.*"
       - scrollUntilVisible:
           element: "I can't play this date"
+          centerElement: true
+          timeout: 60000
       - tapOn:
           text: "I can't play this date"
           repeat: 2
@@ -63,9 +67,13 @@ tags:
       # (made while he still plays it; marking "can't play" hides the Leader card).
       - scrollUntilVisible:
           element: "${MAESTRO_GUS_DAY3}.*"
+          centerElement: true
+          timeout: 60000
       - tapOn: "${MAESTRO_GUS_DAY3}.*"
       - scrollUntilVisible:
           element: "Send to the point person"
+          centerElement: true
+          timeout: 60000
       - tapOn: "Gus"
       - tapOn:
           text: "Send to the point person"
@@ -75,15 +83,21 @@ tags:
       # Leader card's lasting text says the proposal is in.
       - scrollUntilVisible:
           element: "You've proposed a leader swap for this date\\..*"
+          centerElement: true
+          timeout: 60000
       - takeScreenshot: gus-2-swap-proposed
       - back
 
       # Date 2, then: he marks it too, and the count goes up.
       - scrollUntilVisible:
           element: "${MAESTRO_GUS_DAY2}.*"
+          centerElement: true
+          timeout: 60000
       - tapOn: "${MAESTRO_GUS_DAY2}.*"
       - scrollUntilVisible:
           element: "I can't play this date"
+          centerElement: true
+          timeout: 60000
       - tapOn: "I can't play this date"
       - extendedWaitUntil:
           visible: "${MAESTRO_GUS_MARKED2}"
@@ -94,9 +108,13 @@ tags:
       # Undo both marks.
       - scrollUntilVisible:
           element: "${MAESTRO_GUS_DAY1}.*"
+          centerElement: true
+          timeout: 60000
       - tapOn: "${MAESTRO_GUS_DAY1}.*"
       - scrollUntilVisible:
           element: "Marked: I can't play \\(tap to undo\\)"
+          centerElement: true
+          timeout: 60000
       - tapOn: "Marked: I can't play \\(tap to undo\\)"
       - extendedWaitUntil:
           visible: "Undone: you're playing it again\\."
@@ -104,9 +122,13 @@ tags:
       - back
       - scrollUntilVisible:
           element: "${MAESTRO_GUS_DAY2}.*"
+          centerElement: true
+          timeout: 60000
       - tapOn: "${MAESTRO_GUS_DAY2}.*"
       - scrollUntilVisible:
           element: "Marked: I can't play \\(tap to undo\\)"
+          centerElement: true
+          timeout: 60000
       - tapOn: "Marked: I can't play \\(tap to undo\\)"
       - extendedWaitUntil:
           visible: "Undone: you're playing it again\\."

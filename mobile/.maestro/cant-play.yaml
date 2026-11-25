@@ -33,10 +33,14 @@ tags:
       - tapOn: "Next →"
 - scrollUntilVisible:
     element: "${MAESTRO_DATE_DAY}.*"
+    centerElement: true
+    timeout: 60000
 - tapOn: "${MAESTRO_DATE_DAY}.*"
 # Below the fold on a small phone: scroll to it first.
 - scrollUntilVisible:
     element: "I can't play this date"
+    centerElement: true
+    timeout: 60000
 - tapOn: "I can't play this date"
 - assertVisible: "Marked\\..*can't play this season\\."
 - takeScreenshot: cant-play-1-date-marked
@@ -47,6 +51,8 @@ tags:
 - tapOn: "${MAESTRO_DATE_DAY}.*"
 - scrollUntilVisible:
     element: "Marked: I can't play \\(tap to undo\\)"
+    centerElement: true
+    timeout: 60000
 - tapOn: "Marked: I can't play \\(tap to undo\\)"
 - assertVisible: "Undone: you're playing it again."
 - takeScreenshot: cant-play-3-undone

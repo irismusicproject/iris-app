@@ -34,26 +34,36 @@ tags:
     timeout: 20000
 - scrollUntilVisible:
     element: "Log an activity"
+    centerElement: true
+    timeout: 60000
 - tapOn: "Log an activity"
 - tapOn: "Arbor Place"
 - scrollUntilVisible:
     element: "30 min"
+    centerElement: true
+    timeout: 60000
 - tapOn: "30 min"
 - scrollUntilVisible:
     element:
       id: "log-new-residents"
+    centerElement: true
+    timeout: 60000
 - tapOn:
     id: "log-new-residents"
 - inputText: "Phone Test V."
 - scrollUntilVisible:
     element:
       id: "log-note"
+    centerElement: true
+    timeout: 60000
 - tapOn:
     id: "log-note"
 - inputText: "[phone test ${MAESTRO_RUN}] away"
 - hideKeyboard
 - scrollUntilVisible:
     element: "Log activity"
+    centerElement: true
+    timeout: 60000
 - tapOn: "Log activity"
 - extendedWaitUntil:
     visible: "Saved on this phone\\. It sends by itself when you're back online\\."

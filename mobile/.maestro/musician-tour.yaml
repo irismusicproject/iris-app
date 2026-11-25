@@ -38,6 +38,7 @@ tags:
 - scrollUntilVisible:
     element: "Hours and submit"
     timeout: 60000
+    centerElement: true
 - assertVisible: "Hours and submit"
 - takeScreenshot: tour-1-my-week
 - back
@@ -56,14 +57,17 @@ tags:
       - scrollUntilVisible:
           element: ".*${MAESTRO_SOON_TITLE}.*"
           timeout: 60000
+          centerElement: true
       - tapOn: ".*${MAESTRO_SOON_TITLE}.*"
       - assertVisible: "Who's playing"
       - scrollUntilVisible:
           element: "Canceling today\\?"
           timeout: 60000
+          centerElement: true
       - scrollUntilVisible:
           element: "Call .*"
           timeout: 60000
+          centerElement: true
       - takeScreenshot: tour-2-canceling-today
       - back
 
@@ -76,21 +80,25 @@ tags:
 - scrollUntilVisible:
     element: "Stage 1 of 5: Team editing"
     timeout: 60000
+    centerElement: true
 - takeScreenshot: tour-3-month-stage
 
 # P4: a date's details show who's playing, with the leader marked.
 - scrollUntilVisible:
     element: "${MAESTRO_DATE_DAY}.*"
     timeout: 60000
+    centerElement: true
 - tapOn: "${MAESTRO_DATE_DAY}.*"
 - assertVisible: "Who's playing"
 - scrollUntilVisible:
     element: ".*· leading.*"
     timeout: 60000
+    centerElement: true
 - assertVisible: ".*· leading.*"
 - scrollUntilVisible:
     element: "You"
     timeout: 60000
+    centerElement: true
 - assertVisible: "You"
 - takeScreenshot: tour-4-date-details
 - back
@@ -100,7 +108,11 @@ tags:
 - scrollUntilVisible:
     element: "Log out"
     timeout: 60000
+    centerElement: true
 - tapOn: "Log out"
+# Signed out: the sign-in form's email box (the Log in button can be below
+# the fold at the largest text size).
 - extendedWaitUntil:
-    visible: "Log in"
+    visible:
+      id: "sign-in-email"
     timeout: 15000

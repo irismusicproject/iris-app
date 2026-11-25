@@ -30,10 +30,14 @@ tags:
       # The date he led, by its day ("Wednesday, November 18 · ...").
       - scrollUntilVisible:
           element: "${MAESTRO_DEX_DAY}.*"
+          centerElement: true
+          timeout: 60000
       - tapOn: "${MAESTRO_DEX_DAY}.*"
       - scrollUntilVisible:
           element:
             id: "doc-attendance"
+          centerElement: true
+          timeout: 60000
       - tapOn:
           id: "doc-attendance"
       - eraseText: 6
@@ -42,6 +46,8 @@ tags:
       - takeScreenshot: dex-0-attendance-changed
       - scrollUntilVisible:
           element: "Update"
+          centerElement: true
+          timeout: 60000
       - tapOn: "Update"
       # Saved: back on My week, the date still says Documented.
       - extendedWaitUntil:
