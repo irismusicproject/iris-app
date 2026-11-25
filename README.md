@@ -94,6 +94,11 @@ All under **Authentication**:
   - `NOTIFICATIONS_ENABLED=true`: only then do queued notifications (No Program, deadline reminders) go out. Until then they stay in the admin **Outbox** and are never sent later. Turn it on per environment, deliberately.
   - A message that keeps failing stops after **5 tries**; the Outbox shows why.
   - Staging (Vercel previews) sends as **Iris (staging)** from `staging@mail.irismusicproject.org`.
+- **Reminders run every hour** on Vercel's scheduler (**Vercel Schedules**): `vercel.json` → `schedules` → `notifications`, at the top of each hour, Eastern time (up to 15 minutes late on the Hobby plan). It calls a private function, `src/app/api/schedules/notifications/route.ts`, which has no public address, so it needs no password. Each run queues the reminders that are due (deadline reminders, missed deadlines, daily nudges, the monthly cycle's To do reminders; the database queues each one once) and then delivers the outbox under the rules above.
+  - **Production:** active from the first Release that includes it.
+  - **Staging:** Vercel creates preview schedules switched **off**. Turn it on once in Vercel → the project → **Schedules** → `notifications` → choose the `main` branch → **Enable**. Staging has no `RESEND_API_KEY`, so its reminders only reach the Outbox.
+  - **Run it now:** the same Schedules page → **Run Schedule**, then look at **Admin → Outbox**. The page also shows each run's history.
+  - **Rules tested by** `supabase/tests/reminders.test.mjs` (in `npm run test:db`), which pretends it's Monday noon, Tuesday evening and so on.
 - If you need a new key, create it in Resend under **API Keys** with **Sending access** for `mail.irismusicproject.org`, paste it into Supabase's SMTP password, test, then delete the old key.
 
 ## DNS records (Squarespace)

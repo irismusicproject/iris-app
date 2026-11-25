@@ -83,7 +83,7 @@ something fails.
 - **Vercel environment variables:** `NEXT_PUBLIC_SUPABASE_URL`,
   `NEXT_PUBLIC_SUPABASE_ANON_KEY` (Supabase's publishable key),
   `SUPABASE_SECRET_KEY` (Sensitive), `NEXT_PUBLIC_SITE_URL` (Production
-  only), `RESEND_API_KEY`, `NOTIFICATIONS_ENABLED`, `CRON_SECRET`.
+  only), `RESEND_API_KEY`, `NOTIFICATIONS_ENABLED`.
   Production holds production's values; Preview holds staging's.
 - **GitHub repository secrets:** `STAGING_TEST_PASSWORD` (the fake test
   accounts' password), `VERCEL_AUTOMATION_BYPASS_SECRET` (lets robots open
@@ -267,13 +267,13 @@ a later release.
   reminders, the partner calendar) through `src/lib/notify.ts`, which
   queues everything in an outbox table and sends only where
   `NOTIFICATIONS_ENABLED=true`. Staging sends as "Iris (staging)".
-- **Scheduled sending is not wired up yet.** `/api/cron/notifications`
-  delivers queued notices and reminders when called with
-  `Authorization: Bearer <CRON_SECRET>`, but no scheduler calls it:
-  `vercel.json` has no schedule, and no GitHub workflow calls it. Reminders
-  therefore go out only when something else triggers delivery. Choose a
-  scheduler (Vercel Schedules or a GitHub cron) before musicians depend on
-  reminders.
+- **Reminders run hourly on Vercel Schedules** (added Nov 25): `vercel.json`
+  points the `notifications` schedule at a private function,
+  `src/app/api/schedules/notifications/route.ts`, which only Vercel's
+  scheduler can call. Staging's copy of the schedule must be switched on
+  once in Vercel's Schedules page; production's is on from its first
+  release. README, "Email (Resend)", has the details and how to run it by
+  hand.
 
 ---
 
@@ -439,9 +439,9 @@ phone-journey run, and Lauren's go-ahead on issue #30.
 
 **Known gaps and open questions:**
 
-- **No scheduler calls `/api/cron/notifications`** (section 8), and
-  `NOTIFICATIONS_ENABLED` should stay off in production until Lauren wants
-  emails going out.
+- **Reminder emails are off on purpose.** The hourly schedule (section 8)
+  queues reminders, but `NOTIFICATIONS_ENABLED` stays off in production
+  until Lauren wants emails going out; until then they wait in the Outbox.
 - **Accessibility** findings from the overnight report, not yet posted for
   Lauren: brand orange fails contrast on white (about 170 elements), some
   links stand out by color alone, and one scrolling region can't be reached
