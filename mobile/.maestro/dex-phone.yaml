@@ -11,7 +11,7 @@ tags:
 ---
 - runFlow:
     when:
-      true: ${MAESTRO_DEX_DAY != ''}
+      true: ${!!MAESTRO_DEX_DAY}
     commands:
       - launchApp:
           clearState: true

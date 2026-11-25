@@ -52,7 +52,7 @@ tags:
 # the point person. Skipped when staging has no such date in the next two weeks.
 - runFlow:
     when:
-      true: ${MAESTRO_SOON_TITLE != ''}
+      true: ${!!MAESTRO_SOON_TITLE}
     commands:
       - scrollUntilVisible:
           element: ".*${MAESTRO_SOON_TITLE}.*"
@@ -86,6 +86,7 @@ tags:
 # P4: a date's details show who's playing, with the leader marked.
 - scrollUntilVisible:
     element: "${MAESTRO_DATE_DAY}.*"
+    speed: 15
     timeout: 60000
     centerElement: true
 - tapOn: "${MAESTRO_DATE_DAY}.*"

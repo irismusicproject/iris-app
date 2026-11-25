@@ -18,7 +18,7 @@ tags:
 ---
 - runFlow:
     when:
-      true: ${MAESTRO_GUS_DAY1 != ''}
+      true: ${!!MAESTRO_GUS_DAY1}
     commands:
       - launchApp:
           clearState: true
@@ -45,6 +45,7 @@ tags:
       # Date 1: a quick double tap.
       - scrollUntilVisible:
           element: "${MAESTRO_GUS_DAY1}.*"
+          speed: 15
           centerElement: true
           timeout: 60000
       - tapOn: "${MAESTRO_GUS_DAY1}.*"
@@ -67,6 +68,7 @@ tags:
       # (made while he still plays it; marking "can't play" hides the Leader card).
       - scrollUntilVisible:
           element: "${MAESTRO_GUS_DAY3}.*"
+          speed: 15
           centerElement: true
           timeout: 60000
       - tapOn: "${MAESTRO_GUS_DAY3}.*"
@@ -91,6 +93,7 @@ tags:
       # Date 2, then: he marks it too, and the count goes up.
       - scrollUntilVisible:
           element: "${MAESTRO_GUS_DAY2}.*"
+          speed: 15
           centerElement: true
           timeout: 60000
       - tapOn: "${MAESTRO_GUS_DAY2}.*"
@@ -108,6 +111,7 @@ tags:
       # Undo both marks.
       - scrollUntilVisible:
           element: "${MAESTRO_GUS_DAY1}.*"
+          speed: 15
           centerElement: true
           timeout: 60000
       - tapOn: "${MAESTRO_GUS_DAY1}.*"
@@ -122,6 +126,7 @@ tags:
       - back
       - scrollUntilVisible:
           element: "${MAESTRO_GUS_DAY2}.*"
+          speed: 15
           centerElement: true
           timeout: 60000
       - tapOn: "${MAESTRO_GUS_DAY2}.*"

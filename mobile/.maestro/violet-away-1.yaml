@@ -46,21 +46,38 @@ tags:
 # scrollUntilVisible always swipes from the middle of the screen. With two
 # programs the form is taller, and the middle lands on the Minutes box; a
 # swipe that starts on a text box doesn't scroll (Nov 25 run: 30 swipes, no
-# movement). Two swipes from lower down get the Minutes box out of the way.
+# movement). Swipes from lower down fling unpredictably far, so go all the
+# way to the bottom of the form, then come back up slowly to the field.
 - swipe:
     start: "50%, 85%"
     end: "50%, 30%"
 - swipe:
     start: "50%, 85%"
     end: "50%, 30%"
+- swipe:
+    start: "50%, 85%"
+    end: "50%, 30%"
+- waitForAnimationToEnd
 - scrollUntilVisible:
     element:
       id: "log-new-residents"
+    direction: UP
+    speed: 15
     centerElement: true
     timeout: 60000
 - tapOn:
     id: "log-new-residents"
 - inputText: "Phone Test V."
+- hideKeyboard
+# Back to the bottom (the note and the Log button are there), swiping from
+# below the residents box this time.
+- swipe:
+    start: "50%, 85%"
+    end: "50%, 30%"
+- swipe:
+    start: "50%, 85%"
+    end: "50%, 30%"
+- waitForAnimationToEnd
 - scrollUntilVisible:
     element:
       id: "log-note"
