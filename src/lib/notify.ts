@@ -1,4 +1,5 @@
 import "server-only";
+import { routeEmail } from "@/lib/email-redirect";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 // The one notification layer (CLAUDE.md, "Platform strategy"; DOMAIN-MODEL
@@ -44,8 +45,14 @@ export async function sendEmail(m: {
   attachments?: Attachment[];
   idempotencyKey?: string;
 }): Promise<void> {
-  const to = Array.isArray(m.to) ? m.to : [m.to];
-  const cc = (m.cc ?? []).filter((e) => !to.includes(e));
+  // Staging sends only to its test inbox (lib/email-redirect.ts).
+  const routed = routeEmail(
+    { to: Array.isArray(m.to) ? m.to : [m.to], cc: m.cc ?? [], subject: m.subject, text: m.text },
+    { vercelEnv: process.env.VERCEL_ENV, redirectTo: process.env.STAGING_EMAIL_TO },
+  );
+  if (!routed.send) throw new Error(routed.reason);
+  const { to, subject, text } = routed.email;
+  const cc = routed.email.cc.filter((e) => !to.includes(e));
   const files = (m.attachments ?? []).map((a) => ({ filename: a.filename, content: Buffer.from(a.content).toString("base64") }));
   const resendKey = process.env.RESEND_API_KEY;
   if (resendKey) {
@@ -60,8 +67,8 @@ export async function sendEmail(m: {
         from: fromAddress(),
         to,
         ...(cc.length ? { cc } : {}),
-        subject: m.subject,
-        text: m.text,
+        subject,
+        text,
         ...(files.length ? { attachments: files } : {}),
       }),
     });
@@ -77,8 +84,8 @@ export async function sendEmail(m: {
         From: { Email: from[2], Name: from[1] },
         To: to.map((Email) => ({ Email })),
         Cc: cc.map((Email) => ({ Email })),
-        Subject: m.subject,
-        Text: m.text,
+        Subject: subject,
+        Text: text,
         Attachments: files.map((f) => ({ Filename: f.filename, Content: f.content, ContentType: "application/pdf" })),
       }),
     });
