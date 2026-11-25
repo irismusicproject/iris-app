@@ -105,7 +105,17 @@ jobs:
         if: steps.cfg.outputs.ok == 'true'
         run: |
           title="Overnight test report $(TZ=America/New_York date +%Y-%m-%d)"
-          url=$(gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body-file overnight-results/report.md)
+          # GitHub's REST interface, up to three tries: the GraphQL one behind
+          # "gh issue create" failed with "Something went wrong" (Nov 25).
+          url=""
+          for i in 1 2 3; do
+            url=$(gh api "repos/$GITHUB_REPOSITORY/issues" -f title="$title" -F body=@overnight-results/report.md --jq .html_url) && break
+            echo "posting failed (try $i of 3); retrying in 20 s"; sleep 20
+          done
+          if [ -z "$url" ]; then
+            echo "::error::Couldn't post the report to GitHub. It's in the overnight-results artifact of this run."
+            exit 1
+          fi
           echo "Report: $url"
           echo "Report posted: $url" >> "$GITHUB_STEP_SUMMARY"
         env:

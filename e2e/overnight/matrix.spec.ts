@@ -155,6 +155,15 @@ for (const persona of [SIGNED_OUT, ...PERSONAS]) {
           visit.outcome = "error";
           visit.note = redact((e as Error).message.split("\n")[0]).slice(0, 200);
         }
+        // A visit that ends on "not found" already shows as 🚫 404 in the
+        // matrix (e.g. staff opening a contractor's invoice address). The
+        // page's own 404 isn't a second problem: drop the document request
+        // and the browser's generic "Failed to load resource ... 404" for it.
+        if (visit.outcome === "not-found") {
+          const own = new URL(route.url, "http://x").pathname;
+          failed = failed.filter((f) => !(f.includes(` ${own} -> 404`)));
+          consoleErrors = consoleErrors.filter((c) => !/Failed to load resource: the server responded with a status of 404/.test(c));
+        }
         visit.console_errors = [...new Set(consoleErrors)];
         visit.failed_requests = [...new Set(failed)];
         result.visits.push(visit);
