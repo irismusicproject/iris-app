@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 import { requirePerson } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { ACTIVITY_KINDS, RESIDENT_INVOLVEMENTS, residentsRequired, type ActivityKind, type ResidentInvolvement } from "@/shared/domain/documentation";
+import { formText } from "@/shared/domain/form";
 
 export type DocResult = { status: "idle" | "saved" | "error"; message?: string; errors?: Record<string, string>; savedAt?: number };
 const isId = (v: unknown): v is string => typeof v === "string" && /^[0-9a-f-]{36}$/i.test(v);
@@ -59,7 +60,7 @@ export async function logActivity(_prev: DocResult, form: FormData): Promise<Doc
   const detailed = form.get("detailed") === "1";
   const startTime = String(form.get("start_time") ?? "");
   const endTime = String(form.get("end_time") ?? "");
-  const note = String(form.get("note") ?? "").trim();
+  const note = formText(form, "note");
   const toMin = (t: string) => (/^\d{2}:\d{2}$/.test(t) ? Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5)) : null);
   const minutes = detailed && toMin(startTime) != null && toMin(endTime) != null ? toMin(endTime)! - toMin(startTime)! : Number(form.get("minutes"));
   const sessionId = String(form.get("session_id") ?? "");
@@ -166,8 +167,8 @@ export async function saveReflection(residencyId: string, month: string, _prev: 
       person_id: person.id,
       residency_id: residencyId,
       month: `${month}-01`,
-      highlights: String(form.get("highlights") ?? "").slice(0, 4000),
-      challenges: String(form.get("challenges") ?? "").slice(0, 4000),
+      highlights: formText(form, "highlights").slice(0, 4000),
+      challenges: formText(form, "challenges").slice(0, 4000),
     },
     { onConflict: "person_id,residency_id,month" },
   );

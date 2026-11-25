@@ -6,6 +6,7 @@
 // Display words follow docs/GLOSSARY.md: a Residency is shown as "Program",
 // a Series as a "Weekly program", a Session as a dated program.
 
+import { formText } from "./form";
 import { todayIn } from "./time";
 export const RESIDENCY_STATUSES = ["planned", "active", "paused", "ended"] as const;
 export type ResidencyStatus = (typeof RESIDENCY_STATUSES)[number];
@@ -239,7 +240,7 @@ export function playingLeaders(assignments: Pick<SessionAssignment, "role" | "st
 
 type Result<T> = { ok: true; value: T } | { ok: false; errors: Record<string, string> };
 type Errors = Record<string, string>;
-const text = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
+const text = formText; // line breaks as "\n" (./form.ts)
 const isDate = (v: string) => /^\d{4}-\d{2}-\d{2}$/.test(v);
 const isUuid = (v: string) => /^[0-9a-f-]{36}$/i.test(v);
 
