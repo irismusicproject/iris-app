@@ -55,13 +55,12 @@ Pinned so far (`tests/unit/`): which session the phone trusts on opening
 
 ## Local runs
 
-- [ ] **Decide: an Android emulator on this Mac** (Android's command-line
-  tools and one emulator image, about 5 GB, no Android Studio). The GitHub
-  run is Android; the iPhone simulator has its own quirks (Keychain survives
-  a reinstall, "Save Password?" pop-ups, password autofill eating typed
-  text, no airplane mode or clock changes). With an Android emulator, every
-  journey, offline and clock ones included, runs here as it does on GitHub.
-  Needs Ryan's go-ahead (a large download).
+- [x] **An Android emulator on this Mac** (Nov 25, Ryan approved):
+  `run-local.sh` runs the same `run-ci.sh` as GitHub on a local emulator,
+  with the app file GitHub built. The iPhone simulator (`--ios`) stays for
+  the journeys it can run; its quirks: the Keychain survives a reinstall,
+  "Save Password?" pop-ups, password autofill eating typed text, no airplane
+  mode or clock changes.
 - [ ] **App improvement for Lauren**: Return on the sign-in email box could
   move to the password box (now it does nothing in password mode). Tests
   would then type without tapping between fields.

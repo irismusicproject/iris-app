@@ -255,9 +255,8 @@ A 40-minute phone run is the final check, never the debugger. These are
 standing rules for every session, not suggestions.
 
 1. **Reproduce locally before pushing a journey fix.** Run the journey with
-   `mobile/.maestro/run-local.sh <journey>` (a minute or two) until it
-   passes, then push. If it can't run locally (offline or clock journeys on
-   the iPhone simulator), say so in the commit.
+   `mobile/.maestro/run-local.sh <journey>` (Android emulator on this Mac,
+   the same script as GitHub; minutes) until it passes, then push.
 2. **Rerun only what failed.** Actions → Phone journeys → Run workflow, with
    `journeys` set to the failed ones (e.g. `gus,violet`). A full run (or the
    `phone-tests` label) is for the last check before merging and before a

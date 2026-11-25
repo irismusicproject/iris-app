@@ -7,8 +7,12 @@
 # an earlier one fails; failures are listed in failed-journeys.txt.
 set -u
 JOURNEYS="${JOURNEYS:-all}"
+# The app file: GitHub's fresh build, or the one run-local.sh downloaded.
+APK="${APK:-android/app/build/outputs/apk/release/app-release.apk}"
+# The phone's clock, in Arizona time, some days from now (Linux and Mac alike).
+phone_clock() { node -e 'const d=new Date(Date.now()+Number(process.argv[1])*864e5);const p=Object.fromEntries(new Intl.DateTimeFormat("en-US",{timeZone:"America/Phoenix",hourCycle:"h23",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit"}).formatToParts(d).map(x=>[x.type,x.value]));console.log(`${p.month}${p.day}${p.hour}${p.minute}${p.year}.${p.second}`)' "$1"; }
 rm -f failed-journeys.txt
-adb install -r android/app/build/outputs/apk/release/app-release.apk
+adb install -r "$APK"
 want() { [ "$JOURNEYS" = all ] || case ",${JOURNEYS// /}," in *",$1,"*) true ;; *) false ;; esac; }
 if want tour; then maestro test .maestro/musician-tour.yaml --format junit --output maestro-tour.xml --test-output-dir maestro-output || echo "Musician's tour" >> failed-journeys.txt; fi
 if want cant-play; then maestro test .maestro/cant-play.yaml --format junit --output maestro-cant-play.xml --test-output-dir maestro-output || echo "I can't play" >> failed-journeys.txt; fi
@@ -34,9 +38,9 @@ if want violet; then
   maestro test .maestro/violet-away-1.yaml --format junit --output maestro-violet-1.xml --test-output-dir maestro-output || echo "Violet, part 1" >> failed-journeys.txt
   adb root && adb wait-for-device
   adb shell settings put global auto_time 0
-  adb shell date "$(TZ=America/Phoenix date -d '+15 days' +%m%d%H%M%Y.%S)" || echo "Violet, moving the clock" >> failed-journeys.txt
+  adb shell date "$(phone_clock 15)" || echo "Violet, moving the clock" >> failed-journeys.txt
   maestro test .maestro/violet-away-2.yaml --format junit --output maestro-violet-2.xml --test-output-dir maestro-output || echo "Violet, part 2" >> failed-journeys.txt
-  adb shell date "$(TZ=America/Phoenix date +%m%d%H%M%Y.%S)"
+  adb shell date "$(phone_clock 0)"
   adb shell settings put global auto_time 1
   maestro test .maestro/violet-away-3.yaml --format junit --output maestro-violet-3.xml --test-output-dir maestro-output || echo "Violet, part 3" >> failed-journeys.txt
   adb shell cmd connectivity airplane-mode disable || true

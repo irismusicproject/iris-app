@@ -100,6 +100,16 @@ jobs:
           cd android && ./gradlew assembleRelease -q
           ls -la app/build/outputs/apk/release/
 
+      # The same app file for local runs on a Mac (mobile/.maestro/run-local.sh
+      # downloads the newest one), so nobody has to build Android locally.
+      - name: Keep the app file for local runs
+        uses: actions/upload-artifact@v4
+        with:
+          name: iris-staging-apk
+          path: mobile/android/app/build/outputs/apk/release/app-release.apk
+          retention-days: 14
+          if-no-files-found: warn
+
       - name: Get staging ready (fake data)
         run: |
           want() { [ "$JOURNEYS" = all ] || case ",${JOURNEYS// /}," in *",$1,"*) true ;; *) false ;; esac; }
