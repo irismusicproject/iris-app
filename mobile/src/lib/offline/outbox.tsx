@@ -1,4 +1,5 @@
 import NetInfo from "@react-native-community/netinfo";
+import { signInNeeded as needsSignIn } from "./sign-in-limit";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { AppState } from "react-native";
 import { supabase } from "../supabase";
@@ -185,7 +186,7 @@ export function OutboxProvider({ children }: { children: ReactNode }) {
     };
   }, [flush, checkIn]);
 
-  const signInNeeded = !online && (!confirmedAt || Date.now() - new Date(confirmedAt).getTime() > maxDays * 86_400_000);
+  const signInNeeded = needsSignIn({ online, confirmedAt, maxDays });
 
   const add = useCallback<State["add"]>(
     async (kind, payload, summary) => {
