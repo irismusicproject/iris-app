@@ -30,11 +30,28 @@ tags:
       - tapOn:
           id: "sign-in-email"
       - inputText: ${MAESTRO_GUS_EMAIL}
+      # The form slides up as the keyboard opens; tapping during the slide hit
+      # "Email me a code instead" on iOS (Nov 25).
+      - waitForAnimationToEnd
       - tapOn:
           id: "sign-in-password"
       - inputText: ${MAESTRO_PASSWORD}
-      - hideKeyboard
+      # Android only: on iOS hideKeyboard taps the screen and can hit a link
+      # ("Reset it on the website"); there Log in stays above the keyboard.
+      - runFlow:
+          when:
+            platform: Android
+          commands:
+            - hideKeyboard
       - tapOn: "Log in"
+      # iOS asks "Save Password?" over the app after signing in.
+      - runFlow:
+          when:
+            platform: iOS
+          commands:
+            - tapOn:
+                text: "Not Now"
+                optional: true
       - extendedWaitUntil:
           visible: "Calendar"
           timeout: 30000

@@ -49,3 +49,4 @@ next-env.d.ts
 
 # Overnight test results (npx playwright test -c playwright.overnight.config.ts)
 /overnight-results/
+mobile/maestro-local/

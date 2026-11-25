@@ -4,8 +4,8 @@ name: Phone app and database types
 #  - database-types: rebuilds src/shared/database.types.ts from the migrations
 #    and fails if the committed copy is out of date. Both apps type-check
 #    against that file, so a migration that breaks either one turns CI red.
-#  - phone-app: type-checks the phone app (which also reads src/shared) and
-#    audits its packages.
+#  - phone-app: type-checks the phone app (which also reads src/shared), runs
+#    the unit tests (tests/unit) and audits its packages.
 
 on:
   pull_request:
@@ -58,5 +58,8 @@ jobs:
       - run: npm ci
       - name: Type check (the phone app and the shared folder it imports)
         run: npx tsc --noEmit
+      - name: Unit tests (shared logic and the phone app's pure rules, in seconds; tests/unit)
+        working-directory: .
+        run: npm run test:unit
       - name: Audit the phone app's packages (fails on high or critical)
         run: npm audit --omit=dev --audit-level=high

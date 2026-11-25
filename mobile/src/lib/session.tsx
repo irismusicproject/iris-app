@@ -1,6 +1,7 @@
 import { isAuthRetryableFetchError, type Session } from "@supabase/supabase-js";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { offlineNow } from "./net";
+import { chooseSession } from "./session-choice";
 import { secureStorage } from "./secure-storage";
 import { supabase } from "./supabase";
 
@@ -33,15 +34,12 @@ async function savedSession(): Promise<Session | null> {
 // the library renews the token as soon as the phone is back online. A refused
 // renewal (account ended, session revoked) still signs the person out.
 async function loadSession(): Promise<Session | null> {
-  // No connection: don't wait out the library's renewal retries (net.ts).
-  if (await offlineNow()) {
-    const saved = await savedSession();
-    if (saved) return saved;
-  }
+  const offline = await offlineNow();
+  const saved = await savedSession();
+  // Offline with a saved session: skip the library (and its ~30 s of retries).
+  if (offline && saved) return chooseSession({ offline, saved, live: null, networkFailure: false });
   const { data, error } = await supabase.auth.getSession();
-  if (data.session) return data.session;
-  if (error && isAuthRetryableFetchError(error)) return savedSession();
-  return null;
+  return chooseSession({ offline, saved, live: data.session, networkFailure: Boolean(error && isAuthRetryableFetchError(error)) });
 }
 
 export function SessionProvider({ children }: { children: ReactNode }) {
