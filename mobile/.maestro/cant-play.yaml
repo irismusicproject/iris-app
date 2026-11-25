@@ -8,17 +8,21 @@
 # Screenshots (cant-play-*.png) let a person check the colors: Maestro
 # can't read colors, and the orange is exactly what this journey is about.
 appId: org.irismusicproject.iris
-name: "I can't play: mark, see it on the calendar, undo"
+name: "I can't play - mark, see it on the calendar, undo"
 tags:
   - month-cycle
 ---
 - launchApp:
     clearState: true
-- tapOn: "Email"
+- tapOn:
+    id: "sign-in-email"
 - inputText: ${MAESTRO_EMAIL}
-- tapOn: "Password"
+- tapOn:
+    id: "sign-in-password"
 - inputText: ${MAESTRO_PASSWORD}
+- hideKeyboard
 - tapOn: "Log in"
+- takeScreenshot: cant-play-0-after-sign-in
 - extendedWaitUntil:
     visible: "Calendar"
     timeout: 30000
@@ -27,17 +31,26 @@ tags:
     times: ${MAESTRO_MONTHS_AHEAD}
     commands:
       - tapOn: "Next →"
+# The calendar shows one day at a time; list the whole month to find the date.
+- tapOn:
+    text: "Show all of .*"
+    optional: true
 - scrollUntilVisible:
     element: ".*${MAESTRO_DATE_TITLE}.*"
 - tapOn: ".*${MAESTRO_DATE_TITLE}.*"
+# Below the fold on a small phone: scroll to it first.
+- scrollUntilVisible:
+    element: "I can't play this date"
 - tapOn: "I can't play this date"
 - assertVisible: "Marked\\..*can't play this season\\."
 - takeScreenshot: cant-play-1-date-marked
 - back
 - takeScreenshot: cant-play-2-calendar-shows-it
-- assertVisible: ".*Orange: you can.t play.*"
+- assertVisible: ".*✕ you can.t play.*"
 # Undo, so staging is left as it was.
 - tapOn: ".*${MAESTRO_DATE_TITLE}.*"
+- scrollUntilVisible:
+    element: "Marked: I can't play \\(tap to undo\\)"
 - tapOn: "Marked: I can't play \\(tap to undo\\)"
 - assertVisible: "Undone: you're playing it again."
 - takeScreenshot: cant-play-3-undone

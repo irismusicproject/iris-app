@@ -250,7 +250,7 @@ export default function LogActivity() {
         hint="First name and last initial, separated by commas, e.g. “Ruth K., Sam P.”. No health information."
         error={errors.newResidents}
       >
-        <Input value={newNames} onChangeText={setNewNames} autoCapitalize="words" />
+        <Input testID="log-new-residents" value={newNames} onChangeText={setNewNames} autoCapitalize="words" />
       </Field>
       {detailed && (picked.length > 0 || newList.length > 0) && (
         <Card title="Room numbers">
@@ -289,11 +289,11 @@ export default function LogActivity() {
 
       {detailed ? (
         <Field label="Note for the partner" hint="A few sentences on what you did together; goes in the day's document for this site. No health information." error={errors.note}>
-          <Input value={note} onChangeText={setNote} multiline maxLength={3000} />
+          <Input testID="log-note" value={note} onChangeText={setNote} multiline maxLength={3000} />
         </Field>
       ) : (
         <Field label="One-sentence note (optional)" hint="No health information.">
-          <Input value={note} onChangeText={setNote} maxLength={500} />
+          <Input testID="log-note" value={note} onChangeText={setNote} maxLength={500} />
         </Field>
       )}
 

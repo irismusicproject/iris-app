@@ -9,8 +9,8 @@ import { colors } from "@/lib/theme";
 import { todayIso } from "@/lib/week";
 import { useWeek } from "@/lib/week-context";
 
-// Calendar (DOMAIN-MODEL v0.41): one month at a glance, building by
-// building, with the month's stage. Tap a date for details: its leader adds
+// Calendar (DOMAIN-MODEL v0.41): one month at a glance, then the selected
+// day's dates, then each building's stage for the month. Tap a date for details: its leader adds
 // its title while the team edits, and anyone playing marks "I can't play" or
 // proposes a leader swap there.
 
@@ -35,6 +35,7 @@ export default function Calendar() {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [months, setMonths] = useState<ScheduleMonth[]>([]);
   const [problem, setProblem] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
 
   useEffect(() => {
     if (params.month) setMonth(params.month);
@@ -79,24 +80,63 @@ export default function Calendar() {
     buildings.get(k)!.rows.push(r);
   }
 
-  // The month grid: a dot on days with a date I play; orange where I can't play.
+  // The month grid (Ryan and Lauren, Nov 24, 2026: month grid plus day
+  // agenda, as in Apple's and Google's calendars). Tap a day with dates to
+  // see just that day below; "Show all" lists the whole month by building.
+  // Each day carries a mark as well as a color, so the meaning never rests on
+  // color alone (Harper, docs/PERSONAS.md): ● you play, ✕ you can't, ○ others.
+  const isoOf = (d: number) => `${month}-${String(d).padStart(2, "0")}`;
+  const onDay = (iso: string) => (rows ?? []).filter((r) => localDate(r) === iso);
   const first = new Date(`${month}-01T12:00:00Z`);
   const days = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0)).getUTCDate();
-  const cells: ({ day: number; mine: boolean; off: boolean } | null)[] = Array(first.getUTCDay()).fill(null);
+  const cells: ({ day: number; iso: string; mine: boolean; off: boolean; any: boolean; titles: string[] } | null)[] = Array(first.getUTCDay()).fill(null);
   for (let d = 1; d <= days; d++) {
-    const iso = `${month}-${String(d).padStart(2, "0")}`;
-    const here = (rows ?? []).filter((r) => localDate(r) === iso);
-    cells.push({ day: d, mine: here.some(plays), off: here.some(cantPlay) });
+    const here = onDay(isoOf(d));
+    cells.push({ day: d, iso: isoOf(d), mine: here.some(plays), off: here.some(cantPlay), any: here.length > 0, titles: here.filter((r) => plays(r) || cantPlay(r)).map((r) => r.title) });
   }
   while (cells.length % 7) cells.push(null);
+
+  // What's selected: a day ("YYYY-MM-DD") or the whole month ("all").
+  // Default: today in this month, otherwise the first day I play, otherwise all.
+  const today = todayIso();
+  const firstMine = cells.find((c) => c && (c.mine || c.off))?.iso;
+  const fallback = today.startsWith(month) ? today : firstMine ?? "all";
+  const shown = selected && (selected === "all" || selected.startsWith(month)) ? selected : fallback;
+  const dayRows = shown === "all" ? [] : onDay(shown);
+  const dayLabel = (iso: string) => formatDay(`${iso}T12:00:00Z`, "UTC");
+
+  const dateRow = (r: Row, withBuilding: boolean) => {
+    const tz = r.location?.site?.timezone ?? "America/New_York";
+    const canceled = r.schedule_state === "canceled";
+    const leader = r.session_assignment.find((a) => a.role === "leader" && a.status !== "absent");
+    return (
+      <Pressable
+        key={r.id}
+        onPress={() => router.push({ pathname: "/date/[id]", params: { id: r.id } })}
+        accessibilityRole="button"
+        style={({ pressed }) => [{ borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 8, gap: 2 }, pressed && styles.pressed]}
+      >
+        <View style={styles.row}>
+          <Text style={{ fontSize: 15, fontWeight: "700", color: canceled ? colors.muted : colors.text, flex: 1 }}>
+            {withBuilding ? (r.has_set_time ? formatTime(r.starts_at, tz) : "Time to be set") : `${formatDay(r.starts_at, tz)}${r.has_set_time ? ` · ${formatTime(r.starts_at, tz)}` : ""}`}
+          </Text>
+          {cantPlay(r) && <Tag label="You can't play" tone="todo" />}
+          {!cantPlay(r) && plays(r) && <Tag label={leader?.person_id === me.id ? "You lead" : "You play"} />}
+        </View>
+        <Muted>
+          {canceled ? `No Program (${r.title})` : r.title} · {withBuilding ? `${r.location?.site?.display_name}, ${r.location?.display_name}` : r.location?.display_name}
+        </Muted>
+      </Pressable>
+    );
+  };
 
   return (
     <Screen onRefresh={load}>
       <View style={styles.row}>
-        <LinkButton label="← Previous" onPress={() => setMonth(shiftMonth(month, -1))} />
-        <LinkButton label="Next →" onPress={() => setMonth(shiftMonth(month, 1))} />
+        <LinkButton label="← Previous" onPress={() => { setMonth(shiftMonth(month, -1)); setSelected(null); }} />
+        <LinkButton label="Next →" onPress={() => { setMonth(shiftMonth(month, 1)); setSelected(null); }} />
       </View>
-      <Text style={{ fontSize: 24, fontWeight: "700", color: colors.text }}>{formatMonth(month)}</Text>
+      <Text maxFontSizeMultiplier={1.5} style={{ fontSize: 24, fontWeight: "700", color: colors.text }}>{formatMonth(month)}</Text>
       {problem && <Problem>{problem}</Problem>}
       {!rows && !problem && <Loading />}
 
@@ -104,19 +144,44 @@ export default function Calendar() {
         <Card>
           <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
             {WEEKDAYS.map((w, i) => (
-              <Text key={`h${i}`} style={{ width: `${100 / 7}%`, textAlign: "center", fontSize: 12, fontWeight: "700", color: colors.muted, paddingVertical: 4 }}>{w}</Text>
+              <Text key={`h${i}`} maxFontSizeMultiplier={1.4} importantForAccessibility="no" accessibilityElementsHidden style={{ width: `${100 / 7}%`, textAlign: "center", fontSize: 12, fontWeight: "700", color: colors.muted, paddingVertical: 4 }}>{w}</Text>
             ))}
-            {cells.map((c, i) => (
-              <View key={i} style={{ width: `${100 / 7}%`, height: 42, alignItems: "center", justifyContent: "center", borderRadius: 10, backgroundColor: c?.off ? "#FDF3E7" : c?.mine ? colors.irisSoft : "transparent" }}>
-                <Text style={{ fontSize: 14, fontWeight: c?.mine || c?.off ? "700" : "400", color: c?.off ? colors.orange : c?.mine ? colors.iris : colors.text }}>{c?.day ?? ""}</Text>
-              </View>
-            ))}
+            {/* Day numbers grow to 1.4x at most: at the largest text sizes seven to a row overlap (Vera, docs/PERSONAS.md). */}
+            {cells.map((c, i) => {
+              if (!c) return <View key={i} style={{ width: `${100 / 7}%`, minHeight: 48 }} />;
+              const isSel = shown === c.iso;
+              const mark = c.off ? "✕" : c.mine ? "●" : c.any ? "○" : " ";
+              const spoken = `${dayLabel(c.iso)}. ${c.off ? "You can't play" : c.mine ? "You play" : c.any ? "Dates at your buildings" : "Nothing scheduled"}${c.titles.length ? `: ${c.titles.join(", ")}` : ""}`;
+              return (
+                <Pressable
+                  key={i}
+                  disabled={!c.any}
+                  onPress={() => setSelected(c.iso)}
+                  accessibilityRole="button"
+                  accessibilityLabel={spoken}
+                  accessibilityState={{ selected: isSel, disabled: !c.any }}
+                  style={{ width: `${100 / 7}%`, minHeight: 48, padding: 2 }}
+                >
+                  <View style={{ flex: 1, alignItems: "center", justifyContent: "center", borderRadius: 10, borderWidth: 2, borderColor: isSel ? colors.iris : "transparent", backgroundColor: c.off ? "#FDF3E7" : c.mine ? colors.irisSoft : "transparent" }}>
+                    <Text maxFontSizeMultiplier={1.4} style={{ fontSize: 14, fontWeight: c.mine || c.off ? "700" : "400", color: c.off ? colors.orange : c.mine ? colors.iris : colors.text }}>{c.day}</Text>
+                    <Text maxFontSizeMultiplier={1.2} style={{ fontSize: 8, lineHeight: 10, color: c.off ? colors.orange : c.mine ? colors.iris : colors.muted }}>{mark}</Text>
+                  </View>
+                </Pressable>
+              );
+            })}
           </View>
-          <Muted>Purple: you play · Orange: you can&apos;t play</Muted>
+          <Muted>● you play · ✕ you can&apos;t play · ○ other musicians&apos; dates. Tap a day to see it.</Muted>
         </Card>
       )}
 
       {rows && rows.length === 0 && <Muted>No dates in {formatMonth(month)} yet.</Muted>}
+
+      {rows && rows.length > 0 && shown !== "all" && (
+        <Card title={shown === today ? `Today, ${dayLabel(shown)}` : dayLabel(shown)}>
+          {dayRows.length ? dayRows.map((r) => dateRow(r, true)) : <Muted>Nothing at your buildings this day.</Muted>}
+          <LinkButton label={`Show all of ${formatMonth(month).split(" ")[0]}`} onPress={() => setSelected("all")} />
+        </Card>
+      )}
 
       {[...buildings.values()].map((b) => {
         const stageIndex = b.stage ? STAGES.indexOf(b.stage.stage) : -1;
@@ -129,31 +194,7 @@ export default function Calendar() {
             </View>
             <Text style={{ fontWeight: "700", color: colors.text }}>{b.stage ? `Stage ${stageIndex + 1} of 5: ${STAGE_LABEL[b.stage.stage]}` : "Not open for the team yet"}</Text>
             <Muted>{b.stage ? STAGE_HELP[b.stage.stage] : "The point person opens the month for the team about the 1st of the month before."}</Muted>
-            {b.rows.map((r) => {
-              const tz = r.location?.site?.timezone ?? "America/New_York";
-              const canceled = r.schedule_state === "canceled";
-              const leader = r.session_assignment.find((a) => a.role === "leader" && a.status !== "absent");
-              return (
-                <Pressable
-                  key={r.id}
-                  onPress={() => router.push({ pathname: "/date/[id]", params: { id: r.id } })}
-                  accessibilityRole="button"
-                  style={({ pressed }) => [{ borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 8, gap: 2 }, pressed && styles.pressed]}
-                >
-                  <View style={styles.row}>
-                    <Text style={{ fontSize: 15, fontWeight: "700", color: canceled ? colors.muted : colors.text, flex: 1 }}>
-                      {formatDay(r.starts_at, tz)}
-                      {r.has_set_time ? ` · ${formatTime(r.starts_at, tz)}` : ""}
-                    </Text>
-                    {cantPlay(r) && <Tag label="You can't play" tone="todo" />}
-                    {!cantPlay(r) && plays(r) && <Tag label={leader?.person_id === me.id ? "You lead" : "You play"} />}
-                  </View>
-                  <Muted>
-                    {canceled ? `No Program (${r.title})` : r.title} · {r.location?.display_name}
-                  </Muted>
-                </Pressable>
-              );
-            })}
+            {shown === "all" && b.rows.map((r) => dateRow(r, false))}
           </Card>
         );
       })}
