@@ -113,9 +113,11 @@ tags:
       - takeScreenshot: gus-1-second-date-count
       - back
 
-      # Undo both marks.
+      # Undo both marks. Back on the calendar the list is still scrolled down
+      # at date 2, so date 1 is above.
       - scrollUntilVisible:
           element: "${MAESTRO_GUS_DAY1}.*"
+          direction: UP
           speed: 15
           centerElement: true
           timeout: 60000

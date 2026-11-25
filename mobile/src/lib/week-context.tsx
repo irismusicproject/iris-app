@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { offlineNow } from "./net";
 import { cacheGet, cacheSet, wipe } from "./offline/store";
 import { useSession } from "./session";
 import { supabase } from "./supabase";
@@ -54,36 +55,38 @@ export function WeekProvider({ children }: { children: ReactNode }) {
     setWeek(null);
     setNoAccess(false);
     if (!userId) return;
-    supabase
-      .from("person")
-      .select("id, name, active")
-      .eq("id", userId)
-      .maybeSingle()
-      .then(async ({ data, error }) => {
-        if (error) {
-          // No signal: carry on as the person last seen on this phone.
-          const saved = isNetwork(error) ? await cacheGet<Me>("me") : null;
-          if (saved && saved.value.id === userId) setMe(saved.value);
-          else setProblem(friendly(error));
-        } else if (!data || !data.active) {
-          // Access ended: nothing of Iris stays on the phone (O9).
-          await wipe();
-          setNoAccess(true);
-        } else {
-          // Someone else used this phone before: clear their copy first.
-          const owner = await cacheGet<Me>("me");
-          if (owner && owner.value.id !== data.id) await wipe();
-          await cacheSet("me", data);
-          await cacheSet("confirmed_at", new Date().toISOString());
-          setMe(data);
-        }
-      });
+    (async () => {
+      // No connection: the person last seen on this phone, at once (net.ts).
+      if (await offlineNow()) {
+        const saved = await cacheGet<Me>("me");
+        if (saved && saved.value.id === userId) return setMe(saved.value);
+      }
+      const { data, error } = await supabase.from("person").select("id, name, active").eq("id", userId).maybeSingle();
+      if (error) {
+        // No signal: carry on as the person last seen on this phone.
+        const saved = isNetwork(error) ? await cacheGet<Me>("me") : null;
+        if (saved && saved.value.id === userId) setMe(saved.value);
+        else setProblem(friendly(error));
+      } else if (!data || !data.active) {
+        // Access ended: nothing of Iris stays on the phone (O9).
+        await wipe();
+        setNoAccess(true);
+      } else {
+        // Someone else used this phone before: clear their copy first.
+        const owner = await cacheGet<Me>("me");
+        if (owner && owner.value.id !== data.id) await wipe();
+        await cacheSet("me", data);
+        await cacheSet("confirmed_at", new Date().toISOString());
+        setMe(data);
+      }
+    })();
   }, [userId]);
 
   const reload = useCallback(async () => {
     if (!me) return;
     setLoading(true);
     try {
+      if (await offlineNow()) throw new Error("Network request failed (offline)");
       const w = await loadWeek(me.id, monday);
       setWeek(w);
       setCachedAt(null);
