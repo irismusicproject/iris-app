@@ -43,6 +43,16 @@ tags:
     centerElement: true
     timeout: 60000
 - tapOn: "30 min"
+# scrollUntilVisible always swipes from the middle of the screen. With two
+# programs the form is taller, and the middle lands on the Minutes box; a
+# swipe that starts on a text box doesn't scroll (Nov 25 run: 30 swipes, no
+# movement). Two swipes from lower down get the Minutes box out of the way.
+- swipe:
+    start: "50%, 85%"
+    end: "50%, 30%"
+- swipe:
+    start: "50%, 85%"
+    end: "50%, 30%"
 - scrollUntilVisible:
     element:
       id: "log-new-residents"

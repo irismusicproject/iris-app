@@ -48,6 +48,9 @@ tags:
           element: "Update"
           centerElement: true
           timeout: 60000
+      # Let the centering scroll come to rest first: a tap during the glide
+      # was lost (Android run 45550094728).
+      - waitForAnimationToEnd
       - tapOn: "Update"
       # Saved: back on My week, the date still says Documented.
       - extendedWaitUntil:
