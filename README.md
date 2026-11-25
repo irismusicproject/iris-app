@@ -264,6 +264,7 @@ The app's design documents are in `docs/`, and they are public like the rest of 
 | `docs/GLOSSARY.md` | How the team's words and partner-facing words map to those objects. |
 | `docs/REQUIREMENTS.md` | What the app needs to do. |
 | `docs/TERMINOLOGY-REVIEW.md` | Open naming and design decisions (D1–D16). |
+| `docs/HANDOVER.md` | For a new developer: how the pieces fit, how a change reaches the live site, what was built day by day, and where the work stopped. |
 | `docs/OFFLINE-SPEC.md` | Draft plan for working without a connection in the Android and iPhone apps (verdicts on each proposal; open items marked Ask). Not decided until copied into the domain model. |
 
 See `CLAUDE.md` for how these are used when coding.
