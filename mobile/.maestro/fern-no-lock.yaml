@@ -13,6 +13,11 @@ tags:
 ---
 - launchApp:
     clearState: true
+# Past the splash screen first (a slow start lost the first tap, Nov 25).
+- extendedWaitUntil:
+    visible:
+      id: "sign-in-email"
+    timeout: 30000
 - tapOn:
     id: "sign-in-email"
 - inputText: ${MAESTRO_FERN_EMAIL}
