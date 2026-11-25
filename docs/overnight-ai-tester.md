@@ -7,9 +7,9 @@ The automated test only opens pages. This session uses the app the way people do
 ## One-time setup (Ryan)
 
 1. **Cloud environment.** Create one for `irismusicproject/iris-app` (claude.ai/code → Environments) with:
-   - **Network access:** allow `*.vercel.app` (the staging site) and `*.supabase.co` (staging's sign-in, which the site calls from the browser), plus the defaults (GitHub, npm).
+   - **Network access:** allow `staging.irismusicproject.org` (the staging site), `*.vercel.app` (Vercel's own addresses for it) and `*.supabase.co` (staging's sign-in, which the site calls from the browser), plus the defaults (GitHub, npm).
    - **Environment variables** (never in the prompt itself):
-     - `STAGING_URL` = `https://iris-app-git-main-rhearty1-5601s-projects.vercel.app`
+     - `STAGING_URL` = `https://staging.irismusicproject.org`
      - `STAGING_TEST_PASSWORD` = the same value as the GitHub secret
      - `VERCEL_AUTOMATION_BYPASS_SECRET` = the same value as the GitHub secret
 2. **The personas must exist:** run **Actions → Staging test accounts** once (README, "Overnight testing").

@@ -1,5 +1,6 @@
 // Partner, Site, Location. Mirrors supabase/migrations and
 // docs/DOMAIN-MODEL.md section 1. Native apps can import this.
+import { formText } from "./form";
 
 export const CARE_LEVELS = [
   "independent", "assisted", "memory_care", "skilled_nursing",
@@ -65,7 +66,7 @@ export type Location = {
 type Result<T> = { ok: true; value: T } | { ok: false; errors: Record<string, string> };
 type Errors = Record<string, string>;
 
-const text = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
+const text = formText; // line breaks as "\n" (./form.ts)
 
 function required(f: FormData, k: string, label: string, max: number, e: Errors) {
   const v = text(f, k);

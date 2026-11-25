@@ -145,7 +145,7 @@ Testing on a preview never touches real data. A preview's invite and reset email
 2. **Build the tables.** After the GitHub environments exist ([Automated database changes](#automated-database-changes)), run **Actions → Database migrations → Run workflow → build-staging**. It applies every migration plus `supabase/seed.sql` (fake data) to staging only.
 3. **Sign-in settings** (under **Authentication**), matching production except for the email links:
    - **Sign In / Providers:** turn "Allow new users to sign up" **off**. Set **Minimum password length** to **12**.
-   - **URL Configuration:** Site URL `http://localhost:3000`. Staging links don't use it; it only has to be a valid address. Redirect URLs: `https://*-rhearty1-5601s-projects.vercel.app/**` and `http://localhost:3000/**`.
+   - **URL Configuration:** Site URL `http://localhost:3000`. Staging links don't use it; it only has to be a valid address. Redirect URLs: `https://staging.irismusicproject.org/**` (the main branch's emails link there, `NEXT_PUBLIC_SITE_URL` on Vercel's Preview for `main`), `https://*-rhearty1-5601s-projects.vercel.app/**` (other previews) and `http://localhost:3000/**`. An address missing here sends the email's link to the Site URL instead.
    - **Emails → Templates:** previews have no fixed address, so staging's links use `{{ .RedirectTo }}` (which the app fills in) instead of `{{ .SiteURL }}`:
      - **Invite user:** `{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=invite`
      - **Reset Password:** `{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=recovery`
@@ -195,7 +195,7 @@ Every night at 12:15 am Eastern, **Actions → Overnight test** (`.github/workfl
 1. **Repository secrets** (Settings → Secrets and variables → Actions):
    - `STAGING_TEST_PASSWORD`: a new password of 12+ characters for the test personas.
    - `VERCEL_AUTOMATION_BYPASS_SECRET`: from Vercel → Settings → Deployment Protection → **Protection Bypass for Automation**.
-   - Optional `STAGING_URL`, if staging moves from https://iris-app-git-main-rhearty1-5601s-projects.vercel.app.
+   - Optional `STAGING_URL`, if staging moves from https://staging.irismusicproject.org.
 2. **`staging` environment secrets:** `SUPABASE_URL` (staging's project URL) and `SUPABASE_SECRET_KEY` (a new staging secret key, e.g. `github-staging-accounts`).
 3. Run **Actions → Staging test accounts** (`scripts/staging-accounts.mjs`). It creates the `persona+<role>@example.com` accounts and links them to the first residency. Run it again after **reset-staging** or when new scheduling tables reach staging.
 
@@ -221,7 +221,7 @@ Two branches, two meanings:
 
 | Branch | Means | Database | Website |
 |---|---|---|---|
-| `main` | Finished: merged after CI passes | staging, updated automatically | the staging site: https://iris-app-git-main-rhearty1-5601s-projects.vercel.app (Vercel login required) |
+| `main` | Finished: merged after CI passes | staging, updated automatically | the staging site: https://staging.irismusicproject.org (also at Vercel's branch address, https://iris-app-git-main-rhearty1-5601s-projects.vercel.app, which asks for a Vercel login) |
 | `production` | Released by Ryan | production | app.irismusicproject.org |
 
 **The handoff:** Lauren (or anyone) merges finished work to `main` when CI is green and notes it in issue #30. Ryan checks it on the staging site.
