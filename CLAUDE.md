@@ -172,6 +172,10 @@ the same backend:
   `src/shared/auth/password.ts` and in Supabase. An emailed **one-time
   code** is the fallback. Both work on web and native. Emailed links are
   used only for invites and password resets.
+- **Paid plans (Ryan, Nov 25, 2026).** Iris pays for **Vercel Pro** and a
+  paid **Supabase** plan. Plan for Pro limits, not Hobby ones (e.g.
+  schedules can run every minute with about a minute's jitter), and
+  remember each Vercel team member is a paid seat.
 
 ## Division of labor (Lauren, Nov 22, 2026)
 

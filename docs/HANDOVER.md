@@ -13,7 +13,8 @@ those disagree, they win: this file summarizes and points.
 
 **No secrets here.** The repository is public. This file names accounts and
 settings but never holds a password, key or real person's data. Credentials
-come from Ryan or Lauren (section 3).
+come from Ryan or Lauren (section 3), or, when neither can be reached, through
+Iris's private continuity plan (section 15).
 
 ---
 
@@ -63,15 +64,17 @@ both apps at once, and a page that forgets a check still can't leak data.
 
 ## 3. Accounts and credentials you will need
 
-Ask Ryan (or Lauren) to add you to each account; don't share logins. Each
+Ask Ryan (or Lauren) to add you to each account; don't share logins. Every
+account belongs to Iris, with at least two owners, and each person signs in as
+themselves (section 15). Each
 row says what the account controls, so you can tell what you lack when
 something fails.
 
 | Service | What it holds | Access you need |
 |---|---|---|
 | **GitHub**, organization `irismusicproject`, repo `iris-app` (public) | Code, pull requests, Actions (CI, migrations, releases, tests), issue #30 | Write access; an owner to approve the `production` environment |
-| **Vercel**, project `iris-app` | Website hosting, previews, environment variables, domains | Team member |
-| **Supabase**, two projects (production; `iris-staging`) | Database, sign-in, email templates, API keys | Organization member; the database passwords are in Ryan's password manager |
+| **Vercel** (paid **Pro** plan), project `iris-app` | Website hosting, previews, environment variables, domains, schedules | Team member (each Pro member is a paid seat) |
+| **Supabase** (paid plan), two projects (production; `iris-staging`) | Database, sign-in, email templates, API keys, backups | Organization member |
 | **Resend** | Email sending for `mail.irismusicproject.org`; API keys | Team member |
 | **Squarespace** (domain `irismusicproject.org`) | DNS records for `app`, `staging` and `mail` | Rarely needed; Iris staff hold it |
 | **Expo / EAS**, account `iris-music-project`, project `iris-app` | Phone app builds, over-the-air updates, the phone's environment settings | Organization member |
@@ -485,3 +488,53 @@ phone-journey run, and Lauren's go-ahead on issue #30.
 explains every rule; `git log` and the pull request descriptions explain
 every change. Each PR description says what it does, which migrations and
 permission rules it adds, and what was left unchecked.
+
+---
+
+## 15. When Ryan or Lauren can't be reached
+
+Two cases shape this section: one of them leaves for good, or both are out
+of reach for weeks (a backpacking trip) on the day the app breaks. **The
+details (who holds what, where the emergency credentials are kept, and the
+decisions behind them) are in Iris's private continuity plan, a document
+outside this repository.** Ask Lauren, Ryan or Iris's leadership for it.
+This section gives only the principles and the emergency steps, which are
+safe to publish.
+
+**Principles**
+
+- **Access belongs to Iris, not to a person.** Every service in section 3
+  has at least two owners, and its billing runs through Iris, so no single
+  departure locks Iris out or lets a bill lapse.
+- **Owners, not passwords.** People sign in as themselves; nobody uses
+  another person's login. Almost every secret in section 3 can be made
+  again by an account owner (a new Supabase key, a new Resend key, a new
+  database password, a new GitHub secret), so what must survive is owner
+  access, not the old values.
+- **What can't be made again is kept in Iris's password manager**, in a
+  vault with emergency access: account recovery codes, the few logins that
+  can't be shared as seats, and anything else the private plan lists. Never
+  in this repository, an email or a chat.
+- **A backup developer is set up before they're needed**: GitHub write
+  access and permission to approve a release, a Vercel seat, and read access
+  to Supabase, with emergency access to the vault.
+
+**Emergency steps for a backup developer**
+
+1. **Stop the harm first.** If a release broke the live site, open Vercel →
+   iris-app → **Deployments**, choose the last good production deployment and
+   use **Instant Rollback**. That takes a minute and needs no code. A
+   rollback doesn't undo database changes; if the last release added a
+   migration, the older code must still work with it, which the
+   expand-then-contract rule (section 6) is there to guarantee.
+2. **Find the cause.** Vercel's runtime logs (Deployments → the deployment →
+   Logs), Supabase's logs, the newest "Overnight test report" issue, and
+   issue #30.
+3. **Fix forward the normal way** (section 6): a branch, a pull request, green
+   CI, merge to `main`, check staging, then **Actions → Release**. Releasing
+   needs someone allowed to approve the `production` environment; the
+   private plan says who covers that when Ryan and Lauren are away.
+4. **A phone-only bug** in screens or wording reaches installed test apps by
+   an over-the-air update (section 10), without a store release.
+5. **Post on issue #30** what broke, what you did and what's left, so Ryan
+   and Lauren can pick it up when they're back.

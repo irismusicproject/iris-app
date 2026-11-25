@@ -23,8 +23,8 @@ The app is built with Next.js on Vercel. Sign-in runs through Supabase. Only inv
 | Piece | Where | Notes |
 |-------|-------|-------|
 | Code | GitHub, `irismusicproject/iris-app` (public) | `main` = finished work, on staging. `production` = released, on the live site (see Releasing). |
-| Hosting | Vercel | Live at https://app.irismusicproject.org |
-| Sign-in and data | Supabase | Invite-only; email and password, or an emailed code. |
+| Hosting | Vercel (paid **Pro** plan) | Live at https://app.irismusicproject.org |
+| Sign-in and data | Supabase (paid plan) | Invite-only; email and password, or an emailed code. |
 | Email sending | Resend | Sends from `no-reply@mail.irismusicproject.org`. |
 | DNS | Squarespace (irismusicproject.org) | The main website and Google email stay on the root domain. |
 
@@ -94,7 +94,7 @@ All under **Authentication**:
   - `NOTIFICATIONS_ENABLED=true`: only then do queued notifications (No Program, deadline reminders) go out. Until then they stay in the admin **Outbox** and are never sent later. Turn it on per environment, deliberately.
   - A message that keeps failing stops after **5 tries**; the Outbox shows why.
   - Staging (Vercel previews) sends as **Iris (staging)** from `staging@mail.irismusicproject.org`.
-- **Reminders run every hour** on Vercel's scheduler (**Vercel Schedules**): `vercel.json` → `schedules` → `notifications`, at the top of each hour, Eastern time (up to 15 minutes late on the Hobby plan). It calls a private function, `src/app/api/schedules/notifications/route.ts`, which has no public address, so it needs no password. Each run queues the reminders that are due (deadline reminders, missed deadlines, daily nudges, the monthly cycle's To do reminders; the database queues each one once) and then delivers the outbox under the rules above.
+- **Reminders run every hour** on Vercel's scheduler (**Vercel Schedules**): `vercel.json` → `schedules` → `notifications`, at the top of each hour, Eastern time (within about a minute; Iris is on Vercel's Pro plan). It calls a private function, `src/app/api/schedules/notifications/route.ts`, which has no public address, so it needs no password. Each run queues the reminders that are due (deadline reminders, missed deadlines, daily nudges, the monthly cycle's To do reminders; the database queues each one once) and then delivers the outbox under the rules above.
   - **Production:** active from the first Release that includes it.
   - **Staging:** Vercel creates preview schedules switched **off**. Turn it on once in Vercel → the project → **Schedules** → `notifications` → choose the `main` branch → **Enable**. Staging has no `RESEND_API_KEY`, so its reminders only reach the Outbox.
   - **Run it now:** the same Schedules page → **Run Schedule**, then look at **Admin → Outbox**. The page also shows each run's history.
