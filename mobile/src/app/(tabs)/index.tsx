@@ -7,6 +7,7 @@ import { lastUpdated } from "@/components/offline";
 import { Card, LinkButton, Loading, Muted, Notice, Problem, Screen, Tag, styles } from "@/components/ui";
 import { notifySoon, plain } from "@/lib/month";
 import { isNetworkError, useOutbox } from "@/lib/offline/outbox";
+import { offlineNow } from "@/lib/net";
 import { cacheGet, cacheSet } from "@/lib/offline/store";
 import { supabase } from "@/lib/supabase";
 import { colors } from "@/lib/theme";
@@ -51,7 +52,9 @@ export default function Upcoming() {
     if (!me) return;
     const from = new Date(`${addDays(todayIso(), -1)}T00:00:00Z`).toISOString();
     const to = new Date(`${addDays(todayIso(), DAYS_AHEAD + 1)}T00:00:00Z`).toISOString();
-    const { data, error } = await supabase
+    // No connection: straight to the copy kept on the phone (lib/net.ts).
+    const offline = { data: null, error: { message: "Network request failed (offline)" } } as const;
+    const { data, error } = (await offlineNow()) ? offline : await supabase
       .from("session")
       .select(
         "id, residency_id, title, starts_at, has_set_time, scheduled_minutes, schedule_state, is_special_event, residency(name), location(site_id, display_name, site(display_name, timezone)), mine:session_assignment!inner(role, status), everyone:session_assignment(person_id, role, status)",

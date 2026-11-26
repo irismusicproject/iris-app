@@ -49,3 +49,11 @@ next-env.d.ts
 
 # Overnight test results (npx playwright test -c playwright.overnight.config.ts)
 /overnight-results/
+mobile/maestro-local/
+# Phone journey results when run on a Mac (mobile/.maestro/run-local.sh)
+mobile/maestro-output/
+mobile/shots/
+mobile/failed-journeys.txt
+mobile/dex-phone-done
+mobile/maestro-*.xml
+mobile/node_modules

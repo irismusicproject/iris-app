@@ -7,6 +7,7 @@ import { todayIso } from "@/lib/week";
 import { formatDay, formatTime, localDateTime, zonedToUtc } from "@shared/domain/time";
 import { Button, Card, Choices, Field, Input, LinkButton, Loading, Muted, Notice, Problem, Screen, Tag, TimeField, styles } from "@/components/ui";
 import { notifySoon, plain, STAGE_LABEL, type Stage } from "@/lib/month";
+import { dateActions } from "@/lib/date-rules";
 import { supabase } from "@/lib/supabase";
 import { colors } from "@/lib/theme";
 import { friendly, useWeek } from "@/lib/week-context";
@@ -122,16 +123,20 @@ export default function DateDetail() {
   const mine = row.session_assignment.find((a) => a.person_id === me.id);
   const iPlay = !!mine && mine.status !== "absent";
   const teamEditing = stage === "team_editing";
-  // Same as the website (session-card.tsx): a month not opened through the
-  // cycle and not yet reviewed still lets the date's leader set its title.
-  const titleWindow = teamEditing || (!stage && !reviewed);
   const isToday = localDateTime(row.starts_at, tz).date === todayIso();
-  const canEditTitle = !canceled && ((titleWindow && iLead && row.schedule_state === "draft") || (isLead && (stage === "sent_to_partner" || stage === "partner_changes")));
-  const partnerChange = !canceled && isLead && (stage === "sent_to_partner" || stage === "partner_changes");
-  const canMarkOff = !canceled && teamEditing && row.schedule_state === "draft" && !!mine && mine.status !== "substitute";
   const swapOptions = playing.filter((a) => a.role !== "leader");
-  const canSwap = !canceled && teamEditing && row.schedule_state === "draft" && iPlay && playing.some((a) => a.role === "leader") && swapOptions.length > 0;
-  const afterFinal = !canceled && stage === "final" && iPlay && !past;
+  // Which buttons show (lib/date-rules.ts, unit-tested).
+  const { canEditTitle, partnerChange, canMarkOff, canSwap, afterFinal } = dateActions({
+    stage,
+    reviewed,
+    scheduleState: row.schedule_state,
+    iLead,
+    adminLead: isLead,
+    myStatus: mine?.status ?? null,
+    hasLeader: playing.some((a) => a.role === "leader"),
+    nonLeaders: swapOptions.length,
+    past,
+  });
   const canCallPoint = !canceled && iPlay && row.schedule_state !== "draft" && (isToday || !past) && points.length > 0;
   const leaderAbsent = !canceled && past && iPlay && !row.session_report && !playing.some((a) => a.role === "leader");
 
@@ -205,7 +210,7 @@ export default function DateDetail() {
 
       {canEditTitle && (
         <Card title="Title">
-          <Muted>{teamEditing ? "You lead this date, so you add its title (without musicians' names: the calendar adds “with …”)." : "Partner change: the next calendar version shows it."}</Muted>
+          <Muted>{!partnerChange ? "You lead this date, so you add its title (without musicians' names: the calendar adds “with …”)." : "Partner change: the next calendar version shows it."}</Muted>
           <Input value={title} onChangeText={setTitle} maxLength={200} placeholder="This date's title" />
           <Button
             label="Save title"

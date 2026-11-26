@@ -2,8 +2,12 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { formatDay, formatMonth, formatTime, localDateTime, monthWindow, shiftMonth } from "@shared/domain/time";
+import { lastUpdated } from "@/components/offline";
 import { Card, LinkButton, Loading, Muted, Problem, Screen, Tag, styles } from "@/components/ui";
 import { plain, STAGE_HELP, STAGE_LABEL, STAGES, type ScheduleMonth } from "@/lib/month";
+import { offlineNow } from "@/lib/net";
+import { isNetworkError } from "@/lib/offline/outbox";
+import { cacheGet, cacheSet } from "@/lib/offline/store";
 import { supabase } from "@/lib/supabase";
 import { colors } from "@/lib/theme";
 import { todayIso } from "@/lib/week";
@@ -35,6 +39,7 @@ export default function Calendar() {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [months, setMonths] = useState<ScheduleMonth[]>([]);
   const [problem, setProblem] = useState<string | null>(null);
+  const [cachedAt, setCachedAt] = useState<string | null>(null);
 
   useEffect(() => {
     if (params.month) setMonth(params.month);
@@ -42,6 +47,17 @@ export default function Calendar() {
 
   const load = useCallback(async () => {
     const w = monthWindow(month);
+    // No signal: the copy of this month kept on the phone, at once (lib/net.ts).
+    const fromPhone = async () => {
+      const saved = await cacheGet<{ rows: Row[]; months: ScheduleMonth[] }>(`calendar:${month}`);
+      if (!saved) return false;
+      setRows(saved.value.rows);
+      setMonths(saved.value.months);
+      setCachedAt(saved.savedAt);
+      setProblem(null);
+      return true;
+    };
+    if ((await offlineNow()) && (await fromPhone())) return;
     const [{ data, error }, { data: sm }] = await Promise.all([
       supabase
         .from("session")
@@ -52,10 +68,16 @@ export default function Calendar() {
         .order("starts_at"),
       supabase.from("schedule_month").select("id, residency_id, site_id, month, stage, team_due_on, final_due_on").eq("month", `${month}-01`),
     ]);
-    if (error) return setProblem(plain(error));
-    setRows(((data ?? []) as unknown as Row[]).filter((r) => r.location && localDateTime(r.starts_at, r.location.site?.timezone ?? "America/New_York").date.startsWith(month)));
+    if (error) {
+      if (isNetworkError(error) && (await fromPhone())) return;
+      return setProblem(plain(error));
+    }
+    const list = ((data ?? []) as unknown as Row[]).filter((r) => r.location && localDateTime(r.starts_at, r.location.site?.timezone ?? "America/New_York").date.startsWith(month));
+    setRows(list);
     setMonths((sm ?? []) as ScheduleMonth[]);
+    setCachedAt(null);
     setProblem(null);
+    cacheSet(`calendar:${month}`, { rows: list, months: sm ?? [] });
   }, [month]);
 
   useFocusEffect(
@@ -96,19 +118,21 @@ export default function Calendar() {
         <LinkButton label="← Previous" onPress={() => setMonth(shiftMonth(month, -1))} />
         <LinkButton label="Next →" onPress={() => setMonth(shiftMonth(month, 1))} />
       </View>
-      <Text style={{ fontSize: 24, fontWeight: "700", color: colors.text }}>{formatMonth(month)}</Text>
+      <Text maxFontSizeMultiplier={1.5} style={{ fontSize: 24, fontWeight: "700", color: colors.text }}>{formatMonth(month)}</Text>
       {problem && <Problem>{problem}</Problem>}
+      {cachedAt && <Muted>{lastUpdated(cachedAt)}</Muted>}
       {!rows && !problem && <Loading />}
 
       {rows && (
         <Card>
           <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
             {WEEKDAYS.map((w, i) => (
-              <Text key={`h${i}`} style={{ width: `${100 / 7}%`, textAlign: "center", fontSize: 12, fontWeight: "700", color: colors.muted, paddingVertical: 4 }}>{w}</Text>
+              <Text key={`h${i}`} maxFontSizeMultiplier={1.4} style={{ width: `${100 / 7}%`, textAlign: "center", fontSize: 12, fontWeight: "700", color: colors.muted, paddingVertical: 4 }}>{w}</Text>
             ))}
+            {/* Day numbers grow to 1.4x at most: at the largest text sizes seven to a row overlap (Vera, docs/PERSONAS.md). */}
             {cells.map((c, i) => (
-              <View key={i} style={{ width: `${100 / 7}%`, height: 42, alignItems: "center", justifyContent: "center", borderRadius: 10, backgroundColor: c?.off ? "#FDF3E7" : c?.mine ? colors.irisSoft : "transparent" }}>
-                <Text style={{ fontSize: 14, fontWeight: c?.mine || c?.off ? "700" : "400", color: c?.off ? colors.orange : c?.mine ? colors.iris : colors.text }}>{c?.day ?? ""}</Text>
+              <View key={i} style={{ width: `${100 / 7}%`, minHeight: 42, alignItems: "center", justifyContent: "center", borderRadius: 10, backgroundColor: c?.off ? "#FDF3E7" : c?.mine ? colors.irisSoft : "transparent" }}>
+                <Text maxFontSizeMultiplier={1.4} style={{ fontSize: 14, fontWeight: c?.mine || c?.off ? "700" : "400", color: c?.off ? colors.orange : c?.mine ? colors.iris : colors.text }}>{c?.day ?? ""}</Text>
               </View>
             ))}
           </View>

@@ -1,0 +1,204 @@
+name: Phone journeys (Android emulator, staging)
+
+# Drives the real Android app with Maestro (mobile/.maestro/*.yaml), free on
+# GitHub's machines instead of Expo's paid cloud (Ryan, Nov 24, 2026):
+#  1. build the app from this commit, pointed at STAGING (fake data), or
+#     reuse the last build when the app's code hasn't changed;
+#  2. get staging ready (mobile/.maestro/prepare-*.mjs, public key only);
+#  3. start an Android emulator and run every journey; a failure doesn't
+#     stop the rest, and the summary lists every journey that failed;
+#  4. the website halves on staging (Dex, every PDF). Screenshots are uploaded.
+# The website side of the same promises is in e2e/ (docs/ACCEPTANCE.md);
+# the personas are in docs/PERSONAS.md.
+#
+# WHEN IT RUNS (Ryan, Nov 24, 2026: a 35-minute run on every push was too
+# slow): every night on main, on request (Actions -> Run workflow, any
+# branch), and on a pull request when it's given the "phone-tests" label
+# (remove and add the label to run it again). Run it before every Release.
+# To rerun only some journeys: Actions -> Phone journeys -> Run workflow,
+# then list them in "journeys" (e.g. "gus,violet"); about 12 minutes when
+# the app build is reused. On this Mac: mobile/.maestro/run-local.sh.
+# Needs: repository variables STAGING_SUPABASE_URL and
+# STAGING_SUPABASE_PUBLISHABLE_KEY (both public by design) and the secrets
+# STAGING_TEST_PASSWORD and VERCEL_AUTOMATION_BYPASS_SECRET.
+
+on:
+  schedule:
+    - cron: "30 8 * * *" # 3:30 am Eastern, after the overnight website tests
+  workflow_dispatch:
+    inputs:
+      journeys:
+        description: "Which journeys (comma-separated): all, or any of tour, cant-play, fern, dex, violet, gus, vera, web. Rerun only the ones that failed."
+        type: string
+        default: all
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phone-journeys-staging # one at a time: the journeys change staging's fake data
+  cancel-in-progress: false
+
+jobs:
+  android:
+    if: github.event_name != 'pull_request' || github.event.label.name == 'phone-tests'
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    defaults:
+      run:
+        working-directory: mobile
+    env:
+      EXPO_PUBLIC_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+      EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+      EXPO_PUBLIC_IRIS_ENVIRONMENT: staging
+      JOURNEYS: ${{ inputs.journeys || 'all' }}
+      STAGING_TEST_PASSWORD: ${{ secrets.STAGING_TEST_PASSWORD }}
+      # Fern and Violet (docs/PERSONAS.md): their journeys write this run's id into their notes.
+      MAESTRO_FERN_EMAIL: fern.flute@example.com
+      MAESTRO_VIOLET_EMAIL: violet.viola@example.com
+      MAESTRO_RUN: ${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - run: npm ci
+
+      # The app build takes about 15 minutes, but most runs change only the
+      # journeys. Reuse the last build of exactly this app code (the key is
+      # a fingerprint of everything that goes into the app).
+      - name: Reuse the app build if the app hasn't changed
+        id: apk
+        uses: actions/cache@v4
+        with:
+          path: mobile/android/app/build/outputs/apk/release/app-release.apk
+          key: apk-staging-v1-${{ hashFiles('mobile/src/**', 'mobile/assets/**', 'mobile/app.json', 'mobile/eas.json', 'mobile/package-lock.json', 'mobile/metro.config.js', 'mobile/tsconfig.json', 'src/shared/**') }}
+      - uses: actions/setup-java@v4
+        if: steps.apk.outputs.cache-hit != 'true'
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Keep Gradle's downloads between runs
+        if: steps.apk.outputs.cache-hit != 'true'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('mobile/package-lock.json') }}
+          restore-keys: gradle-
+      - name: Build the app (release build, this commit's code, no over-the-air updates)
+        if: steps.apk.outputs.cache-hit != 'true'
+        run: |
+          npx expo prebuild --platform android --no-install
+          # Test this commit's code, not the latest published update.
+          sed -i 's#android:name="expo.modules.updates.ENABLED" android:value="true"#android:name="expo.modules.updates.ENABLED" android:value="false"#' android/app/src/main/AndroidManifest.xml
+          cd android && ./gradlew assembleRelease -q
+          ls -la app/build/outputs/apk/release/
+
+      # The same app file for local runs on a Mac (mobile/.maestro/run-local.sh
+      # downloads the newest one), so nobody has to build Android locally.
+      - name: Keep the app file for local runs
+        uses: actions/upload-artifact@v4
+        with:
+          name: iris-staging-apk
+          path: mobile/android/app/build/outputs/apk/release/app-release.apk
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Get staging ready (fake data)
+        run: |
+          want() { [ "$JOURNEYS" = all ] || case ",${JOURNEYS// /}," in *",$1,"*) true ;; *) false ;; esac; }
+          node .maestro/prepare-staging.mjs | tee -a "$GITHUB_ENV"
+          # Dex: a documented date to change on the phone, then check on the website.
+          if want dex; then PHONE_TIME_ZONE=America/Phoenix node .maestro/prepare-dex.mjs | tee -a "$GITHUB_ENV"; else echo "MAESTRO_DEX_DAY=" >> "$GITHUB_ENV"; fi
+          # Gus: two draft dates he plays in a month open for the team.
+          if want gus; then node .maestro/prepare-gus.mjs | tee -a "$GITHUB_ENV"; else echo "MAESTRO_GUS_DAY1=" >> "$GITHUB_ENV"; fi
+          echo "MAESTRO_PASSWORD=$STAGING_TEST_PASSWORD" >> "$GITHUB_ENV"
+
+      - name: Install Maestro
+        run: |
+          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Let the emulator use hardware acceleration
+        working-directory: .
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      # Google's download of the emulator sometimes arrives broken ("Error
+      # reading Zip content", Nov 24). Install it here, retrying, so the next
+      # step finds it already in place.
+      - name: Install the Android emulator (retries a broken download)
+        working-directory: .
+        run: |
+          SDK="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          for i in 1 2 3; do
+            yes | "$SDK" --install emulator "system-images;android-34;google_apis;x86_64" > /dev/null && exit 0
+            echo "download failed (try $i of 3); retrying"; sleep 15
+          done
+          exit 1
+
+      # Every journey runs even if an earlier one fails; each failure is
+      # written to failed-journeys.txt and listed at the end. Steps that clean
+      # up staging or the phone (Gus's cleanup, Violet's clock) always run.
+      - name: Run the phone journeys on an Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          working-directory: mobile
+          # Arizona time, like Fern's building (Splendido): "Today" on the phone comes from its clock.
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -timezone America/Phoenix
+          script: |
+            bash .maestro/run-ci.sh
+
+      # The website halves, on the real staging deployment: Dex (the number
+      # from the phone shows, then the original goes back; runs even if a
+      # phone journey failed, so staging is never left with the test's
+      # number) and every PDF (e2e/staging-journeys/pdfs.spec.ts).
+      - name: Website journeys on staging (Dex, PDFs)
+        if: always() && (env.JOURNEYS == 'all' || contains(env.JOURNEYS, 'dex') || contains(env.JOURNEYS, 'web'))
+        working-directory: .
+        env:
+          STAGING_URL: ${{ secrets.STAGING_URL }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          npx playwright test -c playwright.staging-journeys.config.ts
+
+      # One summary on the run's page: every journey and whether it passed.
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## Phone journeys"
+            if [ -s failed-journeys.txt ]; then
+              echo "**Failed:**"; sed 's/^/- /' failed-journeys.txt
+            elif [ -f maestro-tour.xml ]; then
+              echo "Every phone journey passed."
+            else
+              echo "The journeys didn't run (see the emulator step)."
+            fi
+            echo; echo "Screenshots: the phone-journeys artifact below."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phone-journeys
+          path: |
+            mobile/maestro-*.xml
+            mobile/maestro-output/
+            mobile/shots/
+            mobile/*.png
+            mobile/failed-journeys.txt
+          retention-days: 14

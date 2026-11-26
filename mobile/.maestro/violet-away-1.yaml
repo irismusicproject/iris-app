@@ -1,0 +1,120 @@
+# Violet (docs/PERSONAS.md), part 1 of 3: today, at Arbor Place with no
+# signal, she logs a visit; the phone keeps it. Between parts 1 and 2 the
+# workflow moves the phone's clock 15 days ahead, still with no signal
+# (OFFLINE-SPEC O8: 14 days, docs/ACCEPTANCE.md O1, O5).
+#
+# Needs: MAESTRO_VIOLET_EMAIL, MAESTRO_PASSWORD, MAESTRO_RUN. The phone must
+# have a screen lock (the workflow sets a PIN for Fern before this).
+appId: org.irismusicproject.iris
+name: "Violet, away part 1 - logs a visit with no signal"
+tags:
+  - offline
+---
+- launchApp:
+    clearState: true
+# Past the splash screen first (a slow start lost the first tap, Nov 25).
+- extendedWaitUntil:
+    visible:
+      id: "sign-in-email"
+    timeout: 30000
+- tapOn:
+    id: "sign-in-email"
+- inputText: ${MAESTRO_VIOLET_EMAIL}
+# The form slides up as the keyboard opens; tapping during the slide hit
+# "Email me a code instead" on iOS (Nov 25).
+- waitForAnimationToEnd
+- tapOn:
+    id: "sign-in-password"
+- inputText: ${MAESTRO_PASSWORD}
+# Android only: on iOS hideKeyboard taps the screen and can hit a link
+# ("Reset it on the website"); there Log in stays above the keyboard.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- tapOn: "Log in"
+# iOS asks "Save Password?" over the app after signing in.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          text: "Not Now"
+          optional: true
+- extendedWaitUntil:
+    visible: "My week →"
+    timeout: 30000
+- tapOn: "My week →"
+# My week is loaded when its "Due ..." label shows (the Log button is further down).
+- extendedWaitUntil:
+    visible: "Due .*"
+    timeout: 30000
+- setAirplaneMode: enabled
+- extendedWaitUntil:
+    visible: "You're offline\\. Your work is saved on this phone.*"
+    timeout: 20000
+- scrollUntilVisible:
+    element: "Log an activity"
+    centerElement: true
+    timeout: 60000
+- tapOn: "Log an activity"
+- tapOn: "Arbor Place"
+- scrollUntilVisible:
+    element: "30 min"
+    centerElement: true
+    timeout: 60000
+- tapOn: "30 min"
+# scrollUntilVisible always swipes from the middle of the screen. With two
+# programs the form is taller, and the middle lands on the Minutes box; a
+# swipe that starts on a text box doesn't scroll (Nov 25 run: 30 swipes, no
+# movement). Swipes from lower down fling unpredictably far, so go all the
+# way to the bottom of the form, then come back up slowly to the field.
+- swipe:
+    start: "50%, 85%"
+    end: "50%, 30%"
+- swipe:
+    start: "50%, 85%"
+    end: "50%, 30%"
+- swipe:
+    start: "50%, 85%"
+    end: "50%, 30%"
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: "log-new-residents"
+    direction: UP
+    speed: 15
+    centerElement: true
+    timeout: 60000
+- tapOn:
+    id: "log-new-residents"
+- inputText: "Phone Test V."
+- hideKeyboard
+# Back to the bottom (the note and the Log button are there), swiping from
+# below the residents box this time.
+- swipe:
+    start: "50%, 85%"
+    end: "50%, 30%"
+- swipe:
+    start: "50%, 85%"
+    end: "50%, 30%"
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: "log-note"
+    centerElement: true
+    timeout: 60000
+- tapOn:
+    id: "log-note"
+- inputText: "[phone test ${MAESTRO_RUN}] away"
+- hideKeyboard
+- scrollUntilVisible:
+    element: "Log activity"
+    centerElement: true
+    timeout: 60000
+- tapOn: "Log activity"
+- extendedWaitUntil:
+    visible: "Saved on this phone\\. It sends by itself when you're back online\\."
+    timeout: 20000
+- takeScreenshot: violet-0-saved-today

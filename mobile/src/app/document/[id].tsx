@@ -151,7 +151,7 @@ function DocumentForm({ id }: { id: string }) {
         </Field>
       )}
       <Field label="Attendance" hint="Everyone present." error={errors.attendance}>
-        <Stepper value={attendance} onChange={setAttendance} />
+        <Stepper testID="doc-attendance" value={attendance} onChange={setAttendance} />
       </Field>
       <Field label="Type" error={errors.type}>
         <Choices options={week.types.map((t) => ({ value: t.id, label: t.label }))} selected={typeId} onToggle={setTypeId} />

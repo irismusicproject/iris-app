@@ -19,7 +19,8 @@ export default function RootLayout() {
             contentStyle: { backgroundColor: colors.page },
           }}
         >
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          {/* The title is what iOS shows on the next screen's back button; without it the button reads "(tabs)". */}
+          <Stack.Screen name="(tabs)" options={{ headerShown: false, title: "Back" }} />
           <Stack.Screen name="sign-in" options={{ title: "Sign in", headerBackVisible: false }} />
           <Stack.Screen name="document/[id]" options={{ title: "Document a program" }} />
           <Stack.Screen name="log" options={{ title: "Log relationship building" }} />

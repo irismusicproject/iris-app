@@ -2,8 +2,12 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { Alert, Text, View } from "react-native";
 import { weekStart } from "@shared/domain/documentation";
+import { lastUpdated } from "@/components/offline";
 import { Button, Card, Loading, Muted, Notice, Problem, Screen, Tag } from "@/components/ui";
 import { dueLabel, myTasks, notifySoon, plain, REMINDER, type Task } from "@/lib/month";
+import { offlineNow } from "@/lib/net";
+import { isNetworkError } from "@/lib/offline/outbox";
+import { cacheGet, cacheSet } from "@/lib/offline/store";
 import { supabase } from "@/lib/supabase";
 import { colors } from "@/lib/theme";
 import { todayIso } from "@/lib/week";
@@ -34,12 +38,27 @@ export default function Todo() {
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [cachedAt, setCachedAt] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    try {
-      setTasks(await myTasks());
+    // No signal: the list kept on the phone, at once (lib/net.ts).
+    const fromPhone = async () => {
+      const saved = await cacheGet<Task[]>("tasks");
+      if (!saved) return false;
+      setTasks(saved.value);
+      setCachedAt(saved.savedAt);
       setProblem(null);
+      return true;
+    };
+    if ((await offlineNow()) && (await fromPhone())) return;
+    try {
+      const list = await myTasks();
+      setTasks(list);
+      setCachedAt(null);
+      setProblem(null);
+      cacheSet("tasks", list);
     } catch (e) {
+      if (isNetworkError(e as { message?: string }) && (await fromPhone())) return;
       setProblem(plain(e as { message?: string }));
     }
   }, []);
@@ -110,6 +129,7 @@ export default function Todo() {
     >
       <Text style={{ fontSize: 26, fontWeight: "700", color: colors.iris }}>Hi, {me.name.trim().split(/\s+/)[0]}</Text>
       <Muted>{tasks?.length ? `${tasks.length} thing${tasks.length === 1 ? "" : "s"} to do, soonest first.` : "Nothing to do right now."}</Muted>
+      {cachedAt && <Muted>{lastUpdated(cachedAt)}</Muted>}
       {problem && <Problem>{problem}</Problem>}
       {message && <Notice>{message}</Notice>}
       {tasks?.map((t, i) => {

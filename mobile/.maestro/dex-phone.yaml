@@ -1,0 +1,81 @@
+# Dex (docs/PERSONAS.md), part 1 of 2: on the phone, right after playing,
+# he updates a program he led. Part 2 (e2e/staging-journeys/dex-web.spec.ts)
+# checks the website shows the same number, then puts the original back.
+#
+# Needs (prepare-dex.mjs): MAESTRO_DEX_EMAIL, MAESTRO_DEX_DAY, MAESTRO_DEX_ATTENDANCE;
+# and MAESTRO_PASSWORD. Skipped when MAESTRO_DEX_DAY is empty.
+appId: org.irismusicproject.iris
+name: "Dex, phone - updates a program he led"
+tags:
+  - two-devices
+---
+- runFlow:
+    when:
+      true: ${!!MAESTRO_DEX_DAY}
+    commands:
+      - launchApp:
+          clearState: true
+      # Past the splash screen first (a slow start lost the first tap, Nov 25).
+      - extendedWaitUntil:
+          visible:
+            id: "sign-in-email"
+          timeout: 30000
+      - tapOn:
+          id: "sign-in-email"
+      - inputText: ${MAESTRO_DEX_EMAIL}
+      # The form slides up as the keyboard opens; tapping during the slide hit
+      # "Email me a code instead" on iOS (Nov 25).
+      - waitForAnimationToEnd
+      - tapOn:
+          id: "sign-in-password"
+      - inputText: ${MAESTRO_PASSWORD}
+      # Android only: on iOS hideKeyboard taps the screen and can hit a link
+      # ("Reset it on the website"); there Log in stays above the keyboard.
+      - runFlow:
+          when:
+            platform: Android
+          commands:
+            - hideKeyboard
+      - tapOn: "Log in"
+      # iOS asks "Save Password?" over the app after signing in.
+      - runFlow:
+          when:
+            platform: iOS
+          commands:
+            - tapOn:
+                text: "Not Now"
+                optional: true
+      - extendedWaitUntil:
+          visible: "My week →"
+          timeout: 30000
+      - tapOn: "My week →"
+      # The date he led, by its day ("Wednesday, November 18 · ...").
+      - scrollUntilVisible:
+          element: "${MAESTRO_DEX_DAY}.*"
+          centerElement: true
+          timeout: 60000
+      - tapOn: "${MAESTRO_DEX_DAY}.*"
+      - scrollUntilVisible:
+          element:
+            id: "doc-attendance"
+          centerElement: true
+          timeout: 60000
+      - tapOn:
+          id: "doc-attendance"
+      - eraseText: 6
+      - inputText: ${MAESTRO_DEX_ATTENDANCE}
+      - hideKeyboard
+      - takeScreenshot: dex-0-attendance-changed
+      - scrollUntilVisible:
+          element: "Update"
+          centerElement: true
+          timeout: 60000
+      # Let the centering scroll come to rest first: a tap during the glide
+      # was lost (Android run 45550094728).
+      - waitForAnimationToEnd
+      - tapOn: "Update"
+      # Saved: back on My week, the date still says Documented.
+      - extendedWaitUntil:
+          visible: "View or update →"
+          timeout: 20000
+      - takeScreenshot: dex-1-back-on-my-week

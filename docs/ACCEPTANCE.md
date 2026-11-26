@@ -28,20 +28,20 @@ a fake person (`persona+musician@example.com`, `persona+point-person@…`,
 | M1 | The point person (or an admin) opens a month for the team with one click; musicians, the Admin Lead and other programs' point people can't | ✅ schedule-month | ✅ month-cycle | — | |
 | M2 | While the team edits, only the date's leader changes its title (plus the point person and admins) | ✅ schedule-month | — | — | |
 | M3 | The point person confirms the month; it locks for musicians; they can undo it until the calendar is sent | ✅ schedule-month | — | — | |
-| M4 | Every musician on the roster can see each building's stage for the month | ✅ schedule-month | — | — | |
+| M4 | Every musician on the roster can see each building's stage for the month | ✅ schedule-month | — | ✅ musician-tour (Android, Nov 24) | |
 | M5 | The To do list shows "Open [month]", "Add titles…", "Review and confirm…" to the right people, with due dates | — | — | — | |
 
 ## 2. "I can't play" (v0.41, v0.43)
 
 | # | Promise | DB | Web | Phone | Hand |
 |---|---|---|---|---|---|
-| C1 | A musician marks "I can't play" on a draft date they play, while the month is open for the team; no approval; it counts at once | ✅ month-actions (refusals) | ✅ month-cycle | — | |
+| C1 | A musician marks "I can't play" on a draft date they play, while the month is open for the team; no approval; it counts at once | ✅ month-actions (refusals) | ✅ month-cycle | ✅ cant-play (Android, Nov 24) | |
 | C2 | Before the month is opened, or after it's confirmed, "I can't play" isn't offered | ✅ month-actions | ✅ month-cycle | — | Finding (Nov 24): before opening, musicians see the earlier "Done reviewing" steps with no word about the cycle (v0.46 by design); asked on #30 |
-| C3 | The musician's own calendar shows the date as "can't play" (phone: orange) | — | — | — | Ryan, Nov 24: didn't turn orange (cause unknown; see #30) |
+| C3 | The musician's own calendar shows the date as "can't play" (phone: orange) | — | — | — | ✅ Claude, Nov 24 (iOS simulator, Evergreen House, Dec 1): orange tile and "You can't play" badge. Ryan's earlier miss: no month on staging had been opened for the team, so the button wasn't offered |
 | C4 | The point person sees them as not playing that date (website: struck through) and gets an email | ✅ email queued | ✅ month-cycle | — | |
 | C5 | The point person gets a task: find cover or make it "No Program" | — | — | — | |
 | C6 | The calendar shows how many dates the musician has marked this season | — | — | — | |
-| C7 | The musician can undo it while the month is still open | — | ✅ month-cycle | — | |
+| C7 | The musician can undo it while the month is still open | — | ✅ month-cycle | ✅ cant-play (Android, Nov 24) | ✅ Claude, Nov 24 (iOS simulator) |
 
 ## 3. Leader swaps and change requests (v0.41, v0.43)
 
@@ -57,7 +57,7 @@ a fake person (`persona+musician@example.com`, `persona+point-person@…`,
 
 | # | Promise | DB | Web | Phone | Hand |
 |---|---|---|---|---|---|
-| S1 | The Admin Lead (or point person, admin) sends the calendar; sending also confirms; the dates are published | ✅ schedule-month | — | — | |
+| S1 | The Admin Lead (or point person, admin) sends the calendar; sending also confirms; the dates are published | ✅ schedule-month, clara-two-hats (Admin Lead powers stay at her own building) | — | — | |
 | S2 | The app makes the PDF and emails it to the building's calendar contacts, copying the point person and Admin Lead; on staging it says plainly that email is off | — | — | — | |
 | S3 | The first change after sending moves the month to "partner changes"; the Admin Lead enters changes on phone or computer | ✅ schedule-month | — | — | |
 | S4 | The date's musicians are emailed about each partner change | — | — | — | |
@@ -67,7 +67,7 @@ a fake person (`persona+musician@example.com`, `persona+point-person@…`,
 
 | # | Promise | DB | Web | Phone | Hand |
 |---|---|---|---|---|---|
-| D1 | Each date shows "Canceling today? Call [point person]" with their phone number | — | — | — | |
+| D1 | Each date shows "Canceling today? Call [point person]" with their phone number | — | — | ✅ musician-tour (Android, Nov 24) | |
 | D2 | The leader records "Canceled day-of" with a required reason instead of documenting; it becomes No Program, counted at the start time | ✅ month-actions | — | — | |
 | D3 | The point person is emailed and can undo a day-of cancellation | — | — | — | |
 | D4 | A musician marks "I wasn't there" on their week; they aren't paid and the partner isn't billed for them; refused once the week is approved | ✅ month-actions | — | — | |
@@ -78,12 +78,12 @@ a fake person (`persona+musician@example.com`, `persona+point-person@…`,
 
 | # | Promise | DB | Web | Phone | Hand |
 |---|---|---|---|---|---|
-| P1 | Three tabs: To do, Today, Calendar; My week and Account one tap away | — | n/a | — | |
-| P2 | Sign in by password or emailed code; the sign-in is kept encrypted on the phone | — | ✅ auth (web) | — | Ryan, Nov 22 ✅ (password) |
+| P1 | Three tabs: To do, Today, Calendar; My week and Account one tap away | — | n/a | ✅ musician-tour (Android, Nov 24) | |
+| P2 | Sign in by password or emailed code; the sign-in is kept encrypted on the phone | — | ✅ auth (web) | ✅ musician-tour (Android, Nov 24) | Ryan, Nov 22 ✅ (password, Android); Claude, Nov 24 ✅ (password, iPhone and iPad simulators) |
 | P3 | Today: document a program, log relationship building, "I wasn't there" | ✅ (rules) | n/a | — | |
-| P4 | Date details show who's playing with instruments and phone numbers, to the program's people only | ✅ phone-calls | — | — | |
+| P4 | Date details show who's playing with instruments and phone numbers, to the program's people only | ✅ phone-calls | — | ✅ musician-tour (Android, Nov 24) | |
 | P5 | My week shows the calculated hours and Submit my week, with the same rules as the website | ✅ money-scenarios | — | — | |
-| P6 | Test builds say they're the staging test version | n/a | n/a | — | |
+| P6 | Test builds say they're the staging test version | n/a | n/a | ✅ musician-tour (Android, Nov 24) | |
 
 ## 7. Offline (v0.40)
 

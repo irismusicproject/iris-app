@@ -1,0 +1,101 @@
+# Fern (docs/PERSONAS.md), part 1: no screen lock, no signal
+# (docs/ACCEPTANCE.md O3). Without a PIN, pattern or fingerprint the app
+# keeps nothing on the phone: logging with no signal is refused with a plain
+# reason, and nothing reaches staging afterwards (check-offline-sent.mjs).
+#
+# Needs: MAESTRO_FERN_EMAIL, MAESTRO_PASSWORD, MAESTRO_RUN (a unique run id,
+# written into the note so the check finds this run's records only).
+# The emulator must have NO screen lock when this runs.
+appId: org.irismusicproject.iris
+name: "Fern, no screen lock - nothing is kept on the phone"
+tags:
+  - offline
+---
+- launchApp:
+    clearState: true
+# Past the splash screen first (a slow start lost the first tap, Nov 25).
+- extendedWaitUntil:
+    visible:
+      id: "sign-in-email"
+    timeout: 30000
+- tapOn:
+    id: "sign-in-email"
+- inputText: ${MAESTRO_FERN_EMAIL}
+# The form slides up as the keyboard opens; tapping during the slide hit
+# "Email me a code instead" on iOS (Nov 25).
+- waitForAnimationToEnd
+- tapOn:
+    id: "sign-in-password"
+- inputText: ${MAESTRO_PASSWORD}
+# Android only: on iOS hideKeyboard taps the screen and can hit a link
+# ("Reset it on the website"); there Log in stays above the keyboard.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- tapOn: "Log in"
+# iOS asks "Save Password?" over the app after signing in.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          text: "Not Now"
+          optional: true
+- extendedWaitUntil:
+    visible: "My week →"
+    timeout: 30000
+- tapOn: "My week →"
+# My week is loaded when its "Due ..." label shows (the Log button is further down).
+- extendedWaitUntil:
+    visible: "Due .*"
+    timeout: 30000
+
+# The basement: no signal.
+- setAirplaneMode: enabled
+- extendedWaitUntil:
+    visible: "You're offline\\. To save work offline, turn on a screen lock.*"
+    timeout: 20000
+- takeScreenshot: fern-no-lock-0-offline
+
+- scrollUntilVisible:
+    element: "Log an activity"
+    centerElement: true
+    timeout: 60000
+- tapOn: "Log an activity"
+- tapOn: ".*Splendido.*"
+- scrollUntilVisible:
+    element: "30 min"
+    centerElement: true
+    timeout: 60000
+- tapOn: "30 min"
+- scrollUntilVisible:
+    element:
+      id: "log-new-residents"
+    centerElement: true
+    timeout: 60000
+- tapOn:
+    id: "log-new-residents"
+- inputText: "Phone Test T."
+- scrollUntilVisible:
+    element:
+      id: "log-note"
+    centerElement: true
+    timeout: 60000
+- tapOn:
+    id: "log-note"
+- inputText: "[phone test ${MAESTRO_RUN}] no lock"
+- hideKeyboard
+- scrollUntilVisible:
+    element: "Log activity"
+    centerElement: true
+    timeout: 60000
+- tapOn: "Log activity"
+- extendedWaitUntil:
+    visible: "No connection\\. Turn on a screen lock.*"
+    timeout: 20000
+- takeScreenshot: fern-no-lock-1-refused
+
+# Signal back: there is nothing on the phone to send.
+- setAirplaneMode: disabled

@@ -1,0 +1,165 @@
+# Gus (docs/PERSONAS.md): phone only, taps fast, other gigs, wants to lead.
+# The edges of the month (docs/ACCEPTANCE.md C1, C6, C7, R1):
+#   - a quick double tap on "I can't play" marks the date once, not on and
+#     off again;
+#   - the season count goes up with each date he marks;
+#   - he proposes himself as leader on the second date, with a double tap too
+#     (prepare-gus.mjs --cleanup checks it made one request, not two);
+#   - he undoes both marks. The cleanup also withdraws his proposal (no app
+#     has a Withdraw button yet) and repairs anything left behind.
+#
+# Needs (prepare-gus.mjs): MAESTRO_GUS_EMAIL, MAESTRO_GUS_MONTHS_AHEAD,
+# MAESTRO_GUS_DAY1..3, MAESTRO_GUS_MARKED1..2; and MAESTRO_PASSWORD.
+# Skipped when MAESTRO_GUS_DAY1 is empty.
+appId: org.irismusicproject.iris
+name: "Gus - double taps, the season count, a leader swap"
+tags:
+  - month-cycle
+---
+- runFlow:
+    when:
+      true: ${!!MAESTRO_GUS_DAY1}
+    commands:
+      - launchApp:
+          clearState: true
+      # Past the splash screen first (a slow start lost the first tap, Nov 25).
+      - extendedWaitUntil:
+          visible:
+            id: "sign-in-email"
+          timeout: 30000
+      - tapOn:
+          id: "sign-in-email"
+      - inputText: ${MAESTRO_GUS_EMAIL}
+      # The form slides up as the keyboard opens; tapping during the slide hit
+      # "Email me a code instead" on iOS (Nov 25).
+      - waitForAnimationToEnd
+      - tapOn:
+          id: "sign-in-password"
+      - inputText: ${MAESTRO_PASSWORD}
+      # Android only: on iOS hideKeyboard taps the screen and can hit a link
+      # ("Reset it on the website"); there Log in stays above the keyboard.
+      - runFlow:
+          when:
+            platform: Android
+          commands:
+            - hideKeyboard
+      - tapOn: "Log in"
+      # iOS asks "Save Password?" over the app after signing in.
+      - runFlow:
+          when:
+            platform: iOS
+          commands:
+            - tapOn:
+                text: "Not Now"
+                optional: true
+      - extendedWaitUntil:
+          visible: "Calendar"
+          timeout: 30000
+      - tapOn: "Calendar"
+      - repeat:
+          times: ${MAESTRO_GUS_MONTHS_AHEAD}
+          commands:
+            - tapOn: "Next →"
+      - tapOn:
+          text: "Show all of .*"
+          optional: true
+
+      # Date 1: a quick double tap.
+      - scrollUntilVisible:
+          element: "${MAESTRO_GUS_DAY1}.*"
+          speed: 15
+          centerElement: true
+          timeout: 60000
+      - tapOn: "${MAESTRO_GUS_DAY1}.*"
+      - scrollUntilVisible:
+          element: "I can't play this date"
+          centerElement: true
+          timeout: 60000
+      - tapOn:
+          text: "I can't play this date"
+          repeat: 2
+          delay: 1
+      - extendedWaitUntil:
+          visible: "${MAESTRO_GUS_MARKED1}"
+          timeout: 15000
+      - assertVisible: "Marked: I can't play \\(tap to undo\\)"
+      - takeScreenshot: gus-0-double-tap-marked-once
+      - back
+
+      # Date 2, first: he proposes himself as leader, tapping Send twice
+      # (made while he still plays it; marking "can't play" hides the Leader card).
+      - scrollUntilVisible:
+          element: "${MAESTRO_GUS_DAY3}.*"
+          speed: 15
+          centerElement: true
+          timeout: 60000
+      - tapOn: "${MAESTRO_GUS_DAY3}.*"
+      - scrollUntilVisible:
+          element: "Send to the point person"
+          centerElement: true
+          timeout: 60000
+      - tapOn: "Gus"
+      - tapOn:
+          text: "Send to the point person"
+          repeat: 2
+          delay: 1
+      # The brief "Sent to the point person" message may be off screen; the
+      # Leader card's lasting text says the proposal is in.
+      - scrollUntilVisible:
+          element: "You've proposed a leader swap for this date\\..*"
+          centerElement: true
+          timeout: 60000
+      - takeScreenshot: gus-2-swap-proposed
+      - back
+
+      # Date 2, then: he marks it too, and the count goes up.
+      - scrollUntilVisible:
+          element: "${MAESTRO_GUS_DAY2}.*"
+          speed: 15
+          centerElement: true
+          timeout: 60000
+      - tapOn: "${MAESTRO_GUS_DAY2}.*"
+      - scrollUntilVisible:
+          element: "I can't play this date"
+          centerElement: true
+          timeout: 60000
+      - tapOn: "I can't play this date"
+      - extendedWaitUntil:
+          visible: "${MAESTRO_GUS_MARKED2}"
+          timeout: 15000
+      - takeScreenshot: gus-1-second-date-count
+      - back
+
+      # Undo both marks. Back on the calendar the list is still scrolled down
+      # at date 2, so date 1 is above.
+      - scrollUntilVisible:
+          element: "${MAESTRO_GUS_DAY1}.*"
+          direction: UP
+          speed: 15
+          centerElement: true
+          timeout: 60000
+      - tapOn: "${MAESTRO_GUS_DAY1}.*"
+      - scrollUntilVisible:
+          element: "Marked: I can't play \\(tap to undo\\)"
+          centerElement: true
+          timeout: 60000
+      - tapOn: "Marked: I can't play \\(tap to undo\\)"
+      - extendedWaitUntil:
+          visible: "Undone: you're playing it again\\."
+          timeout: 15000
+      - back
+      - scrollUntilVisible:
+          element: "${MAESTRO_GUS_DAY2}.*"
+          speed: 15
+          centerElement: true
+          timeout: 60000
+      - tapOn: "${MAESTRO_GUS_DAY2}.*"
+      - scrollUntilVisible:
+          element: "Marked: I can't play \\(tap to undo\\)"
+          centerElement: true
+          timeout: 60000
+      - tapOn: "Marked: I can't play \\(tap to undo\\)"
+      - extendedWaitUntil:
+          visible: "Undone: you're playing it again\\."
+          timeout: 15000
+      - takeScreenshot: gus-3-undone

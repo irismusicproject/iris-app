@@ -8,17 +8,43 @@
 # Screenshots (cant-play-*.png) let a person check the colors: Maestro
 # can't read colors, and the orange is exactly what this journey is about.
 appId: org.irismusicproject.iris
-name: "I can't play: mark, see it on the calendar, undo"
+name: "I can't play - mark, see it on the calendar, undo"
 tags:
   - month-cycle
 ---
 - launchApp:
     clearState: true
-- tapOn: "Email"
+# Past the splash screen first (a slow start lost the first tap, Nov 25).
+- extendedWaitUntil:
+    visible:
+      id: "sign-in-email"
+    timeout: 30000
+- tapOn:
+    id: "sign-in-email"
 - inputText: ${MAESTRO_EMAIL}
-- tapOn: "Password"
+# The form slides up as the keyboard opens; tapping during the slide hit
+# "Email me a code instead" on iOS (Nov 25).
+- waitForAnimationToEnd
+- tapOn:
+    id: "sign-in-password"
 - inputText: ${MAESTRO_PASSWORD}
+# Android only: on iOS hideKeyboard taps the screen and can hit a link
+# ("Reset it on the website"); there Log in stays above the keyboard.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
 - tapOn: "Log in"
+# iOS asks "Save Password?" over the app after signing in.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          text: "Not Now"
+          optional: true
+- takeScreenshot: cant-play-0-after-sign-in
 - extendedWaitUntil:
     visible: "Calendar"
     timeout: 30000
@@ -28,8 +54,15 @@ tags:
     commands:
       - tapOn: "Next →"
 - scrollUntilVisible:
-    element: ".*${MAESTRO_DATE_TITLE}.*"
-- tapOn: ".*${MAESTRO_DATE_TITLE}.*"
+    element: "${MAESTRO_DATE_DAY}.*"
+    centerElement: true
+    timeout: 60000
+- tapOn: "${MAESTRO_DATE_DAY}.*"
+# Below the fold on a small phone: scroll to it first.
+- scrollUntilVisible:
+    element: "I can't play this date"
+    centerElement: true
+    timeout: 60000
 - tapOn: "I can't play this date"
 - assertVisible: "Marked\\..*can't play this season\\."
 - takeScreenshot: cant-play-1-date-marked
@@ -37,7 +70,11 @@ tags:
 - takeScreenshot: cant-play-2-calendar-shows-it
 - assertVisible: ".*Orange: you can.t play.*"
 # Undo, so staging is left as it was.
-- tapOn: ".*${MAESTRO_DATE_TITLE}.*"
+- tapOn: "${MAESTRO_DATE_DAY}.*"
+- scrollUntilVisible:
+    element: "Marked: I can't play \\(tap to undo\\)"
+    centerElement: true
+    timeout: 60000
 - tapOn: "Marked: I can't play \\(tap to undo\\)"
 - assertVisible: "Undone: you're playing it again."
 - takeScreenshot: cant-play-3-undone

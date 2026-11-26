@@ -255,7 +255,7 @@ export const styles = StyleSheet.create({
   tagTextTodo: { color: colors.orange },
   stepBtn: { width: 52, height: 52, borderRadius: 26, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.white, alignItems: "center", justifyContent: "center" },
   stepText: { fontSize: 26, color: colors.iris, fontWeight: "600" },
-  row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
+  row: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 8 },
   divider: { height: 1, backgroundColor: colors.border, marginVertical: 4 },
 });
 
@@ -298,7 +298,7 @@ export function TimeField({ value, onChange, placeholder }: { value: string; onC
 }
 
 /** − 12 + : a number with big buttons either side (attendance, minutes). */
-export function Stepper({ value, onChange, step = 1, min = 0 }: { value: string; onChange: (v: string) => void; step?: number; min?: number }) {
+export function Stepper({ value, onChange, step = 1, min = 0, testID }: { value: string; onChange: (v: string) => void; step?: number; min?: number; testID?: string }) {
   const n = Number(value) || 0;
   const btn = (label: string, next: number, a11y: string) => (
     <Pressable
@@ -313,7 +313,7 @@ export function Stepper({ value, onChange, step = 1, min = 0 }: { value: string;
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
       {btn("−", n - step, `${step} fewer`)}
-      <Input value={value} onChangeText={onChange} keyboardType="number-pad" inputMode="numeric" style={{ flex: 1, textAlign: "center", fontSize: 20 }} placeholder="0" />
+      <Input testID={testID} value={value} onChangeText={onChange} keyboardType="number-pad" inputMode="numeric" style={{ flex: 1, textAlign: "center", fontSize: 20 }} placeholder="0" />
       {btn("+", n + step, `${step} more`)}
     </View>
   );

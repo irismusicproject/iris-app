@@ -246,6 +246,41 @@ with **[Lauren's side]** or **[Ryan's side]**.
 - **Tests are Ryan's side** (see Division of labor): `npm run test:db`
   (permission tests) and `npm run test:e2e` (browser tests). Ryan's side adds
   tests for new tables and screens once Lauren approves a feature.
+- **Phone journeys** (Android, against staging, about 35 minutes;
+  `.github/workflows/phone-journeys.yml`, personas in `docs/PERSONAS.md`)
+  run nightly on `main`, on request, and on a pull request given the
+  `phone-tests` label. Don't run them for every small change: develop a
+  journey against the simulator first, then confirm on GitHub. Run them
+  before every Release.
+
+## Testing habits (Ryan, Nov 25, 2026)
+
+A 40-minute phone run is the final check, never the debugger. These are
+standing rules for every session, not suggestions.
+
+1. **Reproduce locally before pushing a journey fix.** Run the journey with
+   `mobile/.maestro/run-local.sh <journey>` (Android emulator on this Mac,
+   the same script as GitHub; minutes) until it passes, then push.
+2. **Rerun only what failed.** Actions → Phone journeys → Run workflow, with
+   `journeys` set to the failed ones (e.g. `gus,violet`). A full run (or the
+   `phone-tests` label) is for the last check before merging and before a
+   Release.
+3. **Never wait idle on a run.** Start it in the background and work on
+   something else: the next item in `docs/TESTING-BACKLOG.md`, Lauren's open
+   questions on #30, or another bug. Read the result when it's done.
+4. **Every fragile journey step leaves a test ID behind.** When a journey
+   breaks because it found an element by its text, by scrolling, or by
+   position, add a `testID` to that element in the app (in the same PR) and
+   point the journey at the ID. Cross the item off, or add it, in
+   `docs/TESTING-BACKLOG.md`.
+5. **Every logic bug fixed leaves a unit test behind.** When a fix changes a
+   rule (dates, the 14 days, a count, what a screen trusts), move the rule
+   into a pure function with no imports (as in
+   `mobile/src/lib/session-choice.ts`) and pin it in `tests/unit/`
+   (`npm run test:unit`, plain Node, seconds; runs on every PR). If it can't
+   be pinned yet, add it to the backlog.
+6. **Each session takes one backlog item** when nothing more urgent is on,
+   and reports which on #30.
 - **Databases (Ryan owns these):** pull requests never touch a real database.
   Merging a migration to `main` updates **staging** automatically; **production**
   gets it only when Ryan runs **Release** (database first, then the live site). Never edit a migration

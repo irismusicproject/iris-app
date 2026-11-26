@@ -4,6 +4,8 @@ import { defineConfig, devices } from "@playwright/test";
 // Supabase CLI, and a production build of the app. See README, "Automated tests".
 export default defineConfig({
   testDir: "./e2e",
+  // Staging-only journeys run from phone-journeys.yml with their own config.
+  testIgnore: ["**/staging-journeys/**"],
   fullyParallel: false,
   workers: 1, // tests share one database
   retries: process.env.CI ? 1 : 0,
