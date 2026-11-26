@@ -91,6 +91,13 @@ test("point person fills a month and sets leaders, musicians edit drafts, point 
   await pointPage.reload();
   // The Leader column keeps the choice after a reload (workbook layout, #35).
   await expect(pointPage.getByLabel(/^Leader for Tuesday/).first().locator("option:checked")).toHaveText("Mira");
+  // Back to no leader ("Pick…") works too: it failed on staging, Nov 25, 2026.
+  await pointPage.getByLabel(/^Leader for Tuesday/).first().selectOption({ value: "" });
+  await expect(pointPage.getByText("Leader set.")).toBeVisible();
+  await pointPage.reload();
+  await expect(pointPage.getByLabel(/^Leader for Tuesday/).first().locator("option:checked")).toHaveText("Pick…");
+  await pointPage.getByLabel(/^Leader for Tuesday/).first().selectOption({ label: "Mira" });
+  await expect(pointPage.getByText("Leader set.")).toBeVisible();
 
   // 3b. v0.41 (Lauren, Nov 23, 2026): while the team edits, the date's leader
   //     adds its title. Mira now leads the first Tuesday.
