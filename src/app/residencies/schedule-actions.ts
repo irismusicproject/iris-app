@@ -287,12 +287,13 @@ export async function removeMusician(residencyId: string, assignmentId: string):
 export async function setLeader(residencyId: string, sessionId: string, personId: string): Promise<ScheduleResult> {
   await requirePerson();
   const supabase = await createClient();
-  const { error: e1 } = await supabase
-    .from("session_assignment")
-    .update({ role: "participant" })
-    .eq("session_id", sessionId)
-    .eq("role", "leader")
-    .neq("person_id", personId);
+  // Demote the current leader (unless it's the person being chosen). With
+  // "no leader" there's no one to keep: comparing person_id with "" made the
+  // database refuse the whole request, so removing a leader always failed
+  // (staging log, Nov 25, 2026).
+  let demote = supabase.from("session_assignment").update({ role: "participant" }).eq("session_id", sessionId).eq("role", "leader");
+  if (isId(personId)) demote = demote.neq("person_id", personId);
+  const { error: e1 } = await demote;
   if (e1) return fail(e1);
   if (isId(personId)) {
     const { error, count } = await supabase
