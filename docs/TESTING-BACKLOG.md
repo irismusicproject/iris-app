@@ -38,7 +38,8 @@ staging's data or the screen size changes. Each item: give the element a
 ## Unit tests to add (habit 5)
 
 Pinned so far (`tests/unit/`): which session the phone trusts on opening
-(`session-choice`), site time zones (`time`), the 14 days (`sign-in-limit`), form line breaks (`form`), the date screen's buttons (`date-rules`).
+(`session-choice`), site time zones (`time`), the 14 days (`sign-in-limit`), form line breaks (`form`), the date screen's buttons (`date-rules`),
+where staging's email may go (`email-redirect`).
 
 - [x] **The 14-day offline limit** (Nov 25, `sign-in-limit`) (`mobile/src/lib/offline/outbox.tsx`,
   `signInNeeded`): move it into a pure function; test 13 days, 15 days,
