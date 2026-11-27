@@ -1,6 +1,6 @@
 # Scheduling revision for v0.9 (D19)
 
-_Draft v0.1, November 27, 2026. A plan for Lauren's approval; no code changes
+_Draft v0.2, November 27, 2026 (v0.2: point 2 corrected, the Lead Musician's leader rule is v0.18, not a gap; Q14 done; Q15 added). A plan for Lauren's approval; no code changes
 until she approves it. Decisions D19-a to D19-j are Lauren's and Ryan's (Nov
 27, 2026); where one conflicts with an earlier rule, D19 wins and the section
 below says which rule it revises. DOMAIN-MODEL.md stays the authority for
@@ -114,11 +114,12 @@ Examples below use the seed's made-up people (Violet Viola, Cal Cello).
   (`request_leader_swap`), and only when the date **already has a leader**.
 - On the season view the Iris Supervisor sets a weekly program's leader for
   the whole season (usual leader); otherwise leaders are set per date.
-- **Gap found:** the website and database let the Lead Musician set leaders,
-  but only on draft dates the Lead Musician plays (the row policy "musicians
-  pick leaders (drafts)" requires playing the date). The probe's update
-  silently changed nothing. DOMAIN-MODEL v0.46 says the Lead Musician sets
-  leaders; the code says only on their own dates.
+- The Lead Musician sets leaders on **published** dates (v0.18, v0.37) and,
+  like any musician, on draft dates they play; on other drafts, setting
+  leaders is the Iris Supervisor's and admins' (DOMAIN-MODEL section 7,
+  pinned by `scheduling.test.mjs`). _Corrected Nov 27, 2026: v0.1 of this
+  plan called this a gap; it is the v0.18 rule, and v0.46's "leaders set
+  only by the point person, admins and the Admin Lead" is shorthand for it._
 - No screen counts dates led per musician per month (the "2–3" norm).
 
 ### Point 3: marking "I can't play"
@@ -191,8 +192,8 @@ Examples below use the seed's made-up people (Violet Viola, Cal Cello).
   "can't play", "I wasn't there", leader-swap and sub requests, and "everyone
   is done reviewing". **Not** titles, notes, rooms or musicians added.
 
-Also noticed (small): the building month page still tells musicians they can
-edit the "leader" on draft dates; since v0.43 they can't.
+Also noticed (small): the building month page still told musicians they can
+edit the "leader" on draft dates; since v0.43 they can't. Fixed Nov 27, 2026.
 
 ---
 
@@ -270,9 +271,9 @@ in Supabase), so web and phone behave the same.
   approves).
 - **Revises:** v0.25 / D5 Nov 22 ("musicians only swap a leader the point
   person set"), v0.28 Q1, v0.41 and v0.43 (leader swap as a `ChangeRequest`
-  before sending), the trigger rule in `assignment_month_rules`. Also fixes
-  the Lead Musician gap from point 2 (the Lead Musician sets leaders on every
-  draft date of the residency, as v0.46 says). **Keeps:** one leader per
+  before sending), the trigger rule in `assignment_month_rules`. Whether the
+  Lead Musician also sets leaders on draft dates they don't play is Q15.
+  **Keeps:** one leader per
   group session; relationship-building dates need none; D3 (the leader
   documents; hours come from documentation, so who leads doesn't change
   anyone's pay).
@@ -591,5 +592,10 @@ question.
 13. **D19-j, rooms:** may the Iris Supervisor and the Lead Musician retire a
     room, or only add and rename? _Recommend: add, rename and retire (never
     delete), logged._
-14. **The "leader" text on the month page** (point 5, small): fix it now on
-    v0.8 or wait for v0.9? _Recommend: wait; PR 4 rewrites that text._
+14. **The "leader" text on the month page** (point 5, small): _Fixed Nov 27,
+    2026 at Ryan's request; no longer a question._
+15. **Lead Musician and drafts:** today (v0.18) the Lead Musician sets
+    leaders only on published dates and on drafts they play. With D19-c, should
+    they also set leaders on draft dates they don't play, as the Iris Supervisor
+    does? _Recommend: yes; the Lead Musician coordinates the season, and the
+    change is logged like any other._

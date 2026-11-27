@@ -280,7 +280,7 @@ export default async function MonthPage({
 
         {access.onRoster && !access.canSchedule && (latest
           ? " · This month has been reviewed: ask the point person for any changes."
-          : " · On draft dates you play in, you can edit the title, notes, room, musicians and leader, or make the date “No Program”.")}
+          : " · On draft dates you play in, you can edit the notes, room and musicians, add the title when you lead the date, or make it “No Program”. The point person sets leaders; to change one, propose a different leader under More once the month is open for the team.")}
         {access.isAdminLead && !access.canSchedule && " As admin lead, you publish the month and update published dates after partner feedback."}
       </p>
 
