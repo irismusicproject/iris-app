@@ -37,6 +37,19 @@ r = await fn(O, "open_schedule_month"); check("an outsider can't", !r.ok, r);
 r = await as(null, `select public.open_schedule_month('${w.RES}','${w.S1}','${MONTH}')`); check("signed out can't", !r.ok, r);
 r = await as(P, `select public.open_schedule_month('${w.RES}','${w.T1}','${MONTH}') as r`); check("a site that isn't this program's is refused", !r.ok, r);
 r = await fn(P, "open_schedule_month"); check("the point person opens the month: team editing", r.ok && (await stage()) === "team_editing", r);
+// The "month is open" notice: a date before the team's deadline, "As soon as
+// possible" after it (Lauren, Nov 27, 2026; migration 20261229120000).
+const opened = async (month) => (await su(`select n.body from public.notification n
+  where n.kind='month_opened' and n.person_id='${M1}' and n.dedupe_key like '%:${month}:%'`))[0]?.body ?? "";
+const due = (await su(`select team_due_on::text as d from public.schedule_month where residency_id='${w.RES}' and site_id='${w.S1}' and month='${MONTH}'`))[0].d;
+const late = due < TODAY;
+check(late ? "opened after the team's deadline: the notice says 'As soon as possible'" : "opened before the team's deadline: the notice names the date",
+  late ? /As soon as possible:/.test(await opened(MONTH)) && !/By /.test(await opened(MONTH)) : /By \w+day, /.test(await opened(MONTH)), { due, body: await opened(MONTH) });
+const AHEAD = addDays(MONTH, 62).slice(0, 8) + "01";    // two months on: its deadline is always ahead
+const sAhead = await mk("Music Café", `${AHEAD.slice(0, 8)}09`);
+await su(`insert into public.session_assignment (session_id, person_id, role) values ('${sAhead}','${M1}','participant')`);
+r = await as(P, `select public.open_schedule_month('${w.RES}','${w.S1}','${AHEAD}')`);
+check("a month opened in good time names its deadline ('By Tuesday, …')", r.ok && /is open\. By \w+day, \w+ \d+:/.test(await opened(AHEAD)), { r, body: await opened(AHEAD) });
 r = await as(M2, `select stage from public.schedule_month where month='${MONTH}'`); check("the program's musicians can see the stage", r.ok && r.rows.length === 1, r);
 r = await as(O, `select * from public.schedule_month`); check("an outsider sees no months", r.ok && r.rows.length === 0, r);
 r = await as(P, `update public.schedule_month set stage='final'`); check("nobody changes the stage directly (only the functions)", !r.ok || r.n === 0, r);
