@@ -89,7 +89,29 @@ jobs:
       - name: Move the production branch up to main
         # Fast-forward only: if someone changed production directly, this
         # stops instead of overwriting their change.
-        run: git push origin HEAD:refs/heads/production
+        run: |
+          date -u +%Y-%m-%dT%H:%M:%SZ > moved-at.txt
+          git push origin HEAD:refs/heads/production
+      # Moving the branch only ASKS Vercel to publish. v0.8 (Nov 27, 2026)
+      # reported success while Vercel's build had failed, so the live site
+      # stayed on the old code. Wait for Vercel's own answer for this commit,
+      # posted after the move (the commit's older status is staging's), and
+      # fail the release if the live site didn't get it. The tag comes after.
+      - name: Wait for Vercel to publish it on the live site
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha=$(git rev-parse HEAD); since=$(cat moved-at.txt)
+          for i in $(seq 1 60); do
+            state=$(gh api "repos/$GITHUB_REPOSITORY/commits/$sha/statuses" --jq "[.[] | select(.context == \"Vercel\" and .created_at >= \"$since\")][0].state // \"waiting\"")
+            echo "Vercel: $state"
+            case "$state" in
+              success) echo "Live at app.irismusicproject.org."; exit 0 ;;
+              failure|error) echo "::error::Vercel didn't publish this release; the live site still runs the previous code. See the Vercel dashboard (production deployments)."; exit 1 ;;
+            esac
+            sleep 20
+          done
+          echo "::error::No answer from Vercel within 20 minutes; check the Vercel dashboard."; exit 1
       - name: Tag the version and publish release notes
         run: gh release create "$VERSION" --target "$(git rev-parse HEAD)" --title "$VERSION" --generate-notes
         env:
