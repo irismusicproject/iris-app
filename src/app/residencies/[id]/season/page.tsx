@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { recurrenceLabel, SESSION_KIND_LABELS, type Series, type SessionKind } from "@/shared/domain/scheduling";
 import { formatDay, formatMonth, formatTime, localDateTime, todayIn } from "@/shared/domain/time";
 import { AddOneTimeForm } from "../month/month-controls";
-import { FillSeasonButton, SeasonLeaderSelect } from "./season-controls";
+import { SeasonLeaderSelect } from "./season-controls";
 
 // Season view (DOMAIN-MODEL v0.16): the whole semester at a glance, for the
 // Iris Supervisor (and Lead Musician, admins). Set a weekly program's leader for
@@ -141,7 +141,6 @@ export default async function SeasonPage({ params, searchParams }: { params: Pro
 
       <section className={card}>
         <h2 className="text-lg font-semibold">Month by month</h2>
-        {access.canSchedule && <div className="mt-3"><FillSeasonButton residencyId={id} seasonId={season.id} seasonName={season.name} /></div>}
         <ul className="mt-4 divide-y divide-border text-sm">
           {monthStats.map((m) => (
             <li key={m.month} className="flex flex-wrap items-center justify-between gap-2 py-2">

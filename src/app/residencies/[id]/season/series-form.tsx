@@ -72,7 +72,7 @@ export function SeriesForm({
           <Field label="Starts" error={e?.active_from}>
             <input name="active_from" type="date" required defaultValue={series?.active_from ?? ""} className={inputClass} />
           </Field>
-          <Field label="Ends (optional)" error={e?.active_until}>
+          <Field label="Ends (optional; dates are added up to here, or to the season's end)" error={e?.active_until}>
             <input name="active_until" type="date" defaultValue={series?.active_until ?? ""} className={inputClass} />
           </Field>
         </div>

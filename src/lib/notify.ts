@@ -137,8 +137,12 @@ export async function runScheduledNotifications(): Promise<{ queued: number; sen
   // Reminders that pair with To do tasks (DOMAIN-MODEL ScheduleMonth, v0.43).
   const { data: monthly, error: monthError } = await db.rpc("queue_month_reminders");
   if (monthError) throw new Error(`queue_month_reminders: ${monthError.message}`);
+  // Months open themselves when their first date is added (D20); months further
+  // ahead get their "open for the team" email on the 1st of the month before.
+  const { data: opened, error: openedError } = await db.rpc("queue_month_opened");
+  if (openedError) throw new Error(`queue_month_opened: ${openedError.message}`);
   const delivered = await deliverPending(200);
-  return { queued: Number(data ?? 0) + Number(monthly ?? 0), ...delivered };
+  return { queued: Number(data ?? 0) + Number(monthly ?? 0) + Number(opened ?? 0), ...delivered };
 }
 
 /** Best effort right after an action that queues a message (e.g. "No Program"). Never fails the action. */
