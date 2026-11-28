@@ -99,6 +99,12 @@ export async function saveSeries(residencyId: string, seriesId: string | null, _
     const { error } = await supabase.from("series_default_person").insert(people.map((person_id) => ({ series_id: id, person_id })));
     if (error) return fail(error);
   }
+  // D20 (Nov 27, 2026): saving makes the program's draft dates from its start
+  // (or this month) to its Ends date, or to the season's end when Ends is blank.
+  const { data: made, error: genError } = await supabase.rpc("generate_series_dates", { p_series: id });
+  if (genError) return fail(genError);
+  const added = (made as number | null) ?? 0;
+  const addedNote = added ? `${added} draft date${added === 1 ? "" : "s"} added` : null;
   // Skipped weeks and new start or end dates apply to dates already filled in (v0.34).
   if (seriesId) {
     const { data, error } = await supabase.rpc("tidy_series_dates", { p_series: id });
@@ -106,13 +112,14 @@ export async function saveSeries(residencyId: string, seriesId: string | null, _
     refresh(residencyId);
     const { removed = 0, skipped = 0 } = (data ?? {}) as { removed?: number; skipped?: number };
     const notes = [
+      addedNote,
       skipped ? `${skipped} draft date${skipped === 1 ? "" : "s"} on a skipped week ${skipped === 1 ? "is" : "are"} now “No Program”` : null,
       removed ? `${removed} draft date${removed === 1 ? "" : "s"} outside the program's dates removed` : null,
     ].filter(Boolean);
     return { status: "saved", message: notes.length ? `Saved. ${notes.join("; ")}.` : undefined };
   }
   refresh(residencyId);
-  return ok;
+  return { status: "saved", message: addedNote ? `Saved. ${addedNote}.` : undefined };
 }
 
 // Ending a weekly program mid-season, and deleting one set up by mistake (v0.34).

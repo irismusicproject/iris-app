@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { buttonClass } from "@/components/auth-card";
 import { ConfirmButton } from "@/components/confirm-button";
-import { confirmMonth, openMonth, sendMonth, undoConfirmMonth, type CycleResult } from "../../month-cycle-actions";
+import { confirmMonth, sendMonth, undoConfirmMonth, type CycleResult } from "../../month-cycle-actions";
 
 // A building's month on its way to the partner (DOMAIN-MODEL ScheduleMonth,
 // v0.41): the stage, what it means, and the next step for whoever can take it.
@@ -56,16 +56,13 @@ export function StagePanel({
       <div className="flex gap-1" aria-hidden="true">
         {STAGES.map((s, k) => <span key={s} className={`h-1.5 flex-1 rounded-full ${k <= i ? "bg-iris" : "bg-border"}`} />)}
       </div>
-      <p className="mt-2 font-semibold">{stage ? `${name} at ${siteName}: stage ${i + 1} of 5, ${LABEL[stage]}` : `${name} at ${siteName} isn't open for the team yet`}</p>
+      <p className="mt-2 font-semibold">{stage ? `${name} at ${siteName}: stage ${i + 1} of 5, ${LABEL[stage]}` : `${name} at ${siteName} has no dates yet`}</p>
       <p className="mt-1 text-sm text-muted">
-        {stage ? HELP[stage] : "The Iris Supervisor opens the month for the team about the 1st of the month before."}
+        {stage ? HELP[stage] : "It opens for the team by itself as soon as its first date is added."}
         {stage && (stage === "team_editing" || stage === "team_confirmed") && dueTeam ? ` Team version due ${fmt(dueTeam)}.` : ""}
         {stage && (stage === "sent_to_partner" || stage === "partner_changes") && dueFinal ? ` Final due ${fmt(dueFinal)}.` : ""}
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
-        {!stage && canSchedule && (
-          <ConfirmButton disabled={pending} className={small} label={`Open ${name} for the team`} question={`Open ${monthLabel} at every building? The musicians playing get an email.`} confirmLabel="Open it" onConfirm={() => run(() => openMonth(residencyId, month))} />
-        )}
         {stage === "team_editing" && canSchedule && (
           <ConfirmButton disabled={pending} className={small} label={`Confirm the team's ${name}`} question="Confirming locks the dates for musicians; the Lead Musician then sends it to the partner." confirmLabel="Confirm" onConfirm={() => run(() => confirmMonth(residencyId, siteId, month))} />
         )}

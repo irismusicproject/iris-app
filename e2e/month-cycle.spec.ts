@@ -19,7 +19,7 @@ async function as(browser: import("@playwright/test").Browser, who: { email: str
   return page;
 }
 
-test("Iris Supervisor opens the month; a musician marks 'I can't play'; the Iris Supervisor sees it and is emailed", async ({ browser }) => {
+test("The month opens by itself; a musician marks 'I can't play'; the Iris Supervisor sees it and is emailed", async ({ browser }) => {
   test.setTimeout(180_000);
   const run = Date.now() % 100000;
   const year = new Date().getFullYear() + 1;
@@ -48,19 +48,12 @@ test("Iris Supervisor opens the month; a musician marks 'I can't play'; the Iris
   const path = `/residencies/${res.id}/month/${month}`;
   const cantPlay = (p: Page) => p.getByRole("button", { name: "I can't play this date" });
 
-  // C2: before the month is open, the musician isn't offered "I can't play".
-  // (v0.46: a month not opened through the cycle shows the earlier review
-  // steps instead, with no word about the cycle; a design question on #30.)
-  const musPage = await as(browser, mus, path);
-  await expect(musPage.getByRole("button", { name: "Done reviewing my dates" })).toBeVisible();
-  await musPage.getByRole("button", { name: "More" }).first().click();
-  await expect(cantPlay(musPage)).toHaveCount(0);
-
-  // M1: the Iris Supervisor opens March for the team.
-  const pointPage = await as(browser, point, path);
-  await pointPage.getByRole("button", { name: /^Open .* for the team/ }).click();
-  await pointPage.getByRole("button", { name: "Open it" }).click();
+  // D20 (Nov 27, 2026): the month opened for the team by itself when its first
+  // dates were added; there is no "Open" button any more.
   await expect.poll(async () => (await d.from("schedule_month").select("stage").eq("residency_id", res.id).maybeSingle()).data?.stage, { timeout: 10_000 }).toBe("team_editing");
+  const musPage = await as(browser, mus, path);
+  const pointPage = await as(browser, point, path);
+  await expect(pointPage.getByRole("button", { name: /^Open .* for the team/ })).toHaveCount(0);
 
   // C1: Mira marks the first date "I can't play". No approval; it counts at once.
   await musPage.reload();

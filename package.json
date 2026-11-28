@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:db": "node supabase/tests/rls.test.mjs && node supabase/tests/scheduling.test.mjs && node supabase/tests/month-cycle.test.mjs && node supabase/tests/scheduling-scenarios.test.mjs && node supabase/tests/scheduling-invariants.test.mjs && node supabase/tests/money-scenarios.test.mjs && node supabase/tests/money-invariants.test.mjs && node supabase/tests/offline.test.mjs && node supabase/tests/schedule-month.test.mjs && node supabase/tests/month-actions.test.mjs && node supabase/tests/phone-calls.test.mjs && node supabase/tests/clara-two-hats.test.mjs && node supabase/tests/reminders.test.mjs",
+    "test:db": "node supabase/tests/rls.test.mjs && node supabase/tests/scheduling.test.mjs && node supabase/tests/month-cycle.test.mjs && node supabase/tests/scheduling-scenarios.test.mjs && node supabase/tests/scheduling-invariants.test.mjs && node supabase/tests/money-scenarios.test.mjs && node supabase/tests/money-invariants.test.mjs && node supabase/tests/offline.test.mjs && node supabase/tests/schedule-month.test.mjs && node supabase/tests/month-actions.test.mjs && node supabase/tests/phone-calls.test.mjs && node supabase/tests/clara-two-hats.test.mjs && node supabase/tests/reminders.test.mjs && node supabase/tests/series-dates.test.mjs",
     "test:unit": "node --test \"tests/unit/*.test.ts\"",
     "test:e2e": "playwright test",
     "dev:local": "node scripts/local-supabase.mjs dev",

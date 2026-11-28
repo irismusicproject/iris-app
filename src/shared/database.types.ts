@@ -1133,6 +1133,9 @@ isOneToOne: false
 "end_series":
 { Args: { "p_last": string,"p_series": string }; Returns: Json
                            },
+"ensure_schedule_month":
+{ Args: { "p_month": string,"p_notify": boolean,"p_residency": string,"p_site": string }; Returns: boolean
+                           },
 "finalize_schedule_month":
 { Args: { "p_month": string,"p_residency": string,"p_site": string }; Returns: Json
                            },
@@ -1145,8 +1148,11 @@ isOneToOne: false
 "generate_season":
 { Args: { "p_season": string }; Returns: number
                            },
+"generate_series_dates":
+{ Args: { "p_series": string }; Returns: number
+                           },
 "generate_series_month":
-{ Args: { "p_month": string,"p_series": string }; Returns: number
+{ Args: { "p_month": string,"p_series": string,"p_until"?: string }; Returns: number
                            },
 "invoice_lines_total":
 { Args: { "p_lines": Json }; Returns: number
@@ -1280,6 +1286,9 @@ isOneToOne: false
 { Args: { "p_month": string,"p_residency": string,"p_site": string }; Returns: string
                            },
 "queue_deadline_reminders":
+{ Args: { "p_now"?: string }; Returns: number
+                           },
+"queue_month_opened":
 { Args: { "p_now"?: string }; Returns: number
                            },
 "queue_month_reminders":

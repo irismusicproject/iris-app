@@ -88,10 +88,15 @@ const stage = async () => (await one(A, `select stage from public.schedule_month
 // ---- Opening the month (point person or admin)
 r = await as(M1, `select public.open_schedule_month('${RES}', null, '2027-02-01')`); check("a musician can't open a month", !r.ok, r);
 r = await as(L, `select public.open_schedule_month('${RES}', null, '2027-02-01')`); check("the Admin Lead can't open a month", !r.ok, r);
-r = await as(P, `select public.open_schedule_month('${RES}', null, '2027-02-01') as n`); check("point person opens February for every building (1)", r.ok && r.rows[0].n === 1, r);
+// D20 (Nov 27, 2026): a month opens by itself when its first date is added.
+check("February's dates opened it for the team by themselves (D20)", (await stage()) === "team_editing" || new Date() > new Date("2027-02-28"));
+r = await as(P, `select public.open_schedule_month('${RES}', null, '2027-02-01') as n`); check("the older Open button still works for older phones", r.ok && (await stage()) === "team_editing", r);
 r = await as(P, `select public.open_schedule_month('${RES}', null, '2027-02-01') as n`); check("opening again changes nothing", r.ok && r.rows[0].n === 0, r);
 r = await as(A, `select team_due_on::text, final_due_on::text from public.schedule_month`); check("due the 10th and 15th of January", r.ok && r.rows[0].team_due_on === "2027-01-10" && r.rows[0].final_due_on === "2027-01-15", r);
-r = await as(A, `select count(*)::int as n from public.notification where kind='month_opened'`); check("the musicians playing are emailed", r.ok && r.rows[0].n === 2, r);
+await db.exec(`select public.queue_month_opened('2027-01-02 12:00-05')`);
+r = await as(A, `select count(*)::int as n from public.notification where kind='month_opened'`); check("the musicians playing are emailed once, by the 1st of the month before", r.ok && r.rows[0].n === 2, r);
+await db.exec(`select public.queue_month_opened('2027-01-03 12:00-05')`);
+r = await as(A, `select count(*)::int as n from public.notification where kind='month_opened'`); check("…and not again", r.ok && r.rows[0].n === 2, r);
 r = await as(M1, `select stage from public.schedule_month`); check("musicians see the stage", r.ok && r.rows[0]?.stage === "team_editing", r);
 r = await as(O, `select * from public.schedule_month`); check("someone off the roster sees nothing", r.ok && r.rows.length === 0, r);
 r = await as(null, `select * from public.schedule_month`); check("anon sees nothing", !r.ok || r.rows.length === 0, r);
