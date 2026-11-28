@@ -121,7 +121,10 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
           <section key={`${b.residencyId}|${b.siteId}`} className={card}>
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h2 className="text-lg font-semibold">{b.name}</h2>
-              <Link href={`/residencies/${b.residencyId}/month/${month}?site=${b.siteId}`} className="text-sm text-iris underline-offset-2 hover:underline">Site Details →</Link>
+              <span className="flex gap-3 text-sm">
+                <a href={`/residencies/${b.residencyId}/month/${month}/calendar?site=${b.siteId}&view=1`} target="_blank" rel="noreferrer" className="text-iris underline-offset-2 hover:underline">View PDF</a>
+                <Link href={`/residencies/${b.residencyId}/month/${month}?site=${b.siteId}`} className="text-iris underline-offset-2 hover:underline">Site Details →</Link>
+              </span>
             </div>
             <div className="mt-3 flex gap-1" aria-hidden="true">
               {STEPS.map((s, k) => <span key={s} className={`h-1.5 flex-1 rounded-full ${k <= i ? "bg-iris" : "bg-border"}`} />)}

@@ -48,9 +48,17 @@ export function AddOneTimeForm({
   defaultDate: string;
 }) {
   const [state, action, pending] = useActionState(addOneTimeSession.bind(null, residencyId, timeZone), initial);
+  const [kind, setKind] = useState<"group_session" | "relationship_building">("group_session");
+  const rb = kind === "relationship_building";
   const e = state.errors;
   return (
     <form action={action} className="flex flex-col gap-4">
+      <Field label="What kind" hint={rb ? "For the calendar only: no leader, and nothing to document as a program. Each musician logs their own one-to-one hours." : "A program a leader runs and documents."}>
+        <select name="kind" value={kind} onChange={(ev) => setKind(ev.target.value as typeof kind)} className={inputClass}>
+          <option value="group_session">Program or event (with a leader)</option>
+          <option value="relationship_building">One-to-ones or other relationship building</option>
+        </select>
+      </Field>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Title" hint="e.g. “Winter Concert”." error={e?.title}>
           <input name="title" required className={inputClass} />
@@ -65,19 +73,21 @@ export function AddOneTimeForm({
           <input name="date" type="date" required defaultValue={defaultDate} className={inputClass} />
         </Field>
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Time" error={e?.time}>
-            <input name="time" type="time" required className={inputClass} />
+          <Field label={rb ? "Time (optional)" : "Time"} error={e?.time}>
+            <input name="time" type="time" required={!rb} className={inputClass} />
           </Field>
-          <Field label="Minutes" error={e?.minutes}>
-            <input name="minutes" type="number" min={5} max={600} step={5} defaultValue={60} required className={inputClass} />
+          <Field label={rb ? "Minutes (optional)" : "Minutes"} error={e?.minutes}>
+            <input key={kind} name="minutes" type="number" min={5} max={600} step={5} defaultValue={rb ? undefined : 60} required={!rb} className={inputClass} />
           </Field>
         </div>
-        <Field label="Call time (optional)" hint="For concerts." error={e?.call_time}>
-          <input name="call_time" type="time" className={inputClass} />
-        </Field>
+        {!rb && (
+          <Field label="Call time (optional)" hint="For concerts." error={e?.call_time}>
+            <input name="call_time" type="time" className={inputClass} />
+          </Field>
+        )}
       </div>
       <div className="flex flex-wrap gap-4 text-sm">
-        <label className="flex items-center gap-2"><input type="checkbox" name="is_special_event" defaultChecked /> Special event (its own section on the calendar)</label>
+        {!rb && <label className="flex items-center gap-2"><input type="checkbox" name="is_special_event" defaultChecked /> Special event (its own section on the calendar)</label>}
         <label className="flex items-center gap-2"><input type="checkbox" name="is_extra" /> Extra program (outside contracted hours)</label>
       </div>
       {state.status === "saved" && !pending && <p role="status" className="text-sm text-iris">Added as a draft.</p>}

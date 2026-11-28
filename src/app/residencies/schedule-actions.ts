@@ -350,27 +350,36 @@ export async function restoreSession(residencyId: string, sessionId: string): Pr
 export async function addOneTimeSession(residencyId: string, timeZone: string, _prev: ScheduleResult, form: FormData): Promise<ScheduleResult> {
   await requirePerson();
   const e: Record<string, string> = {};
+  // Nov 27, 2026 (Ryan): one-to-ones and other relationship building can be put
+  // on the calendar as a one-time date: no leader, time and length optional,
+  // hours only from what each musician logs (DOMAIN-MODEL "Scheduled
+  // relationship building").
+  const kind: SessionKind = form.get("kind") === "relationship_building" ? "relationship_building" : "group_session";
+  const rb = kind === "relationship_building";
   const title = String(form.get("title") ?? "").trim();
   const location_id = String(form.get("location_id") ?? "");
   const date = String(form.get("date") ?? "");
   const time = String(form.get("time") ?? "");
-  const minutes = Number(form.get("minutes") ?? 0);
+  const minutesText = String(form.get("minutes") ?? "").trim();
+  const minutes = minutesText ? Number(minutesText) : null;
   const callTime = String(form.get("call_time") ?? "") || null;
   if (!title) e.title = "Enter a title.";
   if (!isId(location_id)) e.location_id = "Pick a room.";
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) e.date = "Enter a date.";
-  if (!/^\d{2}:\d{2}$/.test(time)) e.time = "Enter a time.";
-  if (!Number.isInteger(minutes) || minutes < 5 || minutes > 600) e.minutes = "Length must be between 5 and 600 minutes.";
+  if (time ? !/^\d{2}:\d{2}$/.test(time) : !rb) e.time = "Enter a time.";
+  if (minutes === null ? !rb : !Number.isInteger(minutes) || minutes < 5 || minutes > 600) e.minutes = "Length must be between 5 and 600 minutes.";
   if (Object.keys(e).length) return { status: "error", errors: e };
   const supabase = await createClient();
   const { error } = await supabase.from("session").insert({
     residency_id: residencyId,
+    kind,
     title,
     location_id,
-    starts_at: zonedToUtc(date, time, timeZone),
+    starts_at: zonedToUtc(date, time || "00:00", timeZone),
+    has_set_time: Boolean(time),
     scheduled_minutes: minutes,
-    call_time: callTime,
-    is_special_event: form.get("is_special_event") === "on",
+    call_time: rb ? null : callTime,
+    is_special_event: !rb && form.get("is_special_event") === "on",
     is_extra: form.get("is_extra") === "on",
   });
   if (error) return fail(error);
