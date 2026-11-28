@@ -1178,6 +1178,9 @@ isOneToOne: false
 "is_current_staff":
 { Args: { "p_residency": string,"p_role"?: Database["public"]['Enums']["staff_role"] }; Returns: boolean
                            },
+"is_no_program_title":
+{ Args: { "p_title": string }; Returns: boolean
+                           },
 "is_on_current_roster":
 { Args: { "p_person"?: string,"p_residency": string }; Returns: boolean
                            },
