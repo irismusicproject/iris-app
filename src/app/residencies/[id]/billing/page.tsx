@@ -68,7 +68,7 @@ export default async function BillingPage({ params, searchParams }: { params: Pr
       </div>
       <p className="mt-2 text-sm text-muted">
         Hours count per musician: each musician present × the program&apos;s documented length, plus their relationship building at the site, once
-        the point person approves their week. Drafts update live; &ldquo;Mark as sent&rdquo; freezes an invoice.
+        the Iris Supervisor approves their week. Drafts update live; &ldquo;Mark as sent&rdquo; freezes an invoice.
       </p>
 
       {!season && <p className="mt-6 text-muted">No season covers this month.</p>}
@@ -114,7 +114,7 @@ export default async function BillingPage({ params, searchParams }: { params: Pr
                     {inv.state === "draft" && (inv.summary.waitingHours > 0 || inv.summary.undocumented > 0) && (
                       <p className="mt-2 rounded-lg border border-brand-orange/60 p-2 text-sm">
                         Not on this invoice yet:
-                        {inv.summary.waitingHours > 0 && ` ${inv.summary.waitingHours} hours waiting for the point person to approve.`}
+                        {inv.summary.waitingHours > 0 && ` ${inv.summary.waitingHours} hours waiting for the Iris Supervisor to approve.`}
                         {inv.summary.undocumented > 0 && ` ${inv.summary.undocumented} program${inv.summary.undocumented === 1 ? "" : "s"} not documented.`}
                       </p>
                     )}

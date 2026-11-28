@@ -9,9 +9,9 @@ import { colors } from "@/lib/theme";
 import { openWebsite } from "@/lib/website";
 
 // "Send calendar to partner" (the 10th) and "Mark final and send" (by the
-// 15th), for the admin lead (DOMAIN-MODEL v0.41). One button: the website
+// 15th), for the Lead Musician (DOMAIN-MODEL v0.41). One button: the website
 // makes the PDF from the published dates and emails it from Iris to the
-// building's calendar contacts, copying the point person and the admin lead.
+// building's calendar contacts, copying the Iris Supervisor and the Lead Musician.
 
 export default function MonthSend() {
   const { residencyId, siteId, month, action } = useLocalSearchParams<{ residencyId: string; siteId: string; month: string; action: "send" | "finalize" }>();
@@ -52,10 +52,10 @@ export default function MonthSend() {
       <Card>
         <Muted>
           {final
-            ? "Makes the final calendar (a new version if anything changed after the draft), emails it to the partner and locks the month. After this, changes go through the point person."
-            : "Publishes the month's dates, makes the draft calendar PDF and emails it from Iris. If the point person hasn't confirmed yet, sending confirms it."}
+            ? "Makes the final calendar (a new version if anything changed after the draft), emails it to the partner and locks the month. After this, changes go through the Iris Supervisor."
+            : "Publishes the month's dates, makes the draft calendar PDF and emails it from Iris. If the Iris Supervisor hasn't confirmed yet, sending confirms it."}
         </Muted>
-        <Muted>Goes to the building&apos;s partner contacts marked &ldquo;receives calendar&rdquo;, with copies to the point person and you.</Muted>
+        <Muted>Goes to the building&apos;s partner contacts marked &ldquo;receives calendar&rdquo;, with copies to the Iris Supervisor and you.</Muted>
         <LinkButton label="See the PDF first" onPress={() => openWebsite(`/residencies/${residencyId}/month/${month}/calendar?site=${siteId}&view=1`)} />
       </Card>
       {result && (result.ok ? <Notice>{result.message}</Notice> : <Problem>{result.message}</Problem>)}

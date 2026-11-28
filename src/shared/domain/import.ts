@@ -9,8 +9,8 @@
 export const IMPORT_TABS = {
   people: { name: "People", columns: ["Name", "Email", "Phone", "Instruments", "Employment", "Job title", "Admin"] },
   sites: { name: "Buildings", columns: ["Partner", "Building", "City", "State", "Time zone", "Rooms"] },
-  residencies: { name: "Programs", columns: ["Program", "Partner", "Buildings", "Season", "Season starts", "Season ends", "Point person"] },
-  roster: { name: "Roster", columns: ["Program", "Musician", "Core", "Admin lead"] },
+  residencies: { name: "Programs", columns: ["Program", "Partner", "Buildings", "Season", "Season starts", "Season ends", "Iris Supervisor"] },
+  roster: { name: "Roster", columns: ["Program", "Musician", "Core", "Lead Musician"] },
   weekly: {
     name: "Weekly programs",
     columns: ["Program", "Title", "Building", "Room", "Repeats", "Day", "Week of month", "Start time", "Minutes", "Usual leader", "Usual musicians"],
@@ -137,9 +137,9 @@ export function checkImport(raw: RawImport, existingPeople: { name: string; emai
     if (!startsOn) return err("residencies", row, `${residency}: add the season's start date (e.g. 2027-01-04).`);
     if (!endsOn) return err("residencies", row, `${residency}: add the season's end date.`);
     if (endsOn <= startsOn) return err("residencies", row, `${residency}: the season ends before it starts.`);
-    const pointPerson = (r["Point person"] ?? "").trim() || null;
-    if (pointPerson && !knownPerson(pointPerson)) err("residencies", row, `${residency}: point person "${pointPerson}" isn't on the People tab.`);
-    if (!pointPerson) warn("residencies", row, `${residency}: no point person yet.`);
+    const pointPerson = (r["Iris Supervisor"] ?? "").trim() || null;
+    if (pointPerson && !knownPerson(pointPerson)) err("residencies", row, `${residency}: Iris Supervisor "${pointPerson}" isn't on the People tab.`);
+    if (!pointPerson) warn("residencies", row, `${residency}: no Iris Supervisor yet.`);
     if (plan.residencies.some((p) => key(p.residency) === key(residency))) return err("residencies", row, `"${residency}" is listed twice.`);
     plan.residencies.push({ residency: residency, partner, buildings, season: (r["Season"] ?? "").trim() || "Spring 2027", startsOn, endsOn, pointPerson });
   });
@@ -152,12 +152,12 @@ export function checkImport(raw: RawImport, existingPeople: { name: string; emai
     const musician = (r["Musician"] ?? "").trim();
     if (!residencies.has(key(residency))) return err("roster", row, `Program "${residency}" isn't on the Programs tab.`);
     if (!knownPerson(musician)) return err("roster", row, `"${musician}" isn't on the People tab.`);
-    plan.roster.push({ residency: residency, musician, core: yes(r["Core"] ?? "", true), adminLead: yes(r["Admin lead"] ?? "", false) });
+    plan.roster.push({ residency: residency, musician, core: yes(r["Core"] ?? "", true), adminLead: yes(r["Lead Musician"] ?? "", false) });
   });
   for (const p of plan.residencies) {
     const leads = plan.roster.filter((r) => key(r.residency) === key(p.residency) && r.adminLead);
-    if (leads.length > 1) errors.push({ tab: IMPORT_TABS.roster.name, row: 0, message: `${p.residency}: only one Admin lead per season.` });
-    if (!leads.length) warnings.push({ tab: IMPORT_TABS.roster.name, row: 0, message: `${p.residency}: no Admin lead yet.` });
+    if (leads.length > 1) errors.push({ tab: IMPORT_TABS.roster.name, row: 0, message: `${p.residency}: only one Lead Musician per season.` });
+    if (!leads.length) warnings.push({ tab: IMPORT_TABS.roster.name, row: 0, message: `${p.residency}: no Lead Musician yet.` });
   }
   const onRoster = (residency: string, person: string) => plan.roster.some((r) => key(r.residency) === key(residency) && key(r.musician) === key(person));
 

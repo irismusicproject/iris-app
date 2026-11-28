@@ -10,12 +10,13 @@ import { AddOneTimeForm, FillMonthButton } from "../month-controls";
 import { PublishPanel, type ScheduleCheckRow } from "../publish-panel";
 import { ScheduleHeader, SessionCard, type CardSession } from "../session-card";
 import { StagePanel, type Stage } from "../stage-panel";
+import { CollaborationTarget } from "../collaboration-target";
 import { DeleteSeriesButton, EndSeriesForm, SeriesForm } from "../../season/series-form";
 
 // A month's schedule for one site, laid out like the partner calendar
 // (docs/GLOSSARY.md Part B): special events, then one block per weekly
 // program, then other one-time programs.
-export const metadata = { title: "Schedule · Iris Music Project" };
+export const metadata = { title: "Site Details · Iris Music Project" };
 
 type SiteRow = {
   site: { id: string; display_name: string; timezone: string; location: { id: string; display_name: string; active: boolean }[] } | null;
@@ -82,7 +83,7 @@ export default async function MonthPage({
     return (
       <AppShell isAdmin={isAdmin}>
         <Link href={`/residencies/${id}`} className="text-sm text-muted hover:text-foreground">← {residency.name}</Link>
-        <h1 className="mt-3 text-2xl font-semibold tracking-tight">Schedule</h1>
+        <h1 className="mt-3 text-2xl font-semibold tracking-tight">Site Details</h1>
         <p className="mt-3 text-muted">This program has no sites yet.</p>
       </AppShell>
     );
@@ -240,7 +241,7 @@ export default async function MonthPage({
   const stateLabel = !latest
     ? "Draft: not reviewed yet"
     : latest.state === "reviewed"
-      ? "Reviewed by the point person: ready to publish"
+      ? "Reviewed by the Iris Supervisor: ready to publish"
       : `Published: calendar version ${latest.version} sent`;
   const drafts = sessions.filter((s) => s.schedule_state === "draft").length;
   const needLeader = sessions.filter(
@@ -254,7 +255,8 @@ export default async function MonthPage({
   return (
     <AppShell isAdmin={isAdmin}>
       <Link href={`/residencies/${id}`} className="text-sm text-muted hover:text-foreground">← {residency.name}</Link>
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+      <p className="mt-3 text-sm font-medium text-muted">Site Details</p>
+      <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight">{site.display_name} · {monthLabel}</h1>
         <nav className="flex gap-2 text-sm" aria-label="Months">
           <Link href={`${base}/${shiftMonth(month, -1)}?site=${site.id}`} className="rounded-full border border-border px-3 py-1 hover:bg-iris-soft">← {formatMonth(shiftMonth(month, -1))}</Link>
@@ -279,10 +281,12 @@ export default async function MonthPage({
         <Link href={`/residencies/${id}/season`} className="text-iris underline-offset-2 hover:underline">Season view</Link>
 
         {access.onRoster && !access.canSchedule && (latest
-          ? " · This month has been reviewed: ask the point person for any changes."
-          : " · On draft dates you play in, you can edit the notes, room and musicians, add the title when you lead the date, or make it “No Program”. The point person sets leaders; to change one, propose a different leader under More once the month is open for the team.")}
-        {access.isAdminLead && !access.canSchedule && " As admin lead, you publish the month and update published dates after partner feedback."}
+          ? " · This month has been reviewed: ask the Iris Supervisor for any changes."
+          : " · On draft dates you play in, you can edit the notes, room and musicians, add the title when you lead the date, or make it “No Program”. The Iris Supervisor sets leaders; to change one, propose a different leader under More once the month is open for the team.")}
+        {access.isAdminLead && !access.canSchedule && " As Lead Musician, you publish the month and update published dates after partner feedback."}
       </p>
+
+      <CollaborationTarget residencyId={id} month={month} canSchedule={access.canSchedule} names={names} />
 
       {endedNote && (
         <section role="status" className="mt-5 rounded-xl border border-iris/40 bg-iris-soft p-4 text-sm">

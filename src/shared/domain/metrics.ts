@@ -1,4 +1,4 @@
-// Point person metrics (DOMAIN-MODEL v0.24): who is on track. Pure functions
+// Iris Supervisor metrics (DOMAIN-MODEL v0.24): who is on track. Pure functions
 // over a season's data, so web and native apps compute them the same way.
 // Metrics are a starting set chosen by Lauren (Nov 22, 2026) and may change.
 

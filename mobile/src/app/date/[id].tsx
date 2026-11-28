@@ -83,7 +83,7 @@ export default function DateDetail() {
       setTitle(r.title);
       const tz = r.location?.site?.timezone ?? "America/New_York";
       setTime(r.has_set_time ? localDateTime(r.starts_at, tz).time.slice(0, 5) : "");
-      // The month's stage, my role, the point person's phone, the building's rooms.
+      // The month's stage, my role, the Iris Supervisor's phone, the building's rooms.
       const monthStart = `${localDateTime(r.starts_at, tz).date.slice(0, 7)}-01`;
       const [{ data: sm }, { data: lead }, { data: staff }, { data: dir }, { data: locs }, { data: swaps }, { data: exp }] = await Promise.all([
         supabase.from("schedule_month").select("stage").eq("residency_id", r.residency_id).eq("site_id", r.location?.site_id ?? "").eq("month", monthStart).maybeSingle(),
@@ -101,7 +101,7 @@ export default function DateDetail() {
       const today = todayIso(); // the phone's own date, not UTC
       const pp = ((staff ?? []) as { person_id: string; starts_on: string; ends_on: string | null }[]).filter((x) => x.starts_on <= today && (!x.ends_on || x.ends_on >= today));
       const d = (dir ?? []) as { person_id: string; name: string; phone: string | null }[];
-      setPoints(pp.map((x) => d.find((y) => y.person_id === x.person_id) ?? { name: map.get(x.person_id)?.name ?? "the point person", phone: null }));
+      setPoints(pp.map((x) => d.find((y) => y.person_id === x.person_id) ?? { name: map.get(x.person_id)?.name ?? "the Iris Supervisor", phone: null }));
       setRooms((locs ?? []) as { id: string; display_name: string }[]);
       setRoster(((names ?? []) as { id: string; name: string }[]).filter((p) => !r.session_assignment.some((a) => a.person_id === p.id && a.status !== "absent")));
       setOpenSwap(((swaps ?? []) as unknown[]).length > 0);
@@ -251,7 +251,7 @@ export default function DateDetail() {
 
       {canMarkOff && (
         <Card title="Can you play?">
-          <Muted>Mark dates you can&apos;t play while the month is open for the team. The point person is told right away and finds cover. Sick or snowed in on the day? Call them instead.</Muted>
+          <Muted>Mark dates you can&apos;t play while the month is open for the team. The Iris Supervisor is told right away and finds cover. Sick or snowed in on the day? Call them instead.</Muted>
           <Button
             label={mine?.status === "absent" ? "Marked: I can't play (tap to undo)" : "I can't play this date"}
             kind={mine?.status === "absent" ? "primary" : "secondary"}
@@ -280,17 +280,17 @@ export default function DateDetail() {
       {canSwap && (
         <Card title="Leader">
           {openSwap ? (
-            <Muted>You&apos;ve proposed a leader swap for this date. The point person approves or declines it.</Muted>
+            <Muted>You&apos;ve proposed a leader swap for this date. The Iris Supervisor approves or declines it.</Muted>
           ) : (
             <>
-              <Muted>Propose someone else playing this date as its leader. The point person approves it.</Muted>
+              <Muted>Propose someone else playing this date as its leader. The Iris Supervisor approves it.</Muted>
               <Choices options={swapOptions.map((a) => ({ value: a.person_id, label: people.get(a.person_id)?.name.split(" ")[0] ?? "A colleague" }))} selected={pick} onToggle={setPick} />
               <Button
-                label="Send to the point person"
+                label="Send to the Iris Supervisor"
                 kind="secondary"
                 busy={busy}
                 disabled={!pick}
-                onPress={() => act(async () => await supabase.rpc("request_leader_swap", { p_session: row.id, p_person: pick }), "Sent to the point person for approval.")}
+                onPress={() => act(async () => await supabase.rpc("request_leader_swap", { p_session: row.id, p_person: pick }), "Sent to the Iris Supervisor for approval.")}
               />
             </>
           )}
@@ -299,26 +299,26 @@ export default function DateDetail() {
 
       {afterFinal && openSwap && (
         <Card title="Need a sub?">
-          <Muted>You&apos;ve asked the point person about this date. They approve or decline it.</Muted>
+          <Muted>You&apos;ve asked the Iris Supervisor about this date. They approve or decline it.</Muted>
         </Card>
       )}
       {afterFinal && !openSwap && (
         <Card title="Need a sub?">
-          <Muted>This month is final, so the point person approves every change. Pick who&apos;ll play for you.</Muted>
+          <Muted>This month is final, so the Iris Supervisor approves every change. Pick who&apos;ll play for you.</Muted>
           <Choices options={roster.map((p) => ({ value: p.id, label: p.name }))} selected={subPick} onToggle={setSubPick} />
           <Button
-            label="Ask the point person"
+            label="Ask the Iris Supervisor"
             kind="secondary"
             busy={busy}
             disabled={!subPick}
-            onPress={() => act(async () => await supabase.rpc("request_change", { p_session: row.id, p_kind: "sub", p_person: subPick }), "Sent to the point person for approval.")}
+            onPress={() => act(async () => await supabase.rpc("request_change", { p_session: row.id, p_kind: "sub", p_person: subPick }), "Sent to the Iris Supervisor for approval.")}
           />
         </Card>
       )}
 
       {canCallPoint && (
         <Card title="Canceling today?">
-          <Muted>Same-day cancellations (illness, weather) are a phone call to the point person. Afterwards, the leader marks it &ldquo;Canceled day-of&rdquo; when documenting.</Muted>
+          <Muted>Same-day cancellations (illness, weather) are a phone call to the Iris Supervisor. Afterwards, the leader marks it &ldquo;Canceled day-of&rdquo; when documenting.</Muted>
           {points.map((p) =>
             p.phone ? (
               <Button key={p.name} label={`Call ${p.name.split(" ")[0]}`} onPress={() => Linking.openURL(`tel:${p.phone!.replace(/[^\d+]/g, "")}`)} />
@@ -344,7 +344,7 @@ export default function DateDetail() {
       {/* Hidden once the month is reviewed, as on the website: the database refuses it then. */}
       {row.schedule_state === "draft" && !past && !reviewed && playing.some((a) => a.person_id === me.id) && (
         <Card title="Can't happen?">
-          <Muted>Any musician playing a draft date can make it &ldquo;No Program&rdquo; until the month is reviewed. The point person gets an email. This can&apos;t be undone here.</Muted>
+          <Muted>Any musician playing a draft date can make it &ldquo;No Program&rdquo; until the month is reviewed. The Iris Supervisor gets an email. This can&apos;t be undone here.</Muted>
           <Field label="Reason">
             <Choices options={CANCELLATION_REASONS.map((r) => ({ value: r, label: CANCELLATION_REASON_LABELS[r] }))} selected={reason ?? ("" as CancellationReason)} onToggle={setReason} />
           </Field>
@@ -364,7 +364,7 @@ export default function DateDetail() {
                     const { error, count } = await supabase.from("session").update({ schedule_state: "canceled", cancellation_reason: reason }, { count: "exact" }).eq("id", row.id);
                     setBusy(false);
                     if (error) return setMessage(friendly(error));
-                    if (!count) return setMessage("Only musicians playing the date (on drafts, until the month is reviewed), the admin lead, the point person or an admin can make it “No Program”.");
+                    if (!count) return setMessage("Only musicians playing the date (on drafts, until the month is reviewed), the Lead Musician, the Iris Supervisor or an admin can make it “No Program”.");
                     setMessage("Marked “No Program”.");
                     load();
                   },

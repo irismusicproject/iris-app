@@ -7,9 +7,9 @@ import { plain } from "@/lib/month";
 import { supabase } from "@/lib/supabase";
 import { colors } from "@/lib/theme";
 
-// Review and confirm [month] (point person; DOMAIN-MODEL v0.41): the team's
+// Review and confirm [month] (Iris Supervisor; DOMAIN-MODEL v0.41): the team's
 // version at one building, week by week, with what still needs attention.
-// Confirming locks the dates for musicians; the admin lead then sends it.
+// Confirming locks the dates for musicians; the Lead Musician then sends it.
 
 type Row = {
   id: string;
@@ -117,7 +117,7 @@ export default function MonthReview() {
           label={`Confirm the team's ${formatMonth(month).split(" ")[0]}`}
           busy={busy}
           onPress={() =>
-            Alert.alert("Confirm", `${flagged ? `${flagged} date${flagged === 1 ? " is" : "s are"} still flagged. ` : ""}Confirming locks the dates for musicians; the admin lead then sends it to the partner.`, [
+            Alert.alert("Confirm", `${flagged ? `${flagged} date${flagged === 1 ? " is" : "s are"} still flagged. ` : ""}Confirming locks the dates for musicians; the Lead Musician then sends it to the partner.`, [
               { text: "Cancel", style: "cancel" },
               {
                 text: "Confirm",
@@ -126,7 +126,7 @@ export default function MonthReview() {
                   const { error } = await supabase.rpc("confirm_schedule_month", { p_residency: residencyId, p_site: siteId, p_month: `${month}-01` });
                   setBusy(false);
                   if (error) return setProblem(plain(error));
-                  setMessage("Confirmed. Dates are locked for musicians; the admin lead can send it to the partner.");
+                  setMessage("Confirmed. Dates are locked for musicians; the Lead Musician can send it to the partner.");
                   load();
                 },
               },
@@ -135,7 +135,7 @@ export default function MonthReview() {
         />
       ) : stage === "team_confirmed" ? (
         <View style={{ gap: 8 }}>
-          <Notice>Confirmed. The admin lead sends it to the partner on the 10th.</Notice>
+          <Notice>Confirmed. The Lead Musician sends it to the partner on the 10th.</Notice>
           <Button
             label="Undo confirm"
             kind="secondary"

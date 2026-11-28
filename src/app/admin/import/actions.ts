@@ -187,8 +187,8 @@ export async function applyImportFile(_prev: ImportCheck | null, form: FormData)
         const { data: current } = await supabase.from("staff_assignment").select("id, person_id").eq("residency_id", residencyId).eq("role", "point_person").is("ends_on", null);
         if (!(current ?? []).some((c) => c.person_id === pid)) {
           const { error } = await supabase.from("staff_assignment").insert({ residency_id: residencyId, person_id: pid, role: "point_person", starts_on: p.startsOn });
-          if (error) fail(`Point person for ${p.residency}`, error);
-          log.push(`${p.pointPerson} is point person for ${p.residency}`);
+          if (error) fail(`Iris Supervisor for ${p.residency}`, error);
+          log.push(`${p.pointPerson} is Iris Supervisor for ${p.residency}`);
         }
       }
     }

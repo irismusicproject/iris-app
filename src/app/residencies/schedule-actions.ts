@@ -27,11 +27,11 @@ const ok: ScheduleResult = { status: "saved" };
 function fail(error: { code?: string; message: string }): ScheduleResult {
   const m = error.message;
   if (error.code === "42501") {
-    if (m.includes("has been reviewed")) return { status: "error", message: "The point person has marked this month reviewed. Ask them for any changes." };
+    if (m.includes("has been reviewed")) return { status: "error", message: "The Iris Supervisor has marked this month reviewed. Ask them for any changes." };
     // The monthly cycle (DOMAIN-MODEL v0.41).
     if (m.includes("leader changes its title")) return { status: "error", message: "While the team edits, only this date's leader changes its title." };
-    if (m.includes("propose a leader swap")) return { status: "error", message: "Propose a leader swap under More; the point person approves it." };
-    if (m.includes("is final")) return { status: "error", message: "This month is final. Ask the point person for changes." };
+    if (m.includes("propose a leader swap")) return { status: "error", message: "Propose a leader swap under More; the Iris Supervisor approves it." };
+    if (m.includes("is final")) return { status: "error", message: "This month is final. Ask the Iris Supervisor for changes." };
     if (m.includes("musicians can change")) return { status: "error", message: "On drafts you play in, you can change the title, room, notes and musicians (and a special event's date and time). Musicians playing a draft date can make it “No Program”." };
     return { status: "error", message: "You don't have permission to make that change." };
   }
@@ -158,7 +158,7 @@ export async function markScheduleChecked(residencyId: string, siteId: string, m
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("mark_schedule_checked", { p_residency: residencyId, p_site: siteId, p_month: `${month}-01` });
   if (error) {
-    if (error.message.includes("already been reviewed")) return { status: "error", message: "The point person has already marked this month reviewed. Ask them for any changes." };
+    if (error.message.includes("already been reviewed")) return { status: "error", message: "The Iris Supervisor has already marked this month reviewed. Ask them for any changes." };
     if (error.message.includes("aren't playing")) return { status: "error", message: "You aren't playing at this building this month." };
     return fail(error);
   }
@@ -172,7 +172,7 @@ export async function undoScheduleChecked(residencyId: string, siteId: string, m
   const supabase = await createClient();
   const { error } = await supabase.rpc("undo_schedule_checked", { p_residency: residencyId, p_site: siteId, p_month: `${month}-01` });
   if (error) {
-    if (error.message.includes("already been reviewed")) return { status: "error", message: "The point person has already marked this month reviewed." };
+    if (error.message.includes("already been reviewed")) return { status: "error", message: "The Iris Supervisor has already marked this month reviewed." };
     return fail(error);
   }
   refresh(residencyId);
@@ -283,7 +283,7 @@ export async function removeMusician(residencyId: string, assignmentId: string):
   return ok;
 }
 
-/** Point person first, then the Admin Lead may swap; admins always (v0.12). */
+/** Iris Supervisor first, then the Lead Musician may swap; admins always (v0.12). */
 export async function setLeader(residencyId: string, sessionId: string, personId: string): Promise<ScheduleResult> {
   await requirePerson();
   const supabase = await createClient();
@@ -302,7 +302,7 @@ export async function setLeader(residencyId: string, sessionId: string, personId
       .eq("session_id", sessionId)
       .eq("person_id", personId);
     if (error) return fail(error);
-    if (!count) return { status: "error", message: "Only the point person, admin lead or an admin can set leaders." };
+    if (!count) return { status: "error", message: "Only the Iris Supervisor, Lead Musician or an admin can set leaders." };
   }
   refresh(residencyId);
   return ok;
@@ -318,8 +318,8 @@ export async function cancelSession(residencyId: string, sessionId: string, reas
     .update({ schedule_state: "canceled", cancellation_reason: reason }, { count: "exact" })
     .eq("id", sessionId);
   if (error) return fail(error);
-  if (!count) return { status: "error", message: "Only musicians playing the date (on drafts, until the month is reviewed), the admin lead (on published dates), the point person or an admin can make it “No Program”." };
-  // The database queued an email to the point person (v0.24); send it now.
+  if (!count) return { status: "error", message: "Only musicians playing the date (on drafts, until the month is reviewed), the Lead Musician (on published dates), the Iris Supervisor or an admin can make it “No Program”." };
+  // The database queued an email to the Iris Supervisor (v0.24); send it now.
   await deliverSoon();
   refresh(residencyId);
   return ok;
@@ -335,7 +335,7 @@ export async function restoreSession(residencyId: string, sessionId: string): Pr
     .eq("id", sessionId)
     .eq("schedule_state", "canceled");
   if (error) return fail(error);
-  if (!count) return { status: "error", message: "Only the admin lead, point person or an admin can restore a date." };
+  if (!count) return { status: "error", message: "Only the Lead Musician, Iris Supervisor or an admin can restore a date." };
   refresh(residencyId);
   return ok;
 }
@@ -376,10 +376,10 @@ export async function addOneTimeSession(residencyId: string, timeZone: string, _
 function publishFail(error: { code?: string; message: string }): ScheduleResult {
   const m = error.message;
   if (m.includes("leader")) return { status: "error", message: `Can't publish yet: ${m.replace(/^.*?(\d+ group session)/, "$1")}.` };
-  if (m.includes("reviewed first") || m.includes("mark this month reviewed")) return { status: "error", message: "The point person needs to mark this month reviewed first." };
+  if (m.includes("reviewed first") || m.includes("mark this month reviewed")) return { status: "error", message: "The Iris Supervisor needs to mark this month reviewed first." };
   if (m.includes("already been reviewed")) return { status: "error", message: "This month is already reviewed." };
   if (m.includes("already published")) return { status: "error", message: "This month is already published. Download an updated version instead." };
-  if (m.includes("only the point person")) return { status: "error", message: "Only the point person or an admin can mark a month reviewed." };
+  if (m.includes("only the Iris Supervisor")) return { status: "error", message: "Only the Iris Supervisor or an admin can mark a month reviewed." };
   return fail(error);
 }
 
@@ -450,7 +450,7 @@ export async function setCollaborationTarget(residencyId: string, seasonId: stri
   return ok;
 }
 
-// ---- Usual relationship-building lengths (point person or admin; v0.21) ----
+// ---- Usual relationship-building lengths (Iris Supervisor or admin; v0.21) ----
 
 export async function setActivityLengths(residencyId: string, lengths: { kind: string; minutes: number }[]): Promise<ScheduleResult> {
   await requirePerson();
@@ -466,7 +466,7 @@ export async function setActivityLengths(residencyId: string, lengths: { kind: s
   return ok;
 }
 
-// ---- Approving hours (point person or admin; v0.19) ----
+// ---- Approving hours (Iris Supervisor or admin; v0.19) ----
 
 export async function approveWeek(residencyId: string, personId: string, week: string): Promise<ScheduleResult> {
   await requirePerson();

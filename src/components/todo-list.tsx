@@ -76,7 +76,7 @@ export function TodoList({ tasks, today }: { tasks: Task[]; today: string }) {
                     disabled={pending}
                     className={small}
                     label={t.kind === "send" ? "Send calendar to partner" : "Mark final and send"}
-                    question={t.kind === "send" ? "Email the draft calendar to the partner now? If the point person hasn't confirmed, sending confirms it." : "Send the final calendar and lock the month?"}
+                    question={t.kind === "send" ? "Email the draft calendar to the partner now? If the Iris Supervisor hasn't confirmed, sending confirms it." : "Send the final calendar and lock the month?"}
                     confirmLabel={t.kind === "send" ? "Send" : "Mark final and send"}
                     onConfirm={() => run(() => sendMonth(t.kind === "send" ? "send" : "finalize", t.residency_id!, t.site_id!, t.month!.slice(0, 7)))}
                   />

@@ -1,6 +1,6 @@
 // Community invoices (PartnerAgreement, PartnerInvoice; DOMAIN-MODEL
 // section 5, v0.22). The database decides which minutes count
-// (partner_billable_minutes: per musician, after the point person approves
+// (partner_billable_minutes: per musician, after the Iris Supervisor approves
 // the week); this module turns them into invoice lines. Native apps can
 // import it.
 

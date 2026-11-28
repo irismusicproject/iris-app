@@ -195,14 +195,14 @@ export default function Upcoming() {
                       <LinkButton
                         label="I wasn't there"
                         onPress={() =>
-                          Alert.alert("I wasn't there", `The program went on without you? You won't be paid for it, and the point person is told.`, [
+                          Alert.alert("I wasn't there", `The program went on without you? You won't be paid for it, and the Iris Supervisor is told.`, [
                             { text: "Cancel", style: "cancel" },
                             {
                               text: "Yes, I wasn't there",
                               onPress: async () => {
                                 const { error } = await supabase.rpc("mark_not_there", { p_session: r.id, p_not_there: true });
                                 if (error) return setMessage(plain(error));
-                                setMessage(`Marked: you weren't at ${r.title}. The point person has been told.`);
+                                setMessage(`Marked: you weren't at ${r.title}. The Iris Supervisor has been told.`);
                                 notifySoon();
                                 load();
                               },

@@ -23,7 +23,7 @@ export type SetupFormState = {
 
 function dbMessage(error: { code?: string; message: string }, what: string): string {
   if (error.code === "23505") {
-    if (error.message.includes("one_admin_lead")) return "This season already has an admin lead. Remove that role from them first.";
+    if (error.message.includes("one_admin_lead")) return "This season already has a Lead Musician. Remove that role from them first.";
     return `That ${what} already exists.`;
   }
   if (error.code === "23514") return error.message.includes("partner") ? "That site belongs to a different partner." : "That doesn't fit this program's rules.";
@@ -115,7 +115,7 @@ export async function addStaffAssignment(residencyId: string, _prev: SetupFormSt
   if (!parsed.ok) return { status: "error", errors: parsed.errors };
   const supabase = await createClient();
   if (parsed.value.role === "point_person") {
-    // One current point person per residency (DOMAIN-MODEL): end the previous one.
+    // One current Iris Supervisor per residency (DOMAIN-MODEL): end the previous one.
     const yesterday = new Date(Date.parse(parsed.value.starts_on) - 86_400_000).toISOString().slice(0, 10);
     await supabase
       .from("staff_assignment")
@@ -190,7 +190,7 @@ export async function setSiteDetailedNotes(residencyId: string, siteId: string, 
   return { status: "saved" };
 }
 
-// ---- Community contacts per building (point person or admin; v0.26) ----
+// ---- Community contacts per building (Iris Supervisor or admin; v0.26) ----
 
 export type ContactInput = { name: string; title: string; email: string; phone: string };
 

@@ -7,10 +7,10 @@ import { createClient } from "@/lib/supabase/server";
 import { recurrenceLabel, SESSION_KIND_LABELS, type Series, type SessionKind } from "@/shared/domain/scheduling";
 import { formatDay, formatMonth, formatTime, localDateTime, todayIn } from "@/shared/domain/time";
 import { AddOneTimeForm } from "../month/month-controls";
-import { ActivityLengthsForm, CollaborationTargetForm, FillSeasonButton, SeasonLeaderSelect } from "./season-controls";
+import { FillSeasonButton, SeasonLeaderSelect } from "./season-controls";
 
 // Season view (DOMAIN-MODEL v0.16): the whole semester at a glance, for the
-// point person (and Admin Lead, admins). Set a weekly program's leader for
+// Iris Supervisor (and Lead Musician, admins). Set a weekly program's leader for
 // the whole season, fill every month at once, and see each month's status.
 // v0.34: month by month comes first; weekly programs are listed by building
 // and set up, ended or deleted from each building's month view.
@@ -69,7 +69,7 @@ export default async function SeasonPage({ params, searchParams }: { params: Pro
     );
   }
 
-  const [{ data: seriesRows }, { data: sessionRows }, { data: siteRows }, { data: targetRow }, { data: lengthRows }] = await Promise.all([
+  const [{ data: seriesRows }, { data: sessionRows }, { data: siteRows }]= await Promise.all([
     supabase
       .from("series")
       .select("*, series_default_person(person_id)")
@@ -82,15 +82,7 @@ export default async function SeasonPage({ params, searchParams }: { params: Pro
       .gte("starts_at", new Date(Date.parse(`${season.starts_on}T00:00:00Z`) - 86_400_000).toISOString())
       .lte("starts_at", new Date(Date.parse(`${season.ends_on}T00:00:00Z`) + 2 * 86_400_000).toISOString()),
     supabase.from("residency_site").select("site(id, display_name, timezone, location(id, display_name, active))").eq("residency_id", id),
-    supabase.from("target").select("value").eq("season_id", season.id).eq("metric", "collaborative_programs_per_musician").maybeSingle(),
-    supabase.from("activity_length").select("kind, minutes").eq("residency_id", id),
   ]);
-  const collabTarget = targetRow?.value ?? 2; // handbook default
-  const usualLengths = Object.fromEntries((lengthRows ?? []).map((l) => [l.kind as string, l.minutes as number]));
-  const lengthText = ["one_to_one", "mini_group", "hallway_concert"]
-    .filter((k) => usualLengths[k])
-    .map((k) => `${k === "one_to_one" ? "One-to-one" : k === "mini_group" ? "Mini-group" : "Hallway concert"} ${usualLengths[k]} min`)
-    .join(" · ");
   type SiteRow = { site: { id: string; display_name: string; timezone: string; location: { id: string; display_name: string; active: boolean }[] } | null };
   const sites = ((siteRows ?? []) as unknown as SiteRow[]).map((r) => r.site!).filter(Boolean).sort((a, b) => a.display_name.localeCompare(b.display_name));
   const siteOfRoom = new Map(sites.flatMap((st) => st.location.map((l) => [l.id, st.id] as const)));
@@ -124,11 +116,6 @@ export default async function SeasonPage({ params, searchParams }: { params: Pro
       needLeader: inMonth.filter(needsLeader).length,
     };
   });
-  // Collaborative programs so far per musician (documented Collab? = Yes, played in).
-  const collabCount = new Map<string, number>();
-  for (const s of sessions)
-    if (s.session_report && s.session_report.resident_involvement !== "none" && s.schedule_state !== "canceled")
-      for (const a of s.session_assignment) if (a.status !== "absent") collabCount.set(a.person_id, (collabCount.get(a.person_id) ?? 0) + 1);
   const specialEvents = sessions.filter((s) => s.is_special_event).sort((a, b) => a.starts_at.localeCompare(b.starts_at));
   const defaultEventDate = today > season.starts_on && today < season.ends_on ? today : season.starts_on;
   const seriesNeedLeader = (sid: string) => sessions.filter((s) => s.series_id === sid && needsLeader(s)).length;
@@ -230,40 +217,6 @@ export default async function SeasonPage({ params, searchParams }: { params: Pro
             ))}
           </ul>
         )}
-      </section>
-
-      <section className={card}>
-        <h2 className="text-lg font-semibold">Usual relationship-building lengths</h2>
-        <p className="mt-1 text-sm text-muted">Fills in Minutes when musicians log relationship building; they change it only when it was different.</p>
-        <div className="mt-3">
-          {access.canSchedule ? (
-            <ActivityLengthsForm key={JSON.stringify(usualLengths)} residencyId={id} values={usualLengths} />
-          ) : (
-            <p className="text-sm">{lengthText || "Not set; musicians enter minutes each time."}</p>
-          )}
-        </div>
-      </section>
-
-      <section className={card}>
-        <h2 className="text-lg font-semibold">Collaboration target</h2>
-        <p className="mt-1 text-sm text-muted">Programs documented with Collab? = Yes count toward it. The handbook default is 2 per semester; adjust it for this project.</p>
-        <div className="mt-3">
-          {access.canSchedule ? (
-            <CollaborationTargetForm key={collabTarget} residencyId={id} seasonId={season.id} value={collabTarget} />
-          ) : (
-            <p className="text-sm"><strong>{collabTarget}</strong> collaborative programs per musician this season</p>
-          )}
-        </div>
-        <ul className="mt-3 flex flex-wrap gap-2 text-sm">
-          {musicians.map((m) => {
-            const n = collabCount.get(m.id) ?? 0;
-            return (
-              <li key={m.id} className={`rounded-full border px-3 py-1 ${n >= collabTarget ? "border-iris bg-iris-soft" : "border-border"}`}>
-                {m.label.split(" ")[0]}: {n} of {collabTarget}
-              </li>
-            );
-          })}
-        </ul>
       </section>
 
       <section className={card}>

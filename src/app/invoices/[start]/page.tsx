@@ -45,7 +45,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ start:
 
       {waitingHours > 0 && (
         <p className="mt-4 rounded-lg border border-brand-orange/60 p-3 text-sm">
-          {waitingHours} hours in this period aren&apos;t approved yet, so they&apos;re not on this invoice. They&apos;ll appear once your point person approves them.
+          {waitingHours} hours in this period aren&apos;t approved yet, so they&apos;re not on this invoice. They&apos;ll appear once your Iris Supervisor approves them.
         </p>
       )}
       {missingRate && <p className="mt-4 rounded-lg border border-brand-orange/60 p-3 text-sm">Your hourly rate isn&apos;t set for one of these programs yet. Ask an admin.</p>}

@@ -8,7 +8,7 @@ import { addDays, formatWeek, weekStart } from "@/shared/domain/documentation";
 import { buildingMetrics, musicianMetrics, type MetricActivity, type MetricEntry, type MetricSession } from "@/shared/domain/metrics";
 import { localDateTime, todayIn } from "@/shared/domain/time";
 
-// Follow-up (point person and admins, v0.24): who still owes documentation
+// Follow-up (Iris Supervisor and admins, v0.24): who still owes documentation
 // or hours, and how each musician and building is doing this season.
 export const metadata = { title: "Follow-up · Iris Music Project" };
 

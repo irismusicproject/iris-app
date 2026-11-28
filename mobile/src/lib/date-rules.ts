@@ -13,7 +13,7 @@ export type DateFacts = {
   scheduleState: "draft" | "published" | "canceled" | string;
   /** I lead this date. */
   iLead: boolean;
-  /** I'm the program's admin lead this season. */
+  /** I'm the program's Lead Musician this season. */
   adminLead: boolean;
   /** My own assignment on the date, if any. */
   myStatus: "assigned" | "absent" | "substitute" | string | null;
@@ -35,14 +35,14 @@ export function dateActions(f: DateFacts) {
   // cycle and not yet reviewed still lets the date's leader set its title.
   const titleWindow = teamEditing || (!f.stage && !f.reviewed);
   return {
-    /** The leader adds the title while the team edits; the admin lead changes it for the partner. */
+    /** The leader adds the title while the team edits; the Lead Musician changes it for the partner. */
     canEditTitle: !canceled && ((titleWindow && f.iLead && draft) || (f.adminLead && partnerStage)),
     partnerChange: !canceled && f.adminLead && partnerStage,
     /** "I can't play": while the team edits, on drafts, not for substitutes. */
     canMarkOff: !canceled && teamEditing && draft && f.myStatus !== null && f.myStatus !== "substitute",
     /** Propose a leader swap: while the team edits, when there's someone to swap with. */
     canSwap: !canceled && teamEditing && draft && iPlay && f.hasLeader && f.nonLeaders > 0,
-    /** After the month is final, changes go to the point person as requests. */
+    /** After the month is final, changes go to the Iris Supervisor as requests. */
     afterFinal: !canceled && f.stage === "final" && iPlay && !f.past,
   };
 }

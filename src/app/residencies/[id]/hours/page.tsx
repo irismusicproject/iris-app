@@ -8,11 +8,11 @@ import { ACTIVITY_KIND_LABELS, addDays, formatWeek, weekStart, type ActivityKind
 import { localDateTime, todayIn } from "@/shared/domain/time";
 import { ApproveWeekButtons } from "./hours-controls";
 
-// Hours to approve (DOMAIN-MODEL section 5, v0.19): the point person (or an
+// Hours to approve (DOMAIN-MODEL section 5, v0.19): the Iris Supervisor (or an
 // admin) approves each musician's submitted week for this program, or sends
 // it back with a note. Approved hours are what contractors are paid for.
 // Each category shows the hours entered next to what the musician's
-// schedule and logs say, so the point person can check them.
+// schedule and logs say, so the Iris Supervisor can check them.
 export const metadata = { title: "Hours · Iris Music Project" };
 
 type Entry = {

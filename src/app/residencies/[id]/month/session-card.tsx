@@ -41,7 +41,7 @@ export type CardSession = {
   locationId: string;
   roomLabel: string;
   isSpecialEvent: boolean;
-  /** A one-time date (no weekly program): the point person and admins can delete it (v0.37). */
+  /** A one-time date (no weekly program): the Iris Supervisor and admins can delete it (v0.37). */
   isOneTime?: boolean;
   state: "draft" | "published" | "canceled";
   cancellationReason: CancellationReason | null;
@@ -89,15 +89,15 @@ export function SessionCard({
   rooms: Option[];
   roster: Option[];
   onRoster: boolean;
-  /** Point person or admin (v0.18). */
+  /** Iris Supervisor or admin (v0.18). */
   canSchedule: boolean;
   isAdminLead: boolean;
   myId: string;
-  /** The point person marked this building's month reviewed: drafts lock for musicians (v0.25, built v0.35). */
+  /** The Iris Supervisor marked this building's month reviewed: drafts lock for musicians (v0.25, built v0.35). */
   monthReviewed?: boolean;
   /** This building's month in the cycle (DOMAIN-MODEL ScheduleMonth, v0.41), if opened. */
   stage?: Stage | null;
-  /** Dates I've already asked the point person about. */
+  /** Dates I've already asked the Iris Supervisor about. */
   myOpenRequests?: string[];
 }) {
   const [pending, start] = useTransition();
@@ -110,17 +110,17 @@ export function SessionCard({
   const [subWho, setSubWho] = useState("");
   const isDraft = session.state === "draft";
   const canceled = session.state === "canceled";
-  // DOMAIN-MODEL v0.18: musicians edit drafts they play in; the point person
-  // and admins edit everything; the Admin Lead updates published dates.
+  // DOMAIN-MODEL v0.18: musicians edit drafts they play in; the Iris Supervisor
+  // and admins edit everything; the Lead Musician updates published dates.
   const playingMe = session.assignments.some((a) => a.personId === myId && a.status !== "absent");
-  // Drafts lock for musicians once the month is reviewed; the Admin Lead keeps working on it (v0.35).
+  // Drafts lock for musicians once the month is reviewed; the Lead Musician keeps working on it (v0.35).
   const final = stage === "final";
   const canEdit = isDraft && !final && (canSchedule || (onRoster && playingMe && (!monthReviewed || isAdminLead)));
-  // Published dates: the Admin Lead, the point person and admins (v0.18; who plays built v0.37).
-  // After final, only the point person and admins (v0.41).
+  // Published dates: the Lead Musician, the Iris Supervisor and admins (v0.18; who plays built v0.37).
+  // After final, only the Iris Supervisor and admins (v0.41).
   const canEditPublished = (canSchedule || (isAdminLead && !final)) && session.state === "published";
   const canEditDetails = canEdit || canEditPublished;
-  // The point person/admins; the Admin Lead on published dates; any musician
+  // The Iris Supervisor/admins; the Lead Musician on published dates; any musician
   // playing a draft date, until the month is reviewed (v0.35).
   const canCancel = canSchedule || canEditPublished || (isDraft && !final && onRoster && playingMe && !monthReviewed);
   const canRestore = canSchedule || isAdminLead;
@@ -313,7 +313,7 @@ export function SessionCard({
                     <option value="">Propose a different leader…</option>
                     {playing.filter((a) => a.role !== "leader").map((a) => <option key={a.personId} value={a.personId}>{a.name}</option>)}
                   </select>
-                  <button type="button" disabled={pending || !swapTo} className={small} onClick={() => cycle(() => proposeLeader(session.id, swapTo))}>Send to the point person</button>
+                  <button type="button" disabled={pending || !swapTo} className={small} onClick={() => cycle(() => proposeLeader(session.id, swapTo))}>Send to the Iris Supervisor</button>
                 </>
               )}
               {canAskSub && (
@@ -322,10 +322,10 @@ export function SessionCard({
                     <option value="">Ask for a sub…</option>
                     {notOnIt.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
                   </select>
-                  <button type="button" disabled={pending || !subWho} className={small} onClick={() => cycle(() => askForSub(session.id, subWho))}>Ask the point person</button>
+                  <button type="button" disabled={pending || !subWho} className={small} onClick={() => cycle(() => askForSub(session.id, subWho))}>Ask the Iris Supervisor</button>
                 </>
               )}
-              {asked && <span className="text-xs text-muted">You&apos;ve asked the point person about this date; they&apos;ll decide.</span>}
+              {asked && <span className="text-xs text-muted">You&apos;ve asked the Iris Supervisor about this date; they&apos;ll decide.</span>}
             </div>
           )}
           {canCancel && (

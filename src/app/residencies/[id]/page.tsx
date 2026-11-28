@@ -121,7 +121,7 @@ export default async function ResidencyPage({ params }: { params: Promise<{ id: 
         {residency.partner?.display_name} · {RESIDENCY_STATUS_LABELS[residency.status]}
       </p>
       <div className="mt-4 flex flex-wrap gap-2 text-sm">
-        <Link href={`/residencies/${id}/month`} className="rounded-full bg-iris px-4 py-2 font-medium text-white hover:bg-iris-strong dark:text-background">Schedule</Link>
+        <Link href={`/residencies/${id}/month`} className="rounded-full bg-iris px-4 py-2 font-medium text-white hover:bg-iris-strong dark:text-background">Site Details</Link>
         <Link href={`/residencies/${id}/season`} className="rounded-full border border-border px-4 py-2 hover:bg-iris-soft">Season</Link>
         {access.isPointPerson && (
           <Link href={`/residencies/${id}/hours`} className="rounded-full border border-border px-4 py-2 hover:bg-iris-soft">Hours to approve</Link>
@@ -170,7 +170,7 @@ export default async function ResidencyPage({ params }: { params: Promise<{ id: 
               {isAdmin && <EndStaffButton residencyId={id} assignmentId={s.id} name={nameOf(s.person_id)} />}
             </li>
           ))}
-          {staff.length === 0 && <li className="py-2 text-muted">No point person yet.</li>}
+          {staff.length === 0 && <li className="py-2 text-muted">No Iris Supervisor yet.</li>}
         </ul>
         {isAdmin && (
           <div className="mt-4">
@@ -202,7 +202,7 @@ export default async function ResidencyPage({ params }: { params: Promise<{ id: 
                   <li key={m.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
                     <span>
                       <span className="font-medium">{nameOf(m.person_id)}</span>
-                      {m.is_admin_lead && <span className={badge}>Admin lead</span>}
+                      {m.is_admin_lead && <span className={badge}>Lead Musician</span>}
                       {!m.is_core && <span className={badge}>Occasional / sub</span>}
                       {(rosterInfo.get(m.person_id)?.instruments.length || rosterInfo.get(m.person_id)?.phone) && (
                         <span className="mt-0.5 block text-xs text-muted">
