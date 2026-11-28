@@ -108,7 +108,7 @@ export default function Review() {
       </View>
       <Text style={{ fontSize: 24, fontWeight: "700", color: colors.text }}>{formatMonth(month)}</Text>
       <Muted>
-        Check your dates at each building: titles, rooms, times and who&apos;s playing. Tap a date to see it, or to make a draft date &ldquo;No Program&rdquo;. Edit titles,
+        Check your dates at each building: titles, rooms, times and who&apos;s playing. Tap a date to see it; type &ldquo;No Program&rdquo; as a title to cancel a date. Edit titles,
         rooms and musicians on the website. Then tap Done reviewing.
       </Muted>
       {problem && <Problem>{problem}</Problem>}
@@ -136,7 +136,7 @@ export default function Review() {
                     {r.has_set_time ? ` · ${formatTime(r.starts_at, tz)}` : ""}
                   </Text>
                   <Muted>
-                    {canceled ? `No Program (${r.title})` : r.title} · {r.location?.display_name}
+                    {canceled ? (r.title === "No Program" ? "No Program" : `No Program (${r.title})`) : r.title} · {r.location?.display_name}
                     {r.mine.some((a) => a.role === "leader") ? " · you lead" : ""}
                     {r.schedule_state === "published" ? " · published" : ""}
                   </Muted>

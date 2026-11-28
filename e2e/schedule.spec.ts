@@ -73,7 +73,7 @@ test("Iris Supervisor fills a month and sets leaders, musicians edit drafts, Iri
   //    and (not being the date's leader) can't make it No Program.
   const musPage = await as(browser, mus, path);
   await expect(musPage.getByRole("button", { name: /^Fill in/ })).toHaveCount(0);
-  await expect(musPage.getByRole("button", { name: /No Program/ })).toHaveCount(0);
+  await expect(musPage.getByRole("button", { name: /No Program/ })).toHaveCount(0); // no button for anyone since D20
   // The room menu sits under each date's "More" (workbook layout, #35).
   await musPage.getByRole("button", { name: "More" }).first().click();
   await musPage.getByLabel(/^Room for Tuesday/).first().selectOption({ label: "Lounge" });
@@ -116,9 +116,10 @@ test("Iris Supervisor fills a month and sets leaders, musicians edit drafts, Iri
   await pointPage.reload();
   await pointPage.waitForLoadState("networkidle");
   const jamBlock = pointPage.locator("div", { has: pointPage.getByRole("heading", { name: "Jam Band" }) }).last();
-  await jamBlock.getByRole("button", { name: "More" }).last().click();
-  await jamBlock.getByRole("button", { name: /Make .No Program./ }).last().click();
-  await pointPage.getByRole("button", { name: "Yes, No Program" }).click();
+  // D20: there is no button; typing "No Program" as the title does it.
+  const lastTitle = jamBlock.getByLabel(/^Title for /).last();
+  await lastTitle.fill("No Program");
+  await lastTitle.press("Enter");
   // What matters is the record: wait for the database to show one canceled date.
   await expect.poll(async () => (await d.from("session").select("id", { count: "exact", head: true }).eq("residency_id", res.id).eq("schedule_state", "canceled")).count, { timeout: 10_000 }).toBe(1);
   const { count } = await d.from("session").select("id", { count: "exact", head: true }).eq("residency_id", res.id).eq("schedule_state", "canceled");

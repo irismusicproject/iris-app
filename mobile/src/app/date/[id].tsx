@@ -1,7 +1,6 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Linking, Text, View } from "react-native";
-import { CANCELLATION_REASON_LABELS, CANCELLATION_REASONS, type CancellationReason } from "@shared/domain/scheduling";
+import { Linking, Text, View } from "react-native";
 import { weekStart } from "@shared/domain/documentation";
 import { todayIso } from "@/lib/week";
 import { formatDay, formatTime, localDateTime, zonedToUtc } from "@shared/domain/time";
@@ -38,7 +37,6 @@ export default function DateDetail() {
   const [row, setRow] = useState<Row | null>(null);
   const [people, setPeople] = useState<Map<string, { name: string; phone: string | null; instruments: string[] }>>(new Map());
   const [problem, setProblem] = useState<string | null>(null);
-  const [reason, setReason] = useState<CancellationReason | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [stage, setStage] = useState<Stage | null>(null);
@@ -162,7 +160,7 @@ export default function DateDetail() {
     <Screen>
       <Card>
         <View style={styles.row}>
-          <Text style={{ fontSize: 21, fontWeight: "700", color: canceled ? colors.muted : colors.text, flex: 1 }}>{canceled ? `No Program (${row.title})` : row.title}</Text>
+          <Text style={{ fontSize: 21, fontWeight: "700", color: canceled ? colors.muted : colors.text, flex: 1 }}>{canceled ? (row.title === "No Program" ? "No Program" : `No Program (${row.title})`) : row.title}</Text>
           {row.schedule_state === "draft" && <Tag label="Draft" />}
           {row.is_special_event && <Tag label="Special event" />}
         </View>
@@ -210,13 +208,13 @@ export default function DateDetail() {
 
       {canEditTitle && (
         <Card title="Title">
-          <Muted>{!partnerChange ? "You lead this date, so you add its title (without musicians' names: the calendar adds “with …”)." : "Partner change: the next calendar version shows it."}</Muted>
+          <Muted>{!partnerChange ? "You lead this date, so you add its title (without musicians' names: the calendar adds “with …”). Type “No Program” to cancel the date." : "Partner change: the next calendar version shows it."}</Muted>
           <Input value={title} onChangeText={setTitle} maxLength={200} placeholder="This date's title" />
           <Button
             label="Save title"
             busy={busy}
             disabled={!title.trim() || title.trim() === row.title}
-            onPress={() => act(async () => await supabase.from("session").update({ title: title.trim() }).eq("id", row.id), "Title saved.")}
+            onPress={() => act(async () => await supabase.from("session").update({ title: title.trim() }).eq("id", row.id), /^\W*no\W*program\W*$/i.test(title) ? "Marked “No Program”." : "Title saved.")}
           />
         </Card>
       )}
@@ -341,39 +339,6 @@ export default function DateDetail() {
         />
       )}
 
-      {/* Hidden once the month is reviewed, as on the website: the database refuses it then. */}
-      {row.schedule_state === "draft" && !past && !reviewed && playing.some((a) => a.person_id === me.id) && (
-        <Card title="Can't happen?">
-          <Muted>Any musician playing a draft date can make it &ldquo;No Program&rdquo; until the month is reviewed. The Iris Supervisor gets an email. This can&apos;t be undone here.</Muted>
-          <Field label="Reason">
-            <Choices options={CANCELLATION_REASONS.map((r) => ({ value: r, label: CANCELLATION_REASON_LABELS[r] }))} selected={reason ?? ("" as CancellationReason)} onToggle={setReason} />
-          </Field>
-          <Button
-            label="Make “No Program”"
-            kind="danger"
-            busy={busy}
-            disabled={!reason}
-            onPress={() =>
-              Alert.alert("No Program", `Mark ${formatDay(row.starts_at, tz)} as “No Program”? This can't be undone here.`, [
-                { text: "Cancel", style: "cancel" },
-                {
-                  text: "Yes, No Program",
-                  style: "destructive",
-                  onPress: async () => {
-                    setBusy(true);
-                    const { error, count } = await supabase.from("session").update({ schedule_state: "canceled", cancellation_reason: reason }, { count: "exact" }).eq("id", row.id);
-                    setBusy(false);
-                    if (error) return setMessage(friendly(error));
-                    if (!count) return setMessage("Only musicians playing the date (on drafts, until the month is reviewed), the Lead Musician, the Iris Supervisor or an admin can make it “No Program”.");
-                    setMessage("Marked “No Program”.");
-                    load();
-                  },
-                },
-              ])
-            }
-          />
-        </Card>
-      )}
 
       {!canceled && localDateTime(row.starts_at, tz).date === todayIso() && playing.some((a) => a.person_id === me.id) && row.location && (
         <Button
