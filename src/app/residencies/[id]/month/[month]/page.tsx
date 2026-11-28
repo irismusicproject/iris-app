@@ -281,9 +281,9 @@ export default async function MonthPage({
         <Link href={`/residencies/${id}/season`} className="text-iris underline-offset-2 hover:underline">Season view</Link>
 
         {access.onRoster && !access.canSchedule && (latest
-          ? " · This month has been reviewed: ask the Iris Supervisor for any changes."
-          : " · On draft dates you play in, you can edit the notes, room and musicians, and add the title when you lead the date (type “No Program” as the title to cancel it). The Iris Supervisor sets leaders; to change one, propose a different leader under More once the month is open for the team.")}
-        {access.isAdminLead && !access.canSchedule && " As Lead Musician, you publish the month and update published dates after partner feedback."}
+          ? " · The calendar has gone to the partner: ask the Iris Supervisor for any changes."
+          : " · On draft dates you play in, you can edit the notes, room and musicians, and add the title when you lead the date (type “No Program” as the title to cancel it). The Iris Supervisor sets leaders; to change one, propose a different leader under More. Once the Lead Musician sends the calendar to the partner (the 10th), ask the Iris Supervisor for any change.")}
+        {access.isAdminLead && !access.canSchedule && " As Lead Musician, you send the calendar to the partner on the 10th, enter the partner's changes, and mark it final by the 15th."}
       </p>
 
       <CollaborationTarget residencyId={id} month={month} canSchedule={access.canSchedule} names={names} />

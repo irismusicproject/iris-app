@@ -66,8 +66,8 @@ r = await as(L, `update public.session set title='Jazz Café' where id='${s1}'`)
 // 3. Confirm, undo, send
 // ---------------------------------------------------------------------------
 r = await fn(M1, "confirm_schedule_month"); check("a musician can't confirm", !r.ok, r);
-r = await fn(P, "confirm_schedule_month"); check("the point person confirms: team confirmed", r.ok && (await stage()) === "team_confirmed", r);
-r = await fn(P, "undo_confirm_schedule_month"); check("…and can undo it before sending", r.ok && (await stage()) === "team_editing", r);
+r = await fn(P, "confirm_schedule_month"); check("D20: confirming is no longer a step", !r.ok && (await stage()) === "team_editing", r);
+r = await fn(P, "undo_confirm_schedule_month"); check("…nor undoing it", !r.ok && (await stage()) === "team_editing", r);
 r = await fn(P, "finalize_schedule_month"); check("final before sending is refused", !r.ok && /send the calendar/.test(r.err), r);
 r = await fn(M1, "send_schedule_month"); check("a musician can't send the calendar", !r.ok, r);
 r = await fn(M2, "schedule_month_send_info"); check("a musician can't read who the calendar goes to", !r.ok, r);
@@ -76,7 +76,16 @@ check("…both dates are published", (await su(`select count(*)::int as n from p
 r = await fn(L, "send_schedule_month"); check("sending twice is refused", !r.ok, r);
 r = await fn(L, "undo_confirm_schedule_month"); check("no undo after sending", !r.ok, r);
 
-// The first change after sending moves the month to partner changes.
+// D20: after sending, nobody but the Lead Musician (partner changes), the Iris
+// Supervisor and admins changes the month; musicians ask the Iris Supervisor.
+r = await as(M1, `update public.session set internal_note='My idea' where id='${s1}'`); check("after sending, a musician can't change a date", !r.ok || r.n === 0, r);
+r = await as(M1, `update public.session_assignment set status='absent' where session_id='${s1}' and person_id='${M1}'`); check("…nor mark themself absent", !r.ok || r.n === 0, r);
+r = await as(M1, `insert into public.session_assignment (session_id, person_id, status) values ('${s1}','${M2}','substitute')`); check("…nor put in their own sub", !r.ok, r);
+r = await as(M1, `select public.request_change('${s1}', 'sub', '${M2}', null)`); check("…but they can ask the Iris Supervisor for a sub", r.ok, r);
+check("(the month is still 'sent to partner')", (await stage()) === "sent_to_partner");
+
+// The first change after sending moves the month to partner changes (shown as
+// "Sent to partner"; it makes "final" send a new version).
 r = await as(P, `update public.session set internal_note='Room may change' where id='${s2}'`);
 check("a change after sending: partner changes", r.ok && (await stage()) === "partner_changes", r);
 

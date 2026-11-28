@@ -109,12 +109,10 @@ r = await as(M1, `update public.session set title='Motown' where id='${sessions[
 r = await as(M2, `update public.session set internal_note='Bring stands' where id='${sessions[0]}'`); check("other musicians still change notes", r.ok && r.n === 1, r);
 r = await as(M2, `update public.session set location_id='${ROOM_B}' where id='${sessions[0]}'`); check("…and the room", r.ok && r.n === 1, r);
 
-// ---- Confirm (point person), undo
-r = await as(L, `select public.confirm_schedule_month(${M})`); check("the Admin Lead can't confirm", !r.ok, r);
-r = await as(P, `select public.confirm_schedule_month(${M})`); check("point person confirms the team's version", r.ok && (await stage()) === "team_confirmed", r);
-r = await as(M1, `update public.session set title='Late idea' where id='${sessions[1]}'`); check("confirmed: musicians are locked out", !r.ok, r);
-r = await as(P, `select public.undo_confirm_schedule_month(${M})`); check("point person can undo confirming before sending", r.ok && (await stage()) === "team_editing", r);
-r = await as(A, `select count(*)::int as n from public.calendar_export`); check("…which removes the reviewed calendar version", r.ok && r.rows[0].n === 0, r);
+// ---- No confirm step (D20, Nov 27, 2026): musicians keep editing until the
+// Lead Musician sends; older phones calling confirm get a plain message.
+r = await as(P, `select public.confirm_schedule_month(${M})`); check("confirming is no longer a step", !r.ok && /no longer needed/.test(r.err) && (await stage()) === "team_editing", r);
+r = await as(M1, `update public.session set internal_note='Late idea' where id='${sessions[1]}'`); check("musicians still edit before sending", r.ok && r.n === 1, r);
 
 // ---- Send (Admin Lead may send without the confirm step; sending confirms)
 r = await as(M1, `select public.send_schedule_month(${M})`); check("a musician can't send", !r.ok, r);
@@ -181,7 +179,7 @@ r = await as(O, `select public.set_unavailable('${march[1]}', true)`); check("so
 
 // To do for each role
 r = await as(M1, `select kind from public.my_tasks()`); check("M1's To do: titles for the March dates they lead", r.ok && r.rows.some((x) => x.kind === "titles"), r);
-r = await as(P, `select kind from public.my_tasks()`); check("the point person's To do: review and confirm March", r.ok && r.rows.some((x) => x.kind === "confirm"), r);
+r = await as(P, `select kind from public.my_tasks()`); check("the Iris Supervisor's To do has no 'review and confirm' (D20)", r.ok && !r.rows.some((x) => x.kind === "confirm"), r);
 r = await as(L, `select kind from public.my_tasks()`); check("the Admin Lead's To do: send March", r.ok && r.rows.some((x) => x.kind === "send"), r);
 r = await as(O, `select kind from public.my_tasks()`); check("someone off the roster has nothing to do", r.ok && r.rows.length === 0, r);
 

@@ -1,8 +1,8 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { Alert, Pressable, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { formatDay, formatMonth, formatTime, localDateTime, monthWindow } from "@shared/domain/time";
-import { Button, Card, Loading, Muted, Notice, Problem, Screen } from "@/components/ui";
+import { Card, Loading, Muted, Notice, Problem, Screen } from "@/components/ui";
 import { plain } from "@/lib/month";
 import { supabase } from "@/lib/supabase";
 import { colors } from "@/lib/theme";
@@ -31,7 +31,6 @@ export default function MonthReview() {
   const [stage, setStage] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     const w = monthWindow(month);
@@ -112,47 +111,14 @@ export default function MonthReview() {
           })}
         </Card>
       ))}
-      {stage === "team_editing" ? (
-        <Button
-          label={`Confirm the team's ${formatMonth(month).split(" ")[0]}`}
-          busy={busy}
-          onPress={() =>
-            Alert.alert("Confirm", `${flagged ? `${flagged} date${flagged === 1 ? " is" : "s are"} still flagged. ` : ""}Confirming locks the dates for musicians; the Lead Musician then sends it to the partner.`, [
-              { text: "Cancel", style: "cancel" },
-              {
-                text: "Confirm",
-                onPress: async () => {
-                  setBusy(true);
-                  const { error } = await supabase.rpc("confirm_schedule_month", { p_residency: residencyId, p_site: siteId, p_month: `${month}-01` });
-                  setBusy(false);
-                  if (error) return setProblem(plain(error));
-                  setMessage("Confirmed. Dates are locked for musicians; the Lead Musician can send it to the partner.");
-                  load();
-                },
-              },
-            ])
-          }
-        />
-      ) : stage === "team_confirmed" ? (
-        <View style={{ gap: 8 }}>
-          <Notice>Confirmed. The Lead Musician sends it to the partner on the 10th.</Notice>
-          <Button
-            label="Undo confirm"
-            kind="secondary"
-            busy={busy}
-            onPress={async () => {
-              setBusy(true);
-              const { error } = await supabase.rpc("undo_confirm_schedule_month", { p_residency: residencyId, p_site: siteId, p_month: `${month}-01` });
-              setBusy(false);
-              if (error) return setProblem(plain(error));
-              setMessage("Reopened for the team.");
-              load();
-            }}
-          />
-        </View>
-      ) : (
-        <Muted>{stage ? "This month has already gone to the partner." : "This month isn't open for the team yet."}</Muted>
-      )}
+      {/* D20: no confirm step; musicians edit until the Lead Musician sends it. */}
+      <Muted>
+        {stage === "team_editing" || stage === "team_confirmed"
+          ? "Musicians review and edit until the 10th; the Lead Musician then sends it to the partner. No confirm step."
+          : stage
+            ? "This month has already gone to the partner."
+            : "This month has no dates yet."}
+      </Muted>
     </Screen>
   );
 }

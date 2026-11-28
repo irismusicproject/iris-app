@@ -351,6 +351,8 @@ in Supabase), so web and phone behave the same.
 
 ### D19-g No lock at the meeting; sending locks
 
+> **Nov 27, 2026 (D20, Ryan):** built in a simpler form: there is no confirm step or "We met and agree" mark; musicians edit until the Lead Musician sends, sending locks the month for everyone but the Lead Musician (partner changes), the Iris Supervisor and admins, and final locks it. D19-h (months open themselves) and D19-i (names) are built too. See DOMAIN-MODEL v0.48–v0.51.
+
 - **Workbook:** the meeting looks at the sheet; people keep typing after.
 - **Now:** the Iris Supervisor's **Confirm** moves the month to
   `team_confirmed` and locks it for musicians (it writes calendar version 1

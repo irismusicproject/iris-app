@@ -4,7 +4,7 @@ import { Pressable, Text, View } from "react-native";
 import { formatDay, formatMonth, formatTime, localDateTime, monthWindow, shiftMonth } from "@shared/domain/time";
 import { lastUpdated } from "@/components/offline";
 import { Card, LinkButton, Loading, Muted, Problem, Screen, Tag, styles } from "@/components/ui";
-import { plain, STAGE_HELP, STAGE_LABEL, STAGES, type ScheduleMonth } from "@/lib/month";
+import { plain, STAGE_HELP, STAGE_LABEL, STAGES, stepOf, type ScheduleMonth } from "@/lib/month";
 import { offlineNow } from "@/lib/net";
 import { isNetworkError } from "@/lib/offline/outbox";
 import { cacheGet, cacheSet } from "@/lib/offline/store";
@@ -143,7 +143,7 @@ export default function Calendar() {
       {rows && rows.length === 0 && <Muted>No dates in {formatMonth(month)} yet.</Muted>}
 
       {[...buildings.values()].map((b) => {
-        const stageIndex = b.stage ? STAGES.indexOf(b.stage.stage) : -1;
+        const stageIndex = b.stage ? STAGES.indexOf(stepOf(b.stage.stage)) : -1;
         return (
           <Card key={`${b.residencyId}${b.name}`} title={b.name}>
             <View style={{ flexDirection: "row", gap: 4 }}>
@@ -151,8 +151,8 @@ export default function Calendar() {
                 <View key={s} style={{ flex: 1, height: 6, borderRadius: 3, backgroundColor: i <= stageIndex ? colors.iris : colors.border }} />
               ))}
             </View>
-            <Text style={{ fontWeight: "700", color: colors.text }}>{b.stage ? `Stage ${stageIndex + 1} of 5: ${STAGE_LABEL[b.stage.stage]}` : "Not open for the team yet"}</Text>
-            <Muted>{b.stage ? STAGE_HELP[b.stage.stage] : "The Iris Supervisor opens the month for the team about the 1st of the month before."}</Muted>
+            <Text style={{ fontWeight: "700", color: colors.text }}>{b.stage ? `Stage ${stageIndex + 1} of 3: ${STAGE_LABEL[b.stage.stage]}` : "Not open for the team yet"}</Text>
+            <Muted>{b.stage ? STAGE_HELP[b.stage.stage] : "No dates yet. The month opens for the team as soon as its first date is added."}</Muted>
             {b.rows.map((r) => {
               const tz = r.location?.site?.timezone ?? "America/New_York";
               const canceled = r.schedule_state === "canceled";
