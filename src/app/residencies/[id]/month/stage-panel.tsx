@@ -67,6 +67,14 @@ export function StagePanel({
         {step === "sent_to_partner" && dueFinal ? ` Final due ${fmt(dueFinal)}.` : ""}
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
+        {/* The partner calendar as a PDF, at any stage (it was in the older
+            review-and-publish panel, which months that open themselves never show). */}
+        {stage && (
+          <>
+            <a href={`/residencies/${residencyId}/month/${month}/calendar?site=${siteId}&view=1`} target="_blank" rel="noreferrer" className={small}>View PDF</a>
+            <a href={`/residencies/${residencyId}/month/${month}/calendar?site=${siteId}`} className={small}>Download PDF</a>
+          </>
+        )}
         {step === "team_editing" && sender && (
           <ConfirmButton disabled={pending} className={buttonClass} label="Send calendar to partner" question="Email the draft calendar to the building's calendar contacts now, copying the Iris Supervisor and Lead Musician? After that, only partner changes go in." confirmLabel="Send" onConfirm={() => run(() => sendMonth("send", residencyId, siteId, month))} />
         )}
