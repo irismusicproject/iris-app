@@ -34,15 +34,16 @@ test("admin sets up a program; a musician on its roster sees it but can't change
   await admin.waitForLoadState("networkidle");
   await expect(admin.getByRole("heading", { name: `Maple ${run}` })).toBeVisible();
 
-  // Site, season, roster, Iris Supervisor.
-  await admin.locator('select[name="site_id"]').selectOption({ label: `Maple House ${run}` });
-  await admin.getByRole("button", { name: "Add site" }).click();
-  await expect(admin.getByText("Site added.")).toBeVisible();
+  // Season, roster, Iris Supervisor.
+  // Nov 27, 2026: a partner with one building links it to the new program itself.
+  await expect(admin.getByText(`Maple House ${run}`).first()).toBeVisible();
+  await expect(admin.getByRole("button", { name: "Add site" })).toHaveCount(0);
 
   const year = new Date().getFullYear() + 1;
-  await admin.locator('input[name="name"]').first().fill(`Spring ${year}`);
-  await admin.locator('input[name="starts_on"]').fill(`${year}-01-01`);
-  await admin.locator('input[name="ends_on"]').fill(`${year}-06-30`);
+  const seasonForm = admin.locator("form", { has: admin.getByRole("button", { name: "Add season" }) });
+  await seasonForm.locator('input[name="name"]').fill(`Spring ${year}`);
+  await seasonForm.locator('input[name="starts_on"]').fill(`${year}-01-01`);
+  await seasonForm.locator('input[name="ends_on"]').fill(`${year}-06-30`);
   await admin.getByRole("button", { name: "Add season" }).click();
   await expect(admin.getByRole("heading", { name: new RegExp(`Spring ${year}`) })).toBeVisible();
 

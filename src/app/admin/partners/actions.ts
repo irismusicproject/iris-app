@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, requirePerson } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { validateLocation, validatePartner, validateSite } from "@/shared/domain/place";
 
@@ -76,29 +76,56 @@ export async function updateSite(id: string, _prev: PlaceFormState, form: FormDa
 
 // ---- Location ----
 
+// Rooms: admins anywhere; the Iris Supervisor at their program's buildings
+// (Nov 27, 2026). The database checks who; these only refresh the pages.
 export async function addLocation(siteId: string, _prev: PlaceFormState, form: FormData): Promise<PlaceFormState> {
-  await requireAdmin();
+  await requirePerson();
   const parsed = validateLocation(form);
   if (!parsed.ok) return { status: "error", errors: parsed.errors };
   const supabase = await createClient();
   const { error } = await supabase.from("location").insert({ ...parsed.value, site_id: siteId });
-  if (error) return { status: "error", message: dbMessage(error, "location") };
-  revalidatePath(`/admin/sites/${siteId}`);
+  if (error) return { status: "error", message: dbMessage(error, "room") };
+  revalidatePath("/admin", "layout");
+  revalidatePath("/residencies", "layout");
   return { status: "saved", savedAt: Date.now() };
 }
 
 export async function updateLocation(
   id: string,
-  siteId: string,
+  _siteId: string,
   _prev: PlaceFormState,
   form: FormData,
 ): Promise<PlaceFormState> {
-  await requireAdmin();
+  await requirePerson();
   const parsed = validateLocation(form);
   if (!parsed.ok) return { status: "error", errors: parsed.errors };
   const supabase = await createClient();
   const { error } = await supabase.from("location").update(parsed.value).eq("id", id);
-  if (error) return { status: "error", message: dbMessage(error, "location") };
-  revalidatePath(`/admin/sites/${siteId}`);
+  if (error) return { status: "error", message: dbMessage(error, "room") };
+  revalidatePath("/admin", "layout");
+  revalidatePath("/residencies", "layout");
   return { status: "saved" };
+}
+
+/** A room straight on the partner (Nov 27, 2026): the database uses the
+ *  partner's one building, or makes it, or the one picked when there are several. */
+export async function addPartnerRoom(partnerId: string, _prev: PlaceFormState, form: FormData): Promise<PlaceFormState> {
+  await requireAdmin();
+  const parsed = validateLocation(form);
+  if (!parsed.ok) return { status: "error", errors: parsed.errors };
+  const site = String(form.get("site_id") ?? "");
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("add_partner_room", {
+    p_partner: partnerId,
+    p_name: parsed.value.name,
+    p_display_name: parsed.value.display_name,
+    ...(site ? { p_site: site } : {}),
+  });
+  if (error) {
+    if (error.message.includes("pick one")) return { status: "error", message: "This partner has several buildings: pick one." };
+    return { status: "error", message: dbMessage(error, "room") };
+  }
+  revalidatePath("/admin", "layout");
+  revalidatePath("/residencies", "layout");
+  return { status: "saved", savedAt: Date.now() };
 }

@@ -1081,7 +1081,10 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "approve_week":
+            "add_partner_room":
+{ Args: { "p_display_name"?: string,"p_name": string,"p_partner": string,"p_site"?: string }; Returns: string
+                           },
+"approve_week":
 { Args: { "p_person": string,"p_residency": string,"p_week": string }; Returns: number
                            },
 "calendar_feed_events":
