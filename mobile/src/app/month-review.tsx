@@ -101,7 +101,7 @@ export default function MonthReview() {
               <Pressable key={r.id} onPress={() => router.push({ pathname: "/date/[id]", params: { id: r.id } })} accessibilityRole="button" style={{ borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 8, gap: 2 }}>
                 <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text }}>
                   {formatDay(r.starts_at, tz)}
-                  {r.has_set_time ? ` · ${formatTime(r.starts_at, tz)}` : ""} · {r.schedule_state === "canceled" ? `No Program (${r.title})` : r.title}
+                  {r.has_set_time ? ` · ${formatTime(r.starts_at, tz)}` : ""} · {r.schedule_state === "canceled" ? (r.title === "No Program" ? "No Program" : `No Program (${r.title})`) : r.title}
                 </Text>
                 <Muted>
                   Leads: {leader ? first(leader.person_id) : "nobody yet"} · {r.location?.display_name}

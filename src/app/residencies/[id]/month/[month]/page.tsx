@@ -282,7 +282,7 @@ export default async function MonthPage({
 
         {access.onRoster && !access.canSchedule && (latest
           ? " · This month has been reviewed: ask the Iris Supervisor for any changes."
-          : " · On draft dates you play in, you can edit the notes, room and musicians, add the title when you lead the date, or make it “No Program”. The Iris Supervisor sets leaders; to change one, propose a different leader under More once the month is open for the team.")}
+          : " · On draft dates you play in, you can edit the notes, room and musicians, and add the title when you lead the date (type “No Program” as the title to cancel it). The Iris Supervisor sets leaders; to change one, propose a different leader under More once the month is open for the team.")}
         {access.isAdminLead && !access.canSchedule && " As Lead Musician, you publish the month and update published dates after partner feedback."}
       </p>
 

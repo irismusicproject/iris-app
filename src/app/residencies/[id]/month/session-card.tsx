@@ -5,13 +5,11 @@ import { inputClass } from "@/components/auth-card";
 import { ConfirmButton } from "@/components/confirm-button";
 import {
   CANCELLATION_REASON_LABELS,
-  CANCELLATION_REASONS,
   CANCELED_FOR_ABSENCE_CALENDAR_TEXT,
   type CancellationReason,
 } from "@/shared/domain/scheduling";
 import {
   addMusician,
-  cancelSession,
   deleteOneTimeSession,
   removeMusician,
   restoreSession,
@@ -105,7 +103,6 @@ export function SessionCard({
   const [title, setTitle] = useState(session.title);
   const [note, setNote] = useState(session.internalNote ?? "");
   const [open, setOpen] = useState(false);
-  const [reason, setReason] = useState<CancellationReason>("other");
   const [swapTo, setSwapTo] = useState("");
   const [subWho, setSubWho] = useState("");
   const isDraft = session.state === "draft";
@@ -120,9 +117,6 @@ export function SessionCard({
   // After final, only the Iris Supervisor and admins (v0.41).
   const canEditPublished = (canSchedule || (isAdminLead && !final)) && session.state === "published";
   const canEditDetails = canEdit || canEditPublished;
-  // The Iris Supervisor/admins; the Lead Musician on published dates; any musician
-  // playing a draft date, until the month is reviewed (v0.35).
-  const canCancel = canSchedule || canEditPublished || (isDraft && !final && onRoster && playingMe && !monthReviewed);
   const canRestore = canSchedule || isAdminLead;
   const playing = session.assignments.filter((a) => a.status !== "absent");
   const leader = playing.find((a) => a.role === "leader");
@@ -149,7 +143,9 @@ export function SessionCard({
       setMessage(r.status === "error" ? r.message ?? "Something went wrong." : done ?? null);
     });
   const saveTitle = () => {
-    if (title.trim() && title !== session.title) run(() => setSessionTitle(residencyId, session.id, title), "Title saved.");
+    // D20: typing "No Program" makes the date No Program (the database does it).
+    if (title.trim() && title !== session.title)
+      run(() => setSessionTitle(residencyId, session.id, title), /^\W*no\W*program\W*$/i.test(title) ? "Marked “No Program”." : "Title saved.");
   };
   const saveNote = () => {
     if (note !== (session.internalNote ?? "")) run(() => setSessionNote(residencyId, session.id, note), "Note saved.");
@@ -161,7 +157,17 @@ export function SessionCard({
         <span className="text-sm font-medium">{session.dayLabel}</span>
         <span className="text-sm text-muted">{session.timeLabel ?? ""}</span>
 
-        {canceled ? (
+        {canceled && canRestore && session.title === "No Program" ? (
+          <input
+            aria-label={`Title for ${session.dayLabel}`}
+            title="Type a title to bring this date back as a draft"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onBlur={saveTitle}
+            onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()}
+            className={`${cell} ${TITLE_CELL}`}
+          />
+        ) : canceled ? (
           <span className={`${TITLE_CELL} text-sm`}>
             {CANCELED_FOR_ABSENCE_CALENDAR_TEXT}
             {session.cancellationReason && <span className="text-xs text-muted"> ({CANCELLATION_REASON_LABELS[session.cancellationReason]})</span>}
@@ -169,6 +175,7 @@ export function SessionCard({
         ) : canEditTitle ? (
           <input
             aria-label={`Title for ${session.dayLabel}`}
+            title="Type “No Program” to cancel this date"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             onBlur={saveTitle}
@@ -326,26 +333,6 @@ export function SessionCard({
                 </>
               )}
               {asked && <span className="text-xs text-muted">You&apos;ve asked the Iris Supervisor about this date; they&apos;ll decide.</span>}
-            </div>
-          )}
-          {canCancel && (
-            <div className="flex flex-wrap items-center gap-2">
-              <select
-                aria-label={`Reason to cancel ${session.dayLabel}`}
-                value={reason}
-                onChange={(e) => setReason(e.target.value as CancellationReason)}
-                className={`${inputClass} py-1 text-xs`}
-              >
-                {CANCELLATION_REASONS.map((r) => <option key={r} value={r}>{CANCELLATION_REASON_LABELS[r]}</option>)}
-              </select>
-              <ConfirmButton
-                disabled={pending}
-                className={small}
-                label="Make “No Program”"
-                question={`Mark ${session.dayLabel} as “No Program”? This can't be undone.`}
-                confirmLabel="Yes, No Program"
-                onConfirm={() => run(() => cancelSession(residencyId, session.id, reason), "Marked “No Program”.")}
-              />
             </div>
           )}
           {canSchedule && session.isOneTime && (
