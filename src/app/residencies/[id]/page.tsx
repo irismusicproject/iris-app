@@ -29,6 +29,8 @@ import {
   type SiteContact,
 } from "../forms";
 import { todayIn } from "@/shared/domain/time";
+import type { Location } from "@/shared/domain/place";
+import { AddLocationForm, LocationRow } from "../../admin/partners/forms";
 
 export const metadata = { title: "Program · Iris Music Project" };
 
@@ -55,7 +57,7 @@ export default async function ResidencyPage({ params }: { params: Promise<{ id: 
   const [names, access] = await Promise.all([getResidencyNames(id), getResidencyAccess(id, isAdmin)]);
   const nameOf = (pid: string) => names.get(pid) ?? "Someone";
   const [{ data: siteRows }, { data: seasonRows }, { data: staffRows }] = await Promise.all([
-    supabase.from("residency_site").select("site(id, display_name, city, detailed_relationship_notes)").eq("residency_id", id),
+    supabase.from("residency_site").select("site(id, display_name, city, detailed_relationship_notes, location(*))").eq("residency_id", id),
     supabase
       .from("season")
       .select("*, roster_member(*)")
@@ -67,7 +69,7 @@ export default async function ResidencyPage({ params }: { params: Promise<{ id: 
       .eq("residency_id", id)
       .order("starts_on", { ascending: false }),
   ]);
-  const sites = (siteRows ?? []).map((r) => r.site as unknown as { id: string; display_name: string; city: string | null; detailed_relationship_notes: boolean }).filter(Boolean);
+  const sites = (siteRows ?? []).map((r) => r.site as unknown as { id: string; display_name: string; city: string | null; detailed_relationship_notes: boolean; location: Location[] | null }).filter(Boolean);
   const seasons = (seasonRows ?? []) as SeasonRow[];
   const staff = ((staffRows ?? []) as StaffRow[]).filter((s) => !s.ends_on || s.ends_on > today);
 
@@ -141,6 +143,15 @@ export default async function ResidencyPage({ params }: { params: Promise<{ id: 
             <li key={s.id} className="flex flex-col gap-1.5 py-1">
               <span className="font-medium">{s.display_name}{s.city ? <span className="font-normal text-muted"> · {s.city}</span> : null}</span>
               <SiteContacts residencyId={id} siteId={s.id} contacts={contactsBySite.get(s.id) ?? []} canEdit={access.canSchedule} />
+              {access.canSchedule && (
+                <details className="text-sm">
+                  <summary className="cursor-pointer text-iris">Rooms ({(s.location ?? []).filter((l) => l.active).length})</summary>
+                  <div className="mt-2 divide-y divide-border rounded-xl border border-border">
+                    {(s.location ?? []).slice().sort((a, b) => Number(b.active) - Number(a.active) || a.name.localeCompare(b.name)).map((l) => <LocationRow key={l.id} location={l} />)}
+                  </div>
+                  <div className="mt-2 rounded-xl border border-border p-3"><AddLocationForm siteId={s.id} /></div>
+                </details>
+              )}
               {isAdmin && <SiteDetailedNotesToggle residencyId={id} siteId={s.id} on={s.detailed_relationship_notes} />}
               {s.detailed_relationship_notes && (isAdmin || access.isPointPerson) && (
                 <DailyNotesDownload siteId={s.id} siteName={s.display_name} defaultDate={today} />

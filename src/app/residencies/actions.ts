@@ -42,6 +42,9 @@ export async function addResidency(_prev: SetupFormState, form: FormData): Promi
   const supabase = await createClient();
   const { data, error } = await supabase.from("residency").insert(parsed.value).select("id").single();
   if (error) return { status: "error", message: dbMessage(error, "program") };
+  // A partner with one building: the new program gets it (Nov 27, 2026).
+  const { data: only } = await supabase.from("site").select("id").eq("partner_id", parsed.value.partner_id).eq("active", true);
+  if (only?.length === 1) await supabase.from("residency_site").insert({ residency_id: data.id, site_id: only[0].id });
   revalidatePath("/residencies");
   redirect(`/residencies/${data.id}`);
 }

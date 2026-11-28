@@ -14,6 +14,7 @@ import {
 import {
   addLocation,
   addPartner,
+  addPartnerRoom,
   addSite,
   updateLocation,
   updatePartner,
@@ -193,6 +194,35 @@ export function LocationRow({ location }: { location: Location }) {
         {pending ? "Saving..." : "Save"}
       </button>
       <div className="sm:col-span-4"><Status state={state} saving={pending} /></div>
+    </form>
+  );
+}
+
+/** Add a room straight on the partner (Nov 27, 2026). With several buildings, pick one. */
+export function AddPartnerRoomForm({ partnerId, sites }: { partnerId: string; sites: { id: string; name: string }[] }) {
+  const [state, action, pending] = useActionState(addPartnerRoom.bind(null, partnerId), initial);
+  return (
+    <form action={action} key={state.savedAt ?? 0} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+      {sites.length > 1 && (
+        <div className="sm:col-span-3">
+          <Field label="Building" error={state.errors?.site_id}>
+            <select name="site_id" required defaultValue="" className={inputClass}>
+              <option value="" disabled>Pick a building…</option>
+              {sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </Field>
+        </div>
+      )}
+      <Field label="Room or area" error={state.errors?.name}>
+        <input name="name" required placeholder="e.g. Auditorium" className={inputClass} />
+      </Field>
+      <Field label="Display name (optional)" error={state.errors?.display_name}>
+        <input name="display_name" className={inputClass} />
+      </Field>
+      <button type="submit" disabled={pending} className={`${buttonClass} text-sm`}>
+        {pending ? "Adding..." : "Add room"}
+      </button>
+      <div className="sm:col-span-3"><Status state={state} saving={pending} /></div>
     </form>
   );
 }
