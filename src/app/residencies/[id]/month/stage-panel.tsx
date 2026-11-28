@@ -13,10 +13,10 @@ const STAGES: Stage[] = ["team_editing", "team_confirmed", "sent_to_partner", "p
 const LABEL: Record<Stage, string> = { team_editing: "Team editing", team_confirmed: "Team confirmed", sent_to_partner: "Sent to partner", partner_changes: "Partner changes", final: "Final" };
 const HELP: Record<Stage, string> = {
   team_editing: "Open for the team: each date's leader adds its title; musicians mark dates they can't play and propose leader swaps (under More).",
-  team_confirmed: "The point person confirmed the team's version. Dates are locked for musicians; ask the point person for changes.",
-  sent_to_partner: "The draft calendar went to the partner. The admin lead enters any partner changes on the dates below.",
-  partner_changes: "The admin lead is entering the partner's changes, then marks the month final.",
-  final: "Final and locked. Changes, subs included, go through the point person.",
+  team_confirmed: "The Iris Supervisor confirmed the team's version. Dates are locked for musicians; ask the Iris Supervisor for changes.",
+  sent_to_partner: "The draft calendar went to the partner. The Lead Musician enters any partner changes on the dates below.",
+  partner_changes: "The Lead Musician is entering the partner's changes, then marks the month final.",
+  final: "Final and locked. Changes, subs included, go through the Iris Supervisor.",
 };
 const small = "rounded-full border border-border px-3 py-1 text-sm hover:bg-iris-soft disabled:opacity-60";
 
@@ -58,7 +58,7 @@ export function StagePanel({
       </div>
       <p className="mt-2 font-semibold">{stage ? `${name} at ${siteName}: stage ${i + 1} of 5, ${LABEL[stage]}` : `${name} at ${siteName} isn't open for the team yet`}</p>
       <p className="mt-1 text-sm text-muted">
-        {stage ? HELP[stage] : "The point person opens the month for the team about the 1st of the month before."}
+        {stage ? HELP[stage] : "The Iris Supervisor opens the month for the team about the 1st of the month before."}
         {stage && (stage === "team_editing" || stage === "team_confirmed") && dueTeam ? ` Team version due ${fmt(dueTeam)}.` : ""}
         {stage && (stage === "sent_to_partner" || stage === "partner_changes") && dueFinal ? ` Final due ${fmt(dueFinal)}.` : ""}
       </p>
@@ -67,13 +67,13 @@ export function StagePanel({
           <ConfirmButton disabled={pending} className={small} label={`Open ${name} for the team`} question={`Open ${monthLabel} at every building? The musicians playing get an email.`} confirmLabel="Open it" onConfirm={() => run(() => openMonth(residencyId, month))} />
         )}
         {stage === "team_editing" && canSchedule && (
-          <ConfirmButton disabled={pending} className={small} label={`Confirm the team's ${name}`} question="Confirming locks the dates for musicians; the admin lead then sends it to the partner." confirmLabel="Confirm" onConfirm={() => run(() => confirmMonth(residencyId, siteId, month))} />
+          <ConfirmButton disabled={pending} className={small} label={`Confirm the team's ${name}`} question="Confirming locks the dates for musicians; the Lead Musician then sends it to the partner." confirmLabel="Confirm" onConfirm={() => run(() => confirmMonth(residencyId, siteId, month))} />
         )}
         {stage === "team_confirmed" && canSchedule && (
           <button type="button" disabled={pending} className={small} onClick={() => run(() => undoConfirmMonth(residencyId, siteId, month))}>Undo confirm</button>
         )}
         {(stage === "team_editing" || stage === "team_confirmed") && sender && (
-          <ConfirmButton disabled={pending} className={buttonClass} label="Send calendar to partner" question="Email the draft calendar to the building's calendar contacts now, copying the point person and admin lead? If the point person hasn't confirmed, sending confirms it." confirmLabel="Send" onConfirm={() => run(() => sendMonth("send", residencyId, siteId, month))} />
+          <ConfirmButton disabled={pending} className={buttonClass} label="Send calendar to partner" question="Email the draft calendar to the building's calendar contacts now, copying the Iris Supervisor and Lead Musician? If the Iris Supervisor hasn't confirmed, sending confirms it." confirmLabel="Send" onConfirm={() => run(() => sendMonth("send", residencyId, siteId, month))} />
         )}
         {(stage === "sent_to_partner" || stage === "partner_changes") && sender && (
           <ConfirmButton disabled={pending} className={buttonClass} label="Mark final and send" question={`Send the final ${monthLabel} calendar and lock the month?`} confirmLabel="Mark final and send" onConfirm={() => run(() => sendMonth("finalize", residencyId, siteId, month))} />

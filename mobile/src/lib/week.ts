@@ -195,9 +195,10 @@ export async function loadWeek(personId: string, anyDay: string): Promise<Week> 
       .map((id) => ({ id, label: names.get(p.id)?.get(id) ?? "a colleague" }))
       .sort((a, b) => a.label.localeCompare(b.label));
 
-  // Faster logging (v0.21): usual lengths per type, and the last activity.
+  // Faster logging (v0.21): the last activity. Usual lengths per type were
+  // retired Nov 27, 2026 (v0.9): musicians enter Minutes each time.
   const [{ data: lengthRows }, { data: lastRows }] = await Promise.all([
-    ids.length ? supabase.from("activity_length").select("residency_id, kind, minutes").in("residency_id", ids) : empty,
+    empty,
     supabase
       .from("relationship_activity")
       .select("residency_id, site_id, kind, minutes, collaborative, relationship_activity_resident(resident_id)")

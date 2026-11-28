@@ -13,7 +13,7 @@ import { createPerson, logIn, open } from "./helpers/people";
 // metrics). Proves both places that know the deadline agree on which side of
 // 5 pm a moment falls:
 //   - the database's reminders (queue_deadline_reminders, given the time);
-//   - the website's on-time count on the point person's Follow-up page.
+//   - the website's on-time count on the Iris Supervisor's Follow-up page.
 // Week A he submits at 4:59 pm (on time); week B at 5:01 pm (late), after the
 // "missed deadline" email has gone out. Made-up data only.
 
@@ -81,12 +81,12 @@ test("Hollis: whole week on Tuesday evening, 4:59 pm is on time and 5:01 pm is l
   must(await d.from("residency_site").insert({ residency_id: res.id, site_id: site.id }).select(), "residency site");
   const season = must(await d.from("season").insert({ residency_id: res.id, name: `Season ${run}`, starts_on: addDays(A, -7), ends_on: addDays(thisMonday, 90), kind: "season" }).select("id").single(), "season");
   must(await d.from("roster_member").insert([{ season_id: season.id, person_id: lead.id, is_admin_lead: true }, { season_id: season.id, person_id: hollis.id, is_admin_lead: false }]).select(), "roster");
-  must(await d.from("staff_assignment").insert({ residency_id: res.id, person_id: point.id, role: "point_person", starts_on: "2020-01-01" }).select(), "point person");
+  must(await d.from("staff_assignment").insert({ residency_id: res.id, person_id: point.id, role: "point_person", starts_on: "2020-01-01" }).select(), "Iris Supervisor");
   const dates = must(await d.from("session").insert([A, B].map((w) => ({ residency_id: res.id, title: "Brass Hour", location_id: room.id, starts_at: zonedToUtc(addDays(w, 2), "14:00", TZ), scheduled_minutes: 60 }))).select("id, starts_at"), "dates");
   for (const s of dates)
     must(await d.from("session_assignment").insert([{ session_id: s.id, person_id: lead.id, role: "leader" }, { session_id: s.id, person_id: hollis.id, role: "participant" }]).select(), "who plays");
 
-  // The point person reviews and publishes those months, as in the app.
+  // The Iris Supervisor reviews and publishes those months, as in the app.
   const pp = await signedIn(point.email, point.password);
   for (const month of new Set([A, B].map((w) => `${addDays(w, 2).slice(0, 7)}-01`))) {
     ok(await pp.rpc("mark_month_reviewed", { p_residency: res.id, p_site: site.id, p_month: month }), `review ${month}`);
@@ -115,7 +115,7 @@ test("Hollis: whole week on Tuesday evening, 4:59 pm is on time and 5:01 pm is l
     await expectNoSideways(page, `My week (${week})`);
     await page.getByRole("button", { name: "Submit my week" }).click();
     await page.getByRole("button", { name: "Yes, submit" }).click();
-    await expect(page.getByText("Your week is submitted to the point person.")).toBeVisible();
+    await expect(page.getByText("Your week is submitted to the Iris Supervisor.")).toBeVisible();
   }
 
   // Week A: submitted at 4:59 pm on its Tuesday.
@@ -129,13 +129,13 @@ test("Hollis: whole week on Tuesday evening, 4:59 pm is on time and 5:01 pm is l
   // Tuesday 4:59 pm: still on time, nothing "missed" yet.
   await queueAt(addDays(B, 8), "16:59");
   expect(await sent("deadline_missed", hollis.id, B), "no 'missed' email at 4:59 pm").toHaveLength(0);
-  expect(await sent("deadline_missed_summary", point.id, B), "no summary to the point person at 4:59 pm").toHaveLength(0);
+  expect(await sent("deadline_missed_summary", point.id, B), "no summary to the Iris Supervisor at 4:59 pm").toHaveLength(0);
 
-  // 5:01 pm: the missed-deadline email to Hollis, the summary to the point person.
+  // 5:01 pm: the missed-deadline email to Hollis, the summary to the Iris Supervisor.
   await queueAt(addDays(B, 8), "17:01");
   expect(await sent("deadline_missed", hollis.id, B), "'missed' email at 5:01 pm").toHaveLength(1);
   const summary = await sent("deadline_missed_summary", point.id, B);
-  expect(summary, "summary to the point person at 5:01 pm").toHaveLength(1);
+  expect(summary, "summary to the Iris Supervisor at 5:01 pm").toHaveLength(1);
   expect(summary[0].body).toContain(hollis.name);
 
   // The scheduler runs every few minutes: nothing goes out twice.
@@ -150,7 +150,7 @@ test("Hollis: whole week on Tuesday evening, 4:59 pm is on time and 5:01 pm is l
   await queueAt(addDays(B, 10), "08:30");
   expect(await sent("deadline_nudge", hollis.id, B), "no nudge after he submitted").toHaveLength(0);
 
-  // The point person's Follow-up page: one week on time, one late.
+  // The Iris Supervisor's Follow-up page: one week on time, one late.
   const pointPage = await (await browser.newContext()).newPage();
   await logIn(pointPage, point.email, point.password);
   await open(pointPage, `/residencies/${res.id}/follow-up`);

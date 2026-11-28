@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { SECRET_KEY, SUPABASE_URL } from "./helpers/env";
 import { createPerson, logIn, open } from "./helpers/people";
 
-// Program setup (residency, sites, season, roster, point person). Made-up data.
+// Program setup (residency, sites, season, roster, Iris Supervisor). Made-up data.
 
 const db = () => createClient(SUPABASE_URL, SECRET_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
 
@@ -34,7 +34,7 @@ test("admin sets up a program; a musician on its roster sees it but can't change
   await admin.waitForLoadState("networkidle");
   await expect(admin.getByRole("heading", { name: `Maple ${run}` })).toBeVisible();
 
-  // Site, season, roster, point person.
+  // Site, season, roster, Iris Supervisor.
   await admin.locator('select[name="site_id"]').selectOption({ label: `Maple House ${run}` });
   await admin.getByRole("button", { name: "Add site" }).click();
   await expect(admin.getByText("Site added.")).toBeVisible();
@@ -50,14 +50,14 @@ test("admin sets up a program; a musician on its roster sees it but can't change
   await admin.locator('input[name="is_admin_lead"]').check();
   await admin.getByRole("button", { name: "Add to roster" }).click();
   await expect(admin.getByText("Added to the roster.")).toBeVisible();
-  await expect(admin.locator("li", { hasText: lead.name }).getByText("Admin lead", { exact: true })).toBeVisible();
+  await expect(admin.locator("li", { hasText: lead.name }).getByText("Lead Musician", { exact: true })).toBeVisible();
 
   await admin.locator('select[name="person_id"]').first().selectOption({ label: adminUser.name });
   await admin.getByRole("button", { name: "Assign" }).click();
   await expect(admin.getByText("Assigned.")).toBeVisible();
-  await expect(admin.locator("li", { hasText: adminUser.name }).getByText("Point person")).toBeVisible();
+  await expect(admin.locator("li", { hasText: adminUser.name }).getByText("Iris Supervisor")).toBeVisible();
 
-  // The admin lead (a musician) sees the program, read-only.
+  // The Lead Musician (a musician) sees the program, read-only.
   const leadCtx = await browser.newContext();
   const leadPage = await leadCtx.newPage();
   await logIn(leadPage, lead.email, lead.password);

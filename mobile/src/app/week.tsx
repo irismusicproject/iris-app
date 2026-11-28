@@ -71,7 +71,7 @@ export default function MyWeek() {
         text: "Yes, submit",
         onPress: async () => {
           setBusy("submit");
-          let msg = "Your week is submitted to the point person.";
+          let msg = "Your week is submitted to the Iris Supervisor.";
           for (const h of open) {
             const { error } = await supabase.rpc("submit_week", { p_residency: h.residencyId, p_week: week!.monday });
             if (error) {
@@ -201,7 +201,7 @@ export default function MyWeek() {
                 {week.hours.length > 1 && <Text style={{ fontWeight: "700", color: colors.text }}>{h.residencyName}</Text>}
                 {h.returnedNote && h.state === "draft" && (
                   <Text style={{ color: colors.text, borderWidth: 1, borderColor: colors.orange, borderRadius: 10, padding: 10 }}>
-                    <Text style={{ fontWeight: "700" }}>Sent back by the point person: </Text>
+                    <Text style={{ fontWeight: "700" }}>Sent back by the Iris Supervisor: </Text>
                     {h.returnedNote}
                   </Text>
                 )}

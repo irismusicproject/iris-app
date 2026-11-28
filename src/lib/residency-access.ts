@@ -10,11 +10,11 @@ import { createClient } from "@/lib/supabase/server";
 export type ResidencyAccess = {
   /** On the current roster: edits drafts they play in (v0.18). */
   onRoster: boolean;
-  /** Point person or admin: plans everything (v0.18). */
+  /** Iris Supervisor or admin: plans everything (v0.18). */
   canSchedule: boolean;
-  /** Admin Lead: publishes, updates published dates, adds one-time events (v0.18). */
+  /** Lead Musician: publishes, updates published dates, adds one-time events (v0.18). */
   isAdminLead: boolean;
-  /** Point person or admin: assigns leaders first, marks months reviewed. */
+  /** Iris Supervisor or admin: assigns leaders first, marks months reviewed. */
   isPointPerson: boolean;
 };
 

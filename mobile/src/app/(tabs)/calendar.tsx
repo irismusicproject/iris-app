@@ -152,7 +152,7 @@ export default function Calendar() {
               ))}
             </View>
             <Text style={{ fontWeight: "700", color: colors.text }}>{b.stage ? `Stage ${stageIndex + 1} of 5: ${STAGE_LABEL[b.stage.stage]}` : "Not open for the team yet"}</Text>
-            <Muted>{b.stage ? STAGE_HELP[b.stage.stage] : "The point person opens the month for the team about the 1st of the month before."}</Muted>
+            <Muted>{b.stage ? STAGE_HELP[b.stage.stage] : "The Iris Supervisor opens the month for the team about the 1st of the month before."}</Muted>
             {b.rows.map((r) => {
               const tz = r.location?.site?.timezone ?? "America/New_York";
               const canceled = r.schedule_state === "canceled";

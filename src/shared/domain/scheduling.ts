@@ -23,7 +23,7 @@ export const SEASON_KIND_LABELS: Record<SeasonKind, string> = {
 export const STAFF_ROLES = ["point_person", "support"] as const;
 export type StaffRole = (typeof STAFF_ROLES)[number];
 export const STAFF_ROLE_LABELS: Record<StaffRole, string> = {
-  point_person: "Point person",
+  point_person: "Iris Supervisor",
   support: "Support",
 };
 

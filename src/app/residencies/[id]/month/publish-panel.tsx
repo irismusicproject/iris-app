@@ -9,7 +9,7 @@ import { markMonthReviewed, markScheduleChecked, newCalendarVersion, publishMont
 export type ScheduleCheckRow = { personId: string; name: string; done: boolean; changedSince: boolean };
 
 // Steps 3–5 of publishing a month (DOMAIN-MODEL section 3):
-// point person marks it reviewed → admin lead clicks "Publish and download"
+// Iris Supervisor marks it reviewed → Lead Musician clicks "Publish and download"
 // → after partner feedback, "Download updated calendar".
 export function PublishPanel({
   residencyId,
@@ -67,7 +67,7 @@ export function PublishPanel({
       {!latest && (
         <>
           <p className="mt-1 text-sm text-muted">
-            Next: the point person reviews {monthLabel} with the admin lead, then marks it reviewed.
+            Next: the Iris Supervisor reviews {monthLabel} with the Lead Musician, then marks it reviewed.
             {needLeader > 0 && ` ${needLeader} program${needLeader === 1 ? " still needs" : "s still need"} a leader.`}
           </p>
 
@@ -89,8 +89,8 @@ export function PublishPanel({
                   {mine.done ? (
                     <p className="text-sm">
                       {mine.changedSince
-                        ? "You marked your dates done, then changed one. Mark done again so the point person knows."
-                        : `You're done reviewing your ${monthLabel} dates here. You can still change them until the point person marks the month reviewed.`}{" "}
+                        ? "You marked your dates done, then changed one. Mark done again so the Iris Supervisor knows."
+                        : `You're done reviewing your ${monthLabel} dates here. You can still change them until the Iris Supervisor marks the month reviewed.`}{" "}
                       {mine.changedSince ? (
                         <button type="button" disabled={pending} onClick={() => run(() => markScheduleChecked(residencyId, siteId, month))} className={`${buttonClass} mt-2 block`}>
                           {pending ? "Saving..." : "Done reviewing again"}
@@ -104,7 +104,7 @@ export function PublishPanel({
                   ) : (
                     <>
                       <p className="text-sm text-muted">
-                        Look over the dates you play at {siteName} below (titles, rooms, who plays, notes). When they&apos;re right, let the point person know.
+                        Look over the dates you play at {siteName} below (titles, rooms, who plays, notes). When they&apos;re right, let the Iris Supervisor know.
                       </p>
                       <button type="button" disabled={pending} onClick={() => run(() => markScheduleChecked(residencyId, siteId, month))} className={`${buttonClass} mt-2`}>
                         {pending ? "Saving..." : "Done reviewing my dates"}
@@ -139,7 +139,7 @@ export function PublishPanel({
         <>
           <p className="mt-1 text-sm text-muted">
             Reviewed. Publishing locks the {draftCount} draft program{draftCount === 1 ? "" : "s"} for musicians and downloads the
-            calendar to email to the partner (cc the point person).
+            calendar to email to the partner (cc the Iris Supervisor).
           </p>
           {canSchedule && (
             <div className="mt-4">

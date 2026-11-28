@@ -62,7 +62,7 @@ export default async function Dashboard({
       <TodoList tasks={(tasks ?? []) as Task[]} today={today} />
       <ul className="mt-6 space-y-2 text-sm">
         <li>
-          <Link href="/residencies" className={link}>Programs</Link>: {isAdmin ? "set up programs, seasons, rosters and point persons" : "the programs you're part of"}
+          <Link href="/residencies" className={link}>Programs</Link>: {isAdmin ? "set up programs, seasons, rosters and Iris Supervisors" : "the programs you're part of"}
         </li>
         <li>
           <Link href="/documentation" className={link}>My week</Link>: document programs and relationship building, and submit your week

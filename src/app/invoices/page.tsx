@@ -23,7 +23,7 @@ export default async function InvoicesPage() {
         <p className="mt-3 text-muted">You&apos;re paid through payroll, so there are no invoices to send. Keep entering your hours on My week.</p>
       ) : (
         <>
-          <p className="mt-1 text-muted">One invoice for each two-week pay period (Monday–Sunday). It fills in as your point person approves your hours.</p>
+          <p className="mt-1 text-muted">One invoice for each two-week pay period (Monday–Sunday). It fills in as your Iris Supervisor approves your hours.</p>
           <ul className="mt-6 flex flex-col gap-3">
             {invoices.map((inv, i) => (
               <li key={inv.start}>

@@ -171,7 +171,7 @@ export function AddRosterMemberForm({ residencyId, seasonId, people }: { residen
           <input type="checkbox" name="is_core" defaultChecked /> Core ensemble
         </label>
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="is_admin_lead" /> Admin lead
+          <input type="checkbox" name="is_admin_lead" /> Lead Musician
         </label>
         <button type="submit" disabled={pending} className={buttonClass}>{pending ? "Adding..." : "Add to roster"}</button>
       </div>
@@ -205,7 +205,7 @@ export function RosterMemberActions({
         {isCore ? "Make occasional" : "Make core"}
       </button>
       <button type="button" disabled={pending} className={smallButton} onClick={() => run({ is_admin_lead: !isAdminLead })}>
-        {isAdminLead ? "Remove admin lead" : "Make admin lead"}
+        {isAdminLead ? "Remove Lead Musician" : "Make Lead Musician"}
       </button>
       <ConfirmButton
         disabled={pending}
@@ -220,7 +220,7 @@ export function RosterMemberActions({
   );
 }
 
-// ---- Iris staff (point person) ----
+// ---- Iris staff (Iris Supervisor) ----
 
 export function AddStaffForm({ residencyId, people }: { residencyId: string; people: Option[] }) {
   const [state, action, pending] = useActionState(addStaffAssignment.bind(null, residencyId), initial);
@@ -240,7 +240,7 @@ export function AddStaffForm({ residencyId, people }: { residencyId: string; peo
         </Field>
         <button type="submit" disabled={pending} className={buttonClass}>{pending ? "Saving..." : "Assign"}</button>
       </div>
-      <p className="text-xs text-muted">A new point person replaces the current one.</p>
+      <p className="text-xs text-muted">A new Iris Supervisor replaces the current one.</p>
       <Status state={state} saving={pending} saved="Assigned." />
     </form>
   );

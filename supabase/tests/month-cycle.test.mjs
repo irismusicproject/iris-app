@@ -171,7 +171,7 @@ r = await as(M2, `select public.set_unavailable('${march[1]}', true) as n`); che
 r = await as(A, `select status from public.session_assignment where session_id='${march[1]}' and person_id='${M2}'`); check("…recorded at once", r.rows?.[0]?.status === "absent", r);
 r = await as(P, `select title from public.my_tasks() where kind='cover'`); check("…and the point person gets 'Mo Two can't play …'", r.ok && r.rows.length === 1 && /Mo Two/.test(r.rows[0].title), r);
 r = await as(M2, `select public.set_unavailable('${march[1]}', false) as n`); check("…they can undo it", r.ok && r.rows[0].n === 0, r);
-r = await as(M2, `select public.set_unavailable('${sessions[2]}', true)`); check("February is final: can't mark it any more", !r.ok && /point person/.test(r.err), r);
+r = await as(M2, `select public.set_unavailable('${sessions[2]}', true)`); check("February is final: can't mark it any more", !r.ok && /Iris Supervisor/.test(r.err), r);
 r = await as(O, `select public.set_unavailable('${march[1]}', true)`); check("someone not on the date can't mark it", !r.ok, r);
 
 // To do for each role

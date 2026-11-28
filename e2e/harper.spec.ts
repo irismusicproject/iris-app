@@ -8,7 +8,7 @@ import { createPerson, logIn, open } from "./helpers/people";
 //   1. At a detailed-notes building (v0.36) she logs a visit with a long
 //      note pasted with line breaks; it's stored exactly, and the "No health
 //      information" reminder is right where she writes.
-//   2. She and the point person change the same date's title from two open
+//   2. She and the Iris Supervisor change the same date's title from two open
 //      pages. The test records what happens today (the later save wins,
 //      with no warning to either) as a question for Lauren, not a failure.
 // Made-up data only.
@@ -41,7 +41,7 @@ test("Harper: a long detailed note is kept exactly; two people retitle one date"
   const year = new Date().getFullYear();
   const season = must(await d.from("season").insert({ residency_id: res.id, name: `Season ${run}`, starts_on: `${year - 1}-08-01`, ends_on: `${year + 1}-07-31`, kind: "season" }).select("id").single(), "season");
   must(await d.from("roster_member").insert({ season_id: season.id, person_id: harper.id, is_admin_lead: false }).select(), "roster");
-  must(await d.from("staff_assignment").insert({ residency_id: res.id, person_id: point.id, role: "point_person", starts_on: "2020-01-01" }).select(), "point person");
+  must(await d.from("staff_assignment").insert({ residency_id: res.id, person_id: point.id, role: "point_person", starts_on: "2020-01-01" }).select(), "Iris Supervisor");
 
   // ---------------------------------------------------------------------
   // 1. A long, detailed note with line breaks
@@ -82,7 +82,7 @@ test("Harper: a long detailed note is kept exactly; two people retitle one date"
   const pp = createClient(SUPABASE_URL, ANON_KEY, { auth: { persistSession: false } });
   await pp.auth.signInWithPassword({ email: point.email, password: point.password });
   const opened = await pp.rpc("open_schedule_month", { p_residency: res.id, p_site: site.id, p_month: `${month}-01` });
-  expect(opened.error, "the point person opens the month for the team").toBeNull();
+  expect(opened.error, "the Iris Supervisor opens the month for the team").toBeNull();
 
   const path = `/residencies/${res.id}/month/${month}`;
   const harperMonth = await as(browser, harper, path);
@@ -95,7 +95,7 @@ test("Harper: a long detailed note is kept exactly; two people retitle one date"
   await titleBox(harperMonth).press("Tab");
   await expect(harperMonth.getByText("Title saved.")).toBeVisible();
 
-  // The point person's page still shows the old title; she types over it.
+  // The Iris Supervisor's page still shows the old title; she types over it.
   await titleBox(pointMonth).fill("Café Strings");
   await titleBox(pointMonth).press("Tab");
   await expect(pointMonth.getByText("Title saved.")).toBeVisible();

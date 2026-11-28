@@ -13,7 +13,7 @@ const KIND_LABELS: Record<string, string> = {
   no_program: "No Program",
   deadline_reminder: "Reminder (day before)",
   deadline_missed: "Missed deadline",
-  deadline_missed_summary: "Missed: point person summary",
+  deadline_missed_summary: "Missed: Iris Supervisor summary",
   deadline_nudge: "Daily nudge",
 };
 
@@ -44,8 +44,8 @@ export default async function OutboxPage() {
         </form>
       </div>
       <p className="mt-1 text-muted">
-        Emails the app sends: the day-before reminder, the missed-deadline notice (and a summary for the point person), a daily nudge until
-        it&apos;s done, and a note to the point person whenever a date becomes &ldquo;No Program&rdquo;. Times are Eastern.
+        Emails the app sends: the day-before reminder, the missed-deadline notice (and a summary for the Iris Supervisor), a daily nudge until
+        it&apos;s done, and a note to the Iris Supervisor whenever a date becomes &ldquo;No Program&rdquo;. Times are Eastern.
       </p>
       <ul className="mt-6 flex flex-col gap-3">
         {rows.map((n) => (

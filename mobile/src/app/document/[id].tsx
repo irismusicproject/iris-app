@@ -50,7 +50,7 @@ function DocumentForm({ id }: { id: string }) {
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
-  // "Canceled day-of" (v0.41): after calling the point person, the leader records it here instead.
+  // "Canceled day-of" (v0.41): after calling the Iris Supervisor, the leader records it here instead.
   const [happened, setHappened] = useState<"yes" | "no">("yes");
   const [reason, setReason] = useState<CancellationReason | "">("");
 
@@ -123,7 +123,7 @@ function DocumentForm({ id }: { id: string }) {
       )}
       {happened === "no" ? (
         <>
-          <Field label="Why was it canceled?" hint="You should already have called the point person. This makes it “No Program”; nobody is paid for it, and a partner cancellation after 9 am can be billed.">
+          <Field label="Why was it canceled?" hint="You should already have called the Iris Supervisor. This makes it “No Program”; nobody is paid for it, and a partner cancellation after 9 am can be billed.">
             <Choices options={CANCELLATION_REASONS.map((x) => ({ value: x, label: CANCELLATION_REASON_LABELS[x] }))} selected={reason} onToggle={(v) => setReason(v as CancellationReason)} />
           </Field>
           {problem && <Problem>{problem}</Problem>}

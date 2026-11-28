@@ -3,9 +3,9 @@ import { createClient } from "@supabase/supabase-js";
 import { SECRET_KEY, SUPABASE_URL } from "./helpers/env";
 import { createPerson, logIn, open } from "./helpers/people";
 
-// A month's schedule (DOMAIN-MODEL v0.18): the point person fills in the month
+// A month's schedule (DOMAIN-MODEL v0.18): the Iris Supervisor fills in the month
 // and sets leaders, a roster musician edits titles and rooms of drafts they
-// play in, the point person marks a draft date "No Program". The Admin Lead
+// play in, the Iris Supervisor marks a draft date "No Program". The Lead Musician
 // no longer fills months (v0.18). Made-up data only.
 
 const db = () => createClient(SUPABASE_URL, SECRET_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
@@ -24,7 +24,7 @@ async function as(browser: import("@playwright/test").Browser, who: { email: str
   return page;
 }
 
-test("point person fills a month and sets leaders, musicians edit drafts, point person marks No Program", async ({ browser }) => {
+test("Iris Supervisor fills a month and sets leaders, musicians edit drafts, Iris Supervisor marks No Program", async ({ browser }) => {
   // Three people log in and the month is filled twice over; give it more than the default 60 s.
   test.setTimeout(180_000);
   const run = Date.now() % 100000;
@@ -49,14 +49,14 @@ test("point person fills a month and sets leaders, musicians edit drafts, point 
     { season_id: season.id, person_id: lead.id, is_admin_lead: true },
     { season_id: season.id, person_id: mus.id, is_admin_lead: false },
   ]).select(), "roster");
-  must(await d.from("staff_assignment").insert({ residency_id: res.id, person_id: point.id, role: "point_person", starts_on: "2020-01-01" }).select(), "point person");
+  must(await d.from("staff_assignment").insert({ residency_id: res.id, person_id: point.id, role: "point_person", starts_on: "2020-01-01" }).select(), "Iris Supervisor");
   const jam = must(await d.from("series").insert({ residency_id: res.id, title: "Jam Band", default_location_id: library, weekdays: [2], start_time: "15:00", minutes: 45, active_from: `${year}-01-01` }).select("id").single(), "Jam Band series");
   must(await d.from("series_default_person").insert([{ series_id: jam.id, person_id: lead.id }, { series_id: jam.id, person_id: mus.id }]).select(), "usual musicians");
   must(await d.from("series").insert({ residency_id: res.id, kind: "relationship_building", title: "Lessons", default_location_id: library, weekdays: [2], active_from: `${year}-01-01` }).select(), "Lessons series");
 
   const path = `/residencies/${res.id}/month/${month}`;
 
-  // 1. v0.18: the Admin Lead can't fill the month; the point person does.
+  // 1. v0.18: the Lead Musician can't fill the month; the Iris Supervisor does.
   const leadPage = await as(browser, lead, path);
   await expect(leadPage.getByRole("button", { name: /^Fill in/ })).toHaveCount(0);
   const pointPage = await as(browser, point, path);
@@ -79,11 +79,11 @@ test("point person fills a month and sets leaders, musicians edit drafts, point 
   await musPage.getByLabel(/^Room for Tuesday/).first().selectOption({ label: "Lounge" });
   await expect(musPage.getByText("Room saved.")).toBeVisible();
 
-  // 3. The point person assigns the first date's leader.
+  // 3. The Iris Supervisor assigns the first date's leader.
   await pointPage.reload();
   const leaderSelect = pointPage.getByLabel(/^Leader for Tuesday/).first();
   if (!(await leaderSelect.isVisible()))
-    throw new Error(`No leader menu for the point person. Page shows: ${(await pointPage.locator("main").innerText()).slice(0, 800)}`);
+    throw new Error(`No leader menu for the Iris Supervisor. Page shows: ${(await pointPage.locator("main").innerText()).slice(0, 800)}`);
   const options = await leaderSelect.locator("option").allInnerTexts();
   if (!options.includes("Mira")) throw new Error(`Leader options: ${JSON.stringify(options)}, disabled: ${await leaderSelect.isDisabled()}`);
   await leaderSelect.selectOption({ label: "Mira" });
@@ -110,8 +110,8 @@ test("point person fills a month and sets leaders, musicians edit drafts, point 
   await musPage.reload();
   await expect(musPage.getByLabel(/^Title for Tuesday/).first()).toHaveValue("Jam Band: Motown");
 
-  // 4. The point person marks the last Jam Band date "No Program" (on drafts
-  //    that's the point person or the date's leader; the Admin Lead handles
+  // 4. The Iris Supervisor marks the last Jam Band date "No Program" (on drafts
+  //    that's the Iris Supervisor or the date's leader; the Lead Musician handles
   //    published dates).
   await pointPage.reload();
   await pointPage.waitForLoadState("networkidle");

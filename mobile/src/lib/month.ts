@@ -17,10 +17,10 @@ export const STAGE_LABEL: Record<Stage, string> = {
 };
 export const STAGE_HELP: Record<Stage, string> = {
   team_editing: "Open for the team: leaders add titles; mark dates you can't play; propose leader swaps.",
-  team_confirmed: "The point person confirmed the team's version. Dates are locked for musicians; ask the point person for changes.",
-  sent_to_partner: "The draft calendar went to the partner. The admin lead enters any partner changes.",
-  partner_changes: "The admin lead is entering the partner's changes, then marks the month final.",
-  final: "Final and locked. Ask the point person for a sub or a change; same day, call them.",
+  team_confirmed: "The Iris Supervisor confirmed the team's version. Dates are locked for musicians; ask the Iris Supervisor for changes.",
+  sent_to_partner: "The draft calendar went to the partner. The Lead Musician enters any partner changes.",
+  partner_changes: "The Lead Musician is entering the partner's changes, then marks the month final.",
+  final: "Final and locked. Ask the Iris Supervisor for a sub or a change; same day, call them.",
 };
 
 export type ScheduleMonth = { id: string; residency_id: string; site_id: string; month: string; stage: Stage; team_due_on: string; final_due_on: string };

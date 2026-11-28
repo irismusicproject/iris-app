@@ -44,7 +44,7 @@ export default async function ImportPage() {
         <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-muted">
           <li>Everyone needs a name and email. Last names are optional; a first name is fine if it&apos;s unique in the file.</li>
           <li>Other tabs refer to people by the name on the People tab, and to buildings by their name on the Buildings tab.</li>
-          <li>Programs: one season each, with start and end dates (e.g. 2027-01-04). Point person and Admin lead can be left empty.</li>
+          <li>Programs: one season each, with start and end dates (e.g. 2027-01-04). Iris Supervisor and Lead Musician can be left empty.</li>
           <li>Weekly programs: Day is Monday–Sunday (several separated by commas); Repeats is Weekly or Monthly (with Week of month 1–4).</li>
         </ul>
       </section>

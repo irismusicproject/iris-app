@@ -86,12 +86,12 @@ export default function Review() {
     const { data, error } = g.checked ? await supabase.rpc("undo_schedule_checked", args) : await supabase.rpc("mark_schedule_checked", args);
     setBusy(null);
     if (error) {
-      if (error.message.includes("already been reviewed")) setProblem("The point person has already marked this month reviewed. Ask them for any changes.");
+      if (error.message.includes("already been reviewed")) setProblem("The Iris Supervisor has already marked this month reviewed. Ask them for any changes.");
       else if (error.message.includes("aren't playing")) setProblem("You aren't playing at this building this month.");
       else setProblem(friendly(error));
     } else {
       setProblem(null);
-      setMessage(g.checked ? `Undone for ${g.building}.` : data ? `Done for ${g.building}. Everyone playing there is done, so the point person will get an email.` : `Done for ${g.building}. The point person can see you've checked your dates.`);
+      setMessage(g.checked ? `Undone for ${g.building}.` : data ? `Done for ${g.building}. Everyone playing there is done, so the Iris Supervisor will get an email.` : `Done for ${g.building}. The Iris Supervisor can see you've checked your dates.`);
     }
     load();
   }
@@ -120,7 +120,7 @@ export default function Review() {
         return (
           <Card key={g.key} title={g.building}>
             <Muted>{g.residency}</Muted>
-            {g.locked ? <Tag label="Reviewed by the point person" /> : g.checked ? <Tag label="You're done reviewing" /> : drafts ? <Tag label="To review" tone="todo" /> : null}
+            {g.locked ? <Tag label="Reviewed by the Iris Supervisor" /> : g.checked ? <Tag label="You're done reviewing" /> : drafts ? <Tag label="To review" tone="todo" /> : null}
             {g.rows.map((r) => {
               const tz = r.location?.site?.timezone ?? "America/New_York";
               const canceled = r.schedule_state === "canceled";
@@ -151,7 +151,7 @@ export default function Review() {
                 onPress={() =>
                   g.checked
                     ? toggle(g)
-                    : Alert.alert("Done reviewing", `Tell the point person your ${formatMonth(month)} dates at ${g.building} look right?`, [
+                    : Alert.alert("Done reviewing", `Tell the Iris Supervisor your ${formatMonth(month)} dates at ${g.building} look right?`, [
                         { text: "Cancel", style: "cancel" },
                         { text: "Yes, done", onPress: () => toggle(g) },
                       ])

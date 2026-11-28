@@ -51,10 +51,10 @@ export function ReportRow({
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
   const [done, setDone] = useState(!!r);
-  // The length comes from the program (set by the point person or an admin,
+  // The length comes from the program (set by the Iris Supervisor or an admin,
   // v0.20). The leader only changes it when the session ran longer or shorter.
   const [editLength, setEditLength] = useState(!!r && r.minutes !== session.scheduledMinutes);
-  // "Canceled day-of" (v0.41): after calling the point person, the leader records it instead of documenting.
+  // "Canceled day-of" (v0.41): after calling the Iris Supervisor, the leader records it instead of documenting.
   const [dayOf, setDayOf] = useState(false);
   const [reason, setReason] = useState<CancellationReason | "">("");
   const router = useRouter();
@@ -84,7 +84,7 @@ export function ReportRow({
                 disabled={pending || !reason}
                 className={small}
                 label="Record it"
-                question="Record this date as canceled day-of (“No Program”)? You should already have called the point person. Nobody is paid for it, and a partner cancellation after 9 am can be billed."
+                question="Record this date as canceled day-of (“No Program”)? You should already have called the Iris Supervisor. Nobody is paid for it, and a partner cancellation after 9 am can be billed."
                 confirmLabel="Yes, record it"
                 onConfirm={() =>
                   start(async () => {
@@ -183,7 +183,7 @@ export function ReportRow({
 }
 
 // ---- Log a relationship-building activity ----
-// v0.21: the usual length per type (set by the point person) fills Minutes;
+// v0.21: the usual length per type (set by the Iris Supervisor) fills Minutes;
 // the date and site stay after each log so several one-to-ones in a day are
 // quick; "Same as last time" copies the last activity. Sites with detailed
 // notes get a paragraph note for the partner's daily document.
@@ -568,7 +568,7 @@ export function WeekHours({ week, residencies: residencies, toDocument }: { week
         <div key={p.residencyId} className="flex flex-col gap-2">
           {residencies.length > 1 && <h3 className="font-medium">{p.residencyName}</h3>}
           {p.returnedNote && p.state === "draft" && (
-            <p className="rounded-lg border border-brand-orange/60 p-2 text-sm"><strong>Sent back by the point person:</strong> {p.returnedNote}</p>
+            <p className="rounded-lg border border-brand-orange/60 p-2 text-sm"><strong>Sent back by the Iris Supervisor:</strong> {p.returnedNote}</p>
           )}
           <dl className="grid grid-cols-3 gap-3 text-sm">
             {p.hours.map((h) => (
@@ -598,7 +598,7 @@ export function WeekHours({ week, residencies: residencies, toDocument }: { week
             onConfirm={() =>
               startTransition(async () => {
                 const r = await submitWeek(week, open.map((p) => p.residencyId));
-                setMsg(r.status === "error" ? r.message ?? "Something went wrong." : "Your week is submitted to the point person.");
+                setMsg(r.status === "error" ? r.message ?? "Something went wrong." : "Your week is submitted to the Iris Supervisor.");
               })
             }
           />
@@ -629,7 +629,7 @@ export function PlayedRow({ session }: { session: { id: string; label: string; s
             disabled={pending}
             className={small}
             label="I wasn't there"
-            question="The program went on without you? You won't be paid for it, and the point person is told."
+            question="The program went on without you? You won't be paid for it, and the Iris Supervisor is told."
             confirmLabel="Yes, I wasn't there"
             onConfirm={() => start(async () => { const r = await markNotThere(session.id, true); setMsg(r.message); if (r.ok) router.refresh(); })}
           />

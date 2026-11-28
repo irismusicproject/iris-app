@@ -8,7 +8,7 @@ import { isMonth } from "@/shared/domain/time";
 // ScheduleMonth, v0.41): one button each, the same on the phone and the
 // website. The database function moves the stage and checks permission
 // first; then this makes the PDF from the published dates and emails it from
-// Iris to the building's calendar contacts, point person and Admin Lead cc'd.
+// Iris to the building's calendar contacts, Iris Supervisor and Lead Musician cc'd.
 
 export type MonthAction = "send" | "finalize" | "resend";
 export type MonthActionResult =
@@ -37,7 +37,7 @@ export async function runMonthAction(
   if (error) {
     const msg = error.message ?? "";
     if (error.code === "42501") return { ok: false, code: error.code, message: "You don't have permission to do that." };
-    if (/leader/.test(msg)) return { ok: false, code: error.code, message: `${msg.charAt(0).toUpperCase()}${msg.slice(1)}. Ask the point person to set them first.` };
+    if (/leader/.test(msg)) return { ok: false, code: error.code, message: `${msg.charAt(0).toUpperCase()}${msg.slice(1)}. Ask the Iris Supervisor to set them first.` };
     if (error.code === "23514" && msg) return { ok: false, code: error.code, message: `${msg.charAt(0).toUpperCase()}${msg.slice(1)}.` };
     return { ok: false, code: error.code, message: "We couldn't do that. Please try again." };
   }
@@ -68,7 +68,7 @@ export async function runMonthAction(
       attachments: [{ filename: pdf.filename, content: pdf.pdf }],
       idempotencyKey: `calendar-${info.export_id}-${action === "resend" ? Date.now() : action}`,
     });
-    return { ok: true, emailed: true, ...base, message: `${done}: emailed to ${info.to.map((t) => t.name).join(", ")}, with copies to the point person and Admin Lead.` };
+    return { ok: true, emailed: true, ...base, message: `${done}: emailed to ${info.to.map((t) => t.name).join(", ")}, with copies to the Iris Supervisor and Lead Musician.` };
   } catch (e) {
     console.error("calendar email failed:", e instanceof Error ? e.message : e);
     return { ok: true, emailed: false, ...base, message: `${done}, but the email didn't go out. Try "Email it again", or download the PDF and send it yourself.` };

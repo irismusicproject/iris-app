@@ -8,7 +8,7 @@ import { ACTIVITY_KIND_LABELS, type ActivityKind } from "@/shared/domain/documen
 // One day's relationship building at one site, as a Word document for the
 // partner (DOMAIN-MODEL v0.21). Only for sites with detailed notes switched
 // on. Row Level Security decides whose activities are included: a musician
-// gets their own; the point person and admins get everyone's.
+// gets their own; the Iris Supervisor and admins get everyone's.
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

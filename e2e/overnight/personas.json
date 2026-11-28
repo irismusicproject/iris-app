@@ -11,7 +11,7 @@
     },
     {
       "key": "point-person",
-      "label": "Point person",
+      "label": "Iris Supervisor",
       "name": "Pia Point (test)",
       "employment_type": "employee_w2",
       "active": true,
@@ -19,7 +19,7 @@
     },
     {
       "key": "admin-lead",
-      "label": "Admin Lead musician",
+      "label": "Lead Musician musician",
       "name": "Lee Lead (test)",
       "employment_type": "contractor_1099",
       "instruments": ["violin"],

@@ -201,7 +201,7 @@ export async function resetCalendarLink(): Promise<DocResult> {
 
 // ---- Weekly hours (DOMAIN-MODEL section 5, v0.19) ----
 
-/** Save a week's hours for one program; with submit, send them to the point person. */
+/** Save a week's hours for one program; with submit, send them to the Iris Supervisor. */
 /**
  * "Submit my week" (v0.21; v0.24: hours are calculated from documentation,
  * never typed). Submits every program's week at once. The database refuses
