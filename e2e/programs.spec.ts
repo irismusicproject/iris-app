@@ -40,9 +40,10 @@ test("admin sets up a program; a musician on its roster sees it but can't change
   await expect(admin.getByRole("button", { name: "Add site" })).toHaveCount(0);
 
   const year = new Date().getFullYear() + 1;
-  await admin.locator('input[name="name"]').first().fill(`Spring ${year}`);
-  await admin.locator('input[name="starts_on"]').fill(`${year}-01-01`);
-  await admin.locator('input[name="ends_on"]').fill(`${year}-06-30`);
+  const seasonForm = admin.locator("form", { has: admin.getByRole("button", { name: "Add season" }) });
+  await seasonForm.locator('input[name="name"]').fill(`Spring ${year}`);
+  await seasonForm.locator('input[name="starts_on"]').fill(`${year}-01-01`);
+  await seasonForm.locator('input[name="ends_on"]').fill(`${year}-06-30`);
   await admin.getByRole("button", { name: "Add season" }).click();
   await expect(admin.getByRole("heading", { name: new RegExp(`Spring ${year}`) })).toBeVisible();
 
