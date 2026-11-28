@@ -250,6 +250,9 @@ export async function applyImportFile(_prev: ImportCheck | null, form: FormData)
         const { error: e2 } = await supabase.from("series_default_person").insert(w.musicians.map((n) => ({ series_id: data!.id, person_id: personId(n) })));
         if (e2) fail(`Usual musicians for ${w.title}`, e2);
       }
+      // D20: its dates are made at once, up to the season's end (no Fill buttons).
+      const { error: e3 } = await supabase.rpc("generate_series_dates", { p_series: data!.id });
+      if (e3) fail(`Dates for ${w.title}`, e3);
       log.push(`Added ${w.title} (${w.residency})`);
     }
   } catch (e) {

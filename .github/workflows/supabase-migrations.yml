@@ -20,9 +20,9 @@ on:
   workflow_dispatch:
     inputs:
       task:
-        description: "plan = show pending migrations on both databases; build-staging = apply all migrations and fake data to staging; reset-staging = WIPE staging and rebuild it from main (fake data only, never production); deploy-production = apply main's migrations to production; mark-applied = record already-applied migrations in production's history"
+        description: "plan = show pending migrations on both databases; build-staging = apply all migrations and fake data to staging; reset-staging = WIPE staging and rebuild it from main (fake data only, never production); deploy-production = apply main's migrations to production; mark-applied = record already-applied migrations in production's history; clear-staging-programs = DELETE every partner, building, program, season and date on staging (people stay), to set things up from scratch"
         type: choice
-        options: [plan, build-staging, reset-staging, deploy-production, mark-applied]
+        options: [plan, build-staging, reset-staging, deploy-production, mark-applied, clear-staging-programs]
         default: plan
       versions:
         description: "For mark-applied: migration versions separated by spaces, e.g. 20261121120000 20261122120000"
@@ -70,6 +70,15 @@ jobs:
       - name: Wipe and rebuild staging from main
         if: steps.cfg.outputs.ok == 'true' && inputs.task == 'reset-staging'
         run: supabase db reset --yes --db-url "$DATABASE_URL"
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      # clear-staging-programs (Ryan, Nov 27, 2026): empties every partner,
+      # building, program, season and date on staging, and everything hanging
+      # off them, so a new location can be set up from scratch. People and
+      # logins stay. Staging's DATABASE_URL only; production never runs it.
+      - name: Clear staging's partners, buildings, programs and dates
+        if: steps.cfg.outputs.ok == 'true' && inputs.task == 'clear-staging-programs'
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/sql/staging-clear-programs.sql
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
       - name: Migrations that will run on staging

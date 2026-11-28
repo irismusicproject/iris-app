@@ -24,7 +24,7 @@ async function as(browser: import("@playwright/test").Browser, who: { email: str
   return page;
 }
 
-test("Iris Supervisor fills a month and sets leaders, musicians edit drafts, Iris Supervisor marks No Program", async ({ browser }) => {
+test("Weekly programs fill the month; the Iris Supervisor sets leaders, musicians edit drafts, Iris Supervisor marks No Program", async ({ browser }) => {
   // Three people log in and the month is filled twice over; give it more than the default 60 s.
   test.setTimeout(180_000);
   const run = Date.now() % 100000;
@@ -56,14 +56,15 @@ test("Iris Supervisor fills a month and sets leaders, musicians edit drafts, Iri
 
   const path = `/residencies/${res.id}/month/${month}`;
 
-  // 1. v0.18: the Lead Musician can't fill the month; the Iris Supervisor does.
+  // 1. Nobody fills months by hand any more (D20).
   const leadPage = await as(browser, lead, path);
   await expect(leadPage.getByRole("button", { name: /^Fill in/ })).toHaveCount(0);
   const pointPage = await as(browser, point, path);
-  const fill = pointPage.getByRole("button", { name: /^Fill in February/ });
-  if (!(await fill.isVisible())) throw new Error(`No fill button. Page shows: ${(await pointPage.locator("main").innerText()).slice(0, 600)}`);
-  await fill.click();
-  await expect(pointPage.getByRole("status")).toContainText(/Added \d+ programs/);
+  // D20: no Fill buttons. Saving a weekly program makes its dates; here the
+  // programs were added straight to the database, so make them as saving would.
+  await expect(pointPage.getByRole("button", { name: /^Fill in/ })).toHaveCount(0);
+  for (const sr of must(await d.from("series").select("id").eq("residency_id", res.id), "series"))
+    must(await d.rpc("generate_series_dates", { p_series: sr.id }), "dates");
   await pointPage.reload();
   await expect(pointPage.getByRole("heading", { name: "Jam Band" })).toBeVisible();
   await expect(pointPage.getByRole("heading", { name: "Lessons" })).toBeVisible();

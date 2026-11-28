@@ -20,6 +20,7 @@ export function AppShell({
           <nav className="flex flex-wrap items-center gap-1 text-sm">
             <Link href="/dashboard" className={nav}>Home</Link>
             <Link href="/residencies" className={nav}>Programs</Link>
+            <Link href="/calendar" className={nav}>Calendar</Link>
             <Link href="/documentation" className={nav}>My week</Link>
             <Link href="/invoices" className={nav}>My invoices</Link>
             <Link href="/account/profile" className={nav}>My profile</Link>

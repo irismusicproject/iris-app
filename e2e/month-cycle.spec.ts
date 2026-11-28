@@ -55,6 +55,13 @@ test("The month opens by itself; a musician marks 'I can't play'; the Iris Super
   const pointPage = await as(browser, point, path);
   await expect(pointPage.getByRole("button", { name: /^Open .* for the team/ })).toHaveCount(0);
 
+  // D20: the website's Calendar shows the month as the phone does.
+  await open(musPage, `/calendar?month=${month}`);
+  await expect(musPage.getByRole("heading", { name: `Cedar House ${run}` })).toBeVisible();
+  await expect(musPage.getByText("Stage 1 of 3: Team editing")).toBeVisible();
+  await expect(musPage.getByText("You play").first()).toBeVisible();
+  await open(musPage, path);
+
   // C1: Mira marks the first date "I can't play". No approval; it counts at once.
   await musPage.reload();
   await expect(musPage.getByText(/Team editing/)).toBeVisible();

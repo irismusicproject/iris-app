@@ -2,8 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { localDateTime, shiftMonth } from "@/shared/domain/time";
 import { CollaborationTargetForm } from "../season/season-controls";
 
-// The season's Collaboration target (D6), shown on Site Details since v0.9
-// (Nov 27, 2026; it used to be on the season view). Counts are for the whole
+// The season's Collaboration target (D6), shown on the admin Site details
+// page since Nov 27, 2026 (D20; it used to be on the season view). Counts are for the whole
 // season across the residency's buildings: dates documented with Collab? = Yes
 // that each musician played in.
 type Row = {
@@ -19,11 +19,14 @@ export async function CollaborationTarget({
   month,
   canSchedule,
   names,
+  programName,
 }: {
   residencyId: string;
   month: string;
   canSchedule: boolean;
   names: Map<string, string>;
+  /** Shown in the heading where several programs are listed (the admin site page). */
+  programName?: string;
 }) {
   const supabase = await createClient();
   const day = `${month}-01`;
@@ -63,7 +66,7 @@ export async function CollaborationTarget({
 
   return (
     <section className="mt-6 rounded-xl border border-border bg-surface p-5 sm:p-6">
-      <h2 className="text-lg font-semibold">Collaboration target · {season.name}</h2>
+      <h2 className="text-lg font-semibold">Collaboration target · {programName ? `${programName}, ` : ""}{season.name}</h2>
       <p className="mt-1 text-sm text-muted">Programs documented with Collab? = Yes count toward it, at every building this season. The handbook default is 2 per semester; adjust it for this project.</p>
       <div className="mt-3">
         {canSchedule ? (
