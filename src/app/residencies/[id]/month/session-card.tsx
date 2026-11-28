@@ -130,7 +130,10 @@ export function SessionCard({
   const asked = myOpenRequests.includes(session.id);
   const canMarkOff = stage === "team_editing" && isDraft && !!mine && mine.status !== "substitute";
   const canPropose = stage === "team_editing" && isDraft && playingMe && !!leader && !canSchedule && !asked && playing.some((a) => a.role !== "leader");
-  const canAskSub = final && playingMe && session.state === "published" && !canSchedule && !asked;
+  // D20: from the moment the calendar goes to the partner, musicians ask the
+  // Iris Supervisor (the Lead Musician enters partner changes directly until final).
+  const sent = stage === "sent_to_partner" || stage === "partner_changes";
+  const canAskSub = (final || (sent && !isAdminLead)) && playingMe && session.state === "published" && !canSchedule && !asked;
   const cycle = (fn: () => Promise<CycleResult>) =>
     start(async () => {
       const r = await fn();

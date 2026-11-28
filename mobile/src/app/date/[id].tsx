@@ -302,7 +302,7 @@ export default function DateDetail() {
       )}
       {afterFinal && !openSwap && (
         <Card title="Need a sub?">
-          <Muted>This month is final, so the Iris Supervisor approves every change. Pick who&apos;ll play for you.</Muted>
+          <Muted>{stage === "final" ? "This month is final" : "The calendar has gone to the partner"}, so the Iris Supervisor approves every change. Pick who&apos;ll play for you.</Muted>
           <Choices options={roster.map((p) => ({ value: p.id, label: p.name }))} selected={subPick} onToggle={setSubPick} />
           <Button
             label="Ask the Iris Supervisor"

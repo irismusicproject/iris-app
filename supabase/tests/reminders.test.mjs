@@ -109,7 +109,7 @@ await queueMonth(addDays(sm.team, -2));
 check("two days before the team's due date: no reminder", (await monthly(P, "Reminder: confirm%")) === 0);
 await queueMonth(addDays(sm.team, -1));
 await queueMonth(addDays(sm.team, -1));
-check("the day before: the point person gets one 'confirm' reminder", (await monthly(P, "Reminder: confirm%")) === 1);
+check("the day before: no 'confirm' reminder any more (D20)", (await monthly(P, "Reminder: confirm%")) === 0);
 await queueMonth(sm.team);
 check("on the due date: the Admin Lead gets one 'send to the partner' reminder", (await monthly(L, "Today: send%")) === 1);
 check("…and the point person doesn't", (await monthly(P, "Today: send%")) === 0);

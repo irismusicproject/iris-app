@@ -42,7 +42,9 @@ export function dateActions(f: DateFacts) {
     canMarkOff: !canceled && teamEditing && draft && f.myStatus !== null && f.myStatus !== "substitute",
     /** Propose a leader swap: while the team edits, when there's someone to swap with. */
     canSwap: !canceled && teamEditing && draft && iPlay && f.hasLeader && f.nonLeaders > 0,
-    /** After the month is final, changes go to the Iris Supervisor as requests. */
-    afterFinal: !canceled && f.stage === "final" && iPlay && !f.past,
+    /** Once the calendar has gone to the partner (D20) and after final, changes go
+     *  to the Iris Supervisor as requests; the Lead Musician enters partner changes
+     *  directly until final. */
+    afterFinal: !canceled && (f.stage === "final" || (partnerStage && !f.adminLead)) && iPlay && !f.past,
   };
 }

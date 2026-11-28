@@ -42,6 +42,10 @@ test("leader swap: while the team edits, with a leader and someone to swap with"
 test("final: upcoming dates I play take change requests", () => {
   assert.equal(on({ stage: "final" }).afterFinal, true);
   assert.equal(on({ stage: "final", past: true }).afterFinal, false);
+  // D20: musicians ask the Iris Supervisor from the moment the calendar is sent.
+  assert.equal(on({ stage: "sent_to_partner" }).afterFinal, true);
+  assert.equal(on({ stage: "partner_changes" }).afterFinal, true);
+  assert.equal(on({ stage: "sent_to_partner", adminLead: true }).afterFinal, false);
 });
 test("a canceled date (No Program) offers nothing", () => {
   const a = on({ scheduleState: "canceled", iLead: true, adminLead: true });

@@ -74,11 +74,13 @@ test("The month opens by itself; a musician marks 'I can't play'; the Iris Super
   await expect(cantPlay(musPage)).toBeVisible();
   await expect.poll(async () => (await d.from("session_assignment").select("status").eq("session_id", dates[0].id).eq("person_id", mus.id).single()).data?.status, { timeout: 10_000 }).toBe("assigned");
 
-  // After the Iris Supervisor confirms, "I can't play" is no longer offered (locked for musicians).
-  await pointPage.reload();
-  await pointPage.getByRole("button", { name: /^Confirm the team's/ }).click();
-  await pointPage.getByRole("button", { name: "Confirm", exact: true }).click();
-  await expect.poll(async () => (await d.from("schedule_month").select("stage").eq("residency_id", res.id).maybeSingle()).data?.stage, { timeout: 10_000 }).toBe("team_confirmed");
+  // D20: no confirm step. The Lead Musician sends it to the partner; after
+  // that, "I can't play" is no longer offered (musicians ask the Iris Supervisor).
+  const leadPage = await as(browser, lead, path);
+  await expect(pointPage.getByRole("button", { name: /^Confirm the team's/ })).toHaveCount(0);
+  await leadPage.getByRole("button", { name: "Send calendar to partner" }).click();
+  await leadPage.getByRole("button", { name: "Send", exact: true }).click();
+  await expect.poll(async () => (await d.from("schedule_month").select("stage").eq("residency_id", res.id).maybeSingle()).data?.stage, { timeout: 15_000 }).toBe("sent_to_partner");
   await musPage.reload();
   await musPage.getByRole("button", { name: "More" }).first().click();
   await expect(cantPlay(musPage)).toHaveCount(0);

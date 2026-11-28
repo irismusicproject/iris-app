@@ -7,19 +7,25 @@ import { WEBSITE } from "./website";
 // which makes the PDF and emails it.
 
 export type Stage = "team_editing" | "team_confirmed" | "sent_to_partner" | "partner_changes" | "final";
-export const STAGES: Stage[] = ["team_editing", "team_confirmed", "sent_to_partner", "partner_changes", "final"];
+// D20 (Nov 27, 2026): three steps on screen. team_confirmed (no longer set)
+// reads as team editing; partner_changes (a change made after sending) reads
+// as sent to partner.
+export const STAGES: Stage[] = ["team_editing", "sent_to_partner", "final"];
+export const stepOf = (s: Stage): Stage => (s === "team_confirmed" ? "team_editing" : s === "partner_changes" ? "sent_to_partner" : s);
 export const STAGE_LABEL: Record<Stage, string> = {
   team_editing: "Team editing",
-  team_confirmed: "Team confirmed",
+  team_confirmed: "Team editing",
   sent_to_partner: "Sent to partner",
-  partner_changes: "Partner changes",
+  partner_changes: "Sent to partner",
   final: "Final",
 };
+const EDITING = "Open for the team until the 10th: review and edit your dates; leaders add titles (type “No Program” to cancel a date); mark dates you can't play; propose leader swaps.";
+const SENT = "The calendar went to the partner. Only the partner's changes go in now, entered by the Lead Musician; for anything else, ask the Iris Supervisor.";
 export const STAGE_HELP: Record<Stage, string> = {
-  team_editing: "Open for the team: leaders add titles; mark dates you can't play; propose leader swaps.",
-  team_confirmed: "The Iris Supervisor confirmed the team's version. Dates are locked for musicians; ask the Iris Supervisor for changes.",
-  sent_to_partner: "The draft calendar went to the partner. The Lead Musician enters any partner changes.",
-  partner_changes: "The Lead Musician is entering the partner's changes, then marks the month final.",
+  team_editing: EDITING,
+  team_confirmed: EDITING,
+  sent_to_partner: SENT,
+  partner_changes: SENT,
   final: "Final and locked. Ask the Iris Supervisor for a sub or a change; same day, call them.",
 };
 
