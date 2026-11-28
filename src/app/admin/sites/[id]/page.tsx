@@ -2,7 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { requireAdmin } from "@/lib/auth";
+import { getResidencyNames } from "@/lib/residency-access";
 import { createClient } from "@/lib/supabase/server";
+import { todayIn } from "@/shared/domain/time";
+import { CollaborationTarget } from "../../../residencies/[id]/month/collaboration-target";
 import type { Location, Partner, Site } from "@/shared/domain/place";
 import { AddLocationForm, LocationRow, SiteForm } from "../../partners/forms";
 
@@ -27,6 +30,14 @@ export default async function SitePage({ params }: { params: Promise<{ id: strin
     .order("active", { ascending: false })
     .order("name");
   const locations = (data ?? []) as Location[];
+  // Programs at this site, for their seasons' Collaboration targets (D20).
+  const { data: progRows } = await supabase.from("residency_site").select("residency(id, name)").eq("site_id", id);
+  const programs = ((progRows ?? []) as unknown as { residency: { id: string; name: string } | null }[])
+    .map((r) => r.residency!)
+    .filter(Boolean)
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const names = new Map(await Promise.all(programs.map(async (p) => [p.id, await getResidencyNames(p.id)] as const)));
+  const month = todayIn(site.timezone).slice(0, 7);
 
   return (
     <AppShell isAdmin={isAdmin}>
@@ -55,6 +66,10 @@ export default async function SitePage({ params }: { params: Promise<{ id: strin
         <h2 className="text-lg font-semibold">Site details</h2>
         <div className="mt-5"><SiteForm partnerId={site.partner_id} site={site} /></div>
       </section>
+
+      {programs.map((p) => (
+        <CollaborationTarget key={p.id} residencyId={p.id} month={month} canSchedule names={names.get(p.id)!} programName={p.name} />
+      ))}
     </AppShell>
   );
 }

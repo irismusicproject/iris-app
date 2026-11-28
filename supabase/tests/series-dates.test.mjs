@@ -58,4 +58,19 @@ const past = addDays(thisMonth, -20);
 await su(`insert into public.session (residency_id, title, location_id, starts_at, scheduled_minutes) values ('${w.RES}','Concert','${w.R1}','${past} 14:00 America/New_York',60)`);
 check("a date in a past month doesn't open it", (await su(`select count(*)::int as n from public.schedule_month where month='${past.slice(0, 8)}01'`))[0].n === 0);
 
+
+// D20 follow-up: a new season makes its weekly programs' dates by itself
+const S3 = (await su(`insert into public.series (residency_id,title,default_location_id,weekdays,start_time,minutes,active_from)
+  values ('${w.RES2}','Hymn Sing','${w.R3}','{4}','10:00',45,'${addDays(TODAY, 160)}') returning id`))[0].id;
+{
+  const before = (await dates(S3)).length;
+  r = await as(P_.A, `insert into public.season (residency_id,name,starts_on,ends_on,kind) values ('${w.RES2}','Next Elm','${addDays(TODAY, 120)}','${addDays(TODAY, 200)}','season')`);
+  const after = await dates(S3);
+  check("a new season fills its weekly programs' dates", r.ok && before === 0 && after.length > 0 && after.every((x) => x <= addDays(TODAY, 200)), { r, before, after });
+}
+r = await as(null, `select public.generate_series_dates('${S1}')`);
+check("someone signed out can't make dates", !r.ok, r);
+r = await as(null, `select public.generate_series_month('${S1}', '${thisMonth}')`);
+check("…nor fill a month", !r.ok, r);
+
 process.exit(T.summary("series-dates") ? 1 : 0);

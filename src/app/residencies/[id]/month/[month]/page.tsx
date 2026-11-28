@@ -6,11 +6,10 @@ import { getResidencyAccess, getResidencyNames } from "@/lib/residency-access";
 import { createClient } from "@/lib/supabase/server";
 import { recurrenceLabel, SESSION_KIND_LABELS, type CancellationReason, type Series, type SessionKind } from "@/shared/domain/scheduling";
 import { formatDay, formatMonth, formatTime, isMonth, localDateTime, monthWindow, shiftMonth } from "@/shared/domain/time";
-import { AddOneTimeForm, FillMonthButton } from "../month-controls";
+import { AddOneTimeForm } from "../month-controls";
 import { PublishPanel, type ScheduleCheckRow } from "../publish-panel";
 import { ScheduleHeader, SessionCard, type CardSession } from "../session-card";
 import { StagePanel, type Stage } from "../stage-panel";
-import { CollaborationTarget } from "../collaboration-target";
 import { DeleteSeriesButton, EndSeriesForm, SeriesForm } from "../../season/series-form";
 
 // A month's schedule for one site, laid out like the partner calendar
@@ -286,8 +285,6 @@ export default async function MonthPage({
         {access.isAdminLead && !access.canSchedule && " As Lead Musician, you send the calendar to the partner on the 10th, enter the partner's changes, and mark it final by the 15th."}
       </p>
 
-      <CollaborationTarget residencyId={id} month={month} canSchedule={access.canSchedule} names={names} />
-
       {endedNote && (
         <section role="status" className="mt-5 rounded-xl border border-iris/40 bg-iris-soft p-4 text-sm">
           <p>
@@ -389,9 +386,6 @@ export default async function MonthPage({
         )}
       </section>
 
-      {access.canSchedule && (
-        <div className="mt-5"><FillMonthButton residencyId={id} month={month} monthLabel={monthLabel} /></div>
-      )}
 
       {(stage || access.canSchedule) && (
         <StagePanel

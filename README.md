@@ -174,6 +174,8 @@ GitHub applies migrations. **Don't paste migrations into the SQL Editor.** While
 2. **Merging to `main`** applies new migrations to **staging** automatically, plus the fake data in `supabase/seed.sql`.
 3. **Production** changes only when an owner (Ryan) runs **Actions → Database migrations → Run workflow → deploy-production** and approves it. Until then, new screens that need new tables won't work on the live site.
 
+**To start staging over without programs** (to try setting up a new location, program and season by hand), run **Actions → Database migrations → Run workflow → clear-staging-programs**. It deletes every partner, building, room, contract, program, season, weekly program and date on staging, and everything hanging off them; people, logins, settings and the edited lists stay. It can only reach staging. **reset-staging** brings the fake programs back.
+
 **If staging gets out of step with `main`** (the staging update fails with "Remote migration versions not found in local migrations directory," usually because a migration changed after it reached staging), run **Actions → Database migrations → Run workflow → reset-staging**. It wipes staging's tables and rebuilds them from `main` plus the fake data. It can only reach staging. Afterward, rerun the "First admins" SQL in staging for anyone who needs an admin login there.
 
 **Rules for migrations:**
